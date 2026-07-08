@@ -1,0 +1,89 @@
+version: '3.8'
+
+services:
+  # CrossCodex Ingestion Service
+  ingestion:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: crosscodex-ingestion:latest
+    container_name: crosscodex-ingestion
+    ports:
+      - "8080:8080"   # gRPC service
+      - "9090:9090"   # Prometheus metrics
+    environment:
+      # Service configuration
+      GRPC_PORT: "8080"
+      METRICS_PORT: "9090"
+      LOG_LEVEL: "debug"
+      LOG_FORMAT: "json"
+
+      # Storage configuration (filesystem mode for local development)
+      STORAGE_BACKEND: "filesystem"
+      STORAGE_FILESYSTEM_ROOT: "/data/ingestion"
+
+      # NATS configuration
+      NATS_URL: "nats://nats:4222"
+      NATS_STREAM: "crosscodex-ingestion"
+      NATS_CONSUMER: "ingestion-service"
+
+      # OpenTelemetry configuration
+      OTEL_EXPORTER_OTLP_ENDPOINT: "http://jaeger:4317"
+      OTEL_SERVICE_NAME: "crosscodex-ingestion"
+      OTEL_TRACES_EXPORTER: "otlp"
+      OTEL_METRICS_EXPORTER: "otlp"
+
+      # Security configuration
+      MAX_DOCUMENT_SIZE_MB: "100"
+      RATE_LIMIT_REQUESTS: "1000"
+      RATE_LIMIT_WINDOW_SECONDS: "60"
+    volumes:
+      - ingestion-data:/data/ingestion
+    depends_on:
+      - nats
+      - jaeger
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import grpc; ch=grpc.insecure_channel('localhost:8080'); grpc.channel_ready_future(ch).result(timeout=5)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # NATS JetStream for async messaging
+  nats:
+    image: nats:latest
+    container_name: crosscodex-nats
+    ports:
+      - "4222:4222"   # Client connections
+      - "8222:8222"   # HTTP monitoring
+    command: ["--jetstream", "--http_port", "8222"]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8222/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+
+  # Jaeger all-in-one for distributed tracing
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    container_name: crosscodex-jaeger
+    ports:
+      - "16686:16686"   # Jaeger UI
+      - "4317:4317"     # OTLP gRPC receiver
+      - "4318:4318"     # OTLP HTTP receiver
+    environment:
+      COLLECTOR_OTLP_ENABLED: "true"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:14269/"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+
+volumes:
+  ingestion-data:
+    driver: local

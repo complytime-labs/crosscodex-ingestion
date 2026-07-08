@@ -1,0 +1,128 @@
+syntax = "proto3";
+
+package crosscodex.v1;
+
+option go_package = "github.com/complytime-labs/crosscodex/api/gen/go/crosscodex/v1;crosscodexv1";
+
+import "google/protobuf/timestamp.proto";
+
+// TenantContext provides multi-tenant isolation.
+// Included in every data-touching RPC request.
+message TenantContext {
+  string tenant_id = 1;  // Required, validated at gateway
+  map<string, string> metadata = 2;  // Optional tenant-specific context
+}
+
+// AuditMetadata tracks who/when/why for all persistent entities.
+message AuditMetadata {
+  google.protobuf.Timestamp created_at = 1;
+  string created_by = 2;  // mTLS DN, SAML NameID, or service identity
+  google.protobuf.Timestamp updated_at = 3;
+  string updated_by = 4;
+  string change_reason = 5;  // Optional justification
+  string correlation_id = 6;  // OpenTelemetry trace ID
+}
+
+// ResourceRef references entities across services.
+message ResourceRef {
+  string resource_type = 1;  // "catalog", "control", "document", "job", "node", "edge"
+  string resource_id = 2;    // UUID or qualified ID
+  string resource_uri = 3;   // Optional canonical URI
+}
+
+// ContentMetadata describes document/artifact attributes.
+message ContentMetadata {
+  string mime_type = 1;
+  string sha256 = 2;           // Content hash for dedup/integrity
+  int64 size_bytes = 3;
+  string format_version = 4;   // "OSCAL-1.0.4", "Gemara-v1"
+  string source_uri = 5;       // Original URL or path
+}
+
+// ProvenanceMetadata tracks data lineage and quality.
+message ProvenanceMetadata {
+  repeated ResourceRef sources = 1;        // Input resources
+  repeated string transformations = 2;     // Pipeline stages applied
+  string attestation_link_id = 3;          // in-toto link reference
+  float quality_score = 4;                 // 0.0-1.0, method-specific
+  map<string, string> lineage_metadata = 5; // Model versions, parse rates
+}
+
+// TemporalAttributes support time-variant facts in graph.
+message TemporalAttributes {
+  google.protobuf.Timestamp valid_from = 1;  // When this fact became true
+  google.protobuf.Timestamp valid_to = 2;    // When superseded (null = current)
+  string determined_by = 3;                  // Job ID that established this
+  float confidence = 4;                      // 0.0-1.0
+}
+
+// Pagination for list operations.
+message Pagination {
+  int32 page_size = 1;   // Max results per page (default 50, max 1000)
+  string page_token = 2; // Opaque continuation token // kics-scan ignore-line
+}
+
+// PageInfo returned with list responses.
+message PageInfo {
+  string next_page_token = 1; // kics-scan ignore-line
+  int64 total_count = 2;  // Total matching records (optional, expensive)
+}
+
+// FieldFilter for list filtering.
+message FieldFilter {
+  string field = 1;    // "status", "created_at", "framework"
+  string operator = 2; // "eq", "gt", "lt", "contains", "in"
+  string value = 3;
+}
+
+// SortOrder for list sorting.
+message SortOrder {
+  string field = 1;
+  bool descending = 2;
+}
+
+// ListOptions combines pagination, filtering, and sorting.
+message ListOptions {
+  Pagination pagination = 1;
+  repeated FieldFilter filters = 2;
+  repeated SortOrder sort = 3;
+}
+
+// ErrorCode for structured error responses.
+enum ErrorCode {
+  ERROR_CODE_UNSPECIFIED = 0;
+  ERROR_CODE_INVALID_ARGUMENT = 1;
+  ERROR_CODE_NOT_FOUND = 2;
+  ERROR_CODE_PERMISSION_DENIED = 3;
+  ERROR_CODE_ALREADY_EXISTS = 4;
+  ERROR_CODE_RESOURCE_EXHAUSTED = 5;
+  ERROR_CODE_INTERNAL = 6;
+  ERROR_CODE_UNAVAILABLE = 7;
+}
+
+// Error provides structured error details.
+message Error {
+  ErrorCode code = 1;
+  string message = 2;
+  map<string, string> details = 3;  // Field-level errors, etc.
+}
+
+// JobStatus tracks pipeline job states.
+enum JobStatus {
+  JOB_STATUS_UNSPECIFIED = 0;
+  JOB_STATUS_PENDING = 1;
+  JOB_STATUS_RUNNING = 2;
+  JOB_STATUS_COMPLETED = 3;
+  JOB_STATUS_FAILED = 4;
+  JOB_STATUS_CANCELLED = 5;
+}
+
+// Job represents a pipeline job.
+message Job {
+  string job_id = 1;
+  TenantContext tenant_context = 2;
+  JobStatus status = 3;
+  AuditMetadata audit = 4;
+  Error error = 5;                  // Populated if FAILED
+  ProvenanceMetadata provenance = 6;
+}

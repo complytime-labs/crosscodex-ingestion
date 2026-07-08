@@ -1,0 +1,65 @@
+syntax = "proto3";
+
+package crosscodex.v1;
+
+option go_package = "github.com/complytime-labs/crosscodex/api/gen/go/crosscodex/v1;crosscodexv1";
+
+import "crosscodex/v1/common.proto";
+
+// IngestionService handles document conversion using Docling.
+// Converts PDF, DOCX, HTML to structured JSON without OSCAL knowledge.
+//
+// COUPLING: Output feeds into catalog.ParseCatalog
+service IngestionService {
+  // Convert document to structured JSON (async processing)
+  rpc ConvertDocument(ConvertDocumentRequest) returns (ConvertDocumentResponse);
+
+  // Get conversion status and metadata
+  rpc GetDocument(GetDocumentRequest) returns (GetDocumentResponse);
+
+  // List documents for tenant
+  rpc ListDocuments(ListDocumentsRequest) returns (ListDocumentsResponse);
+}
+
+message ConvertDocumentRequest {
+  TenantContext tenant_context = 1;
+  oneof source {
+    bytes content = 2;        // Raw file upload
+    string source_uri = 3;    // URL to fetch
+  }
+  ContentMetadata metadata = 4;
+}
+
+message ConvertDocumentResponse {
+  string document_id = 1;
+  JobStatus status = 2;  // PENDING or RUNNING
+}
+
+message Document {
+  string document_id = 1;
+  TenantContext tenant_context = 2;
+  ContentMetadata metadata = 3;
+  AuditMetadata audit = 4;
+  JobStatus conversion_status = 5;
+  string structured_json_uri = 6;  // Object storage path to output
+  Error error = 7;  // If conversion failed
+}
+
+message GetDocumentResponse {
+  Document document = 1;
+}
+
+message GetDocumentRequest {
+  TenantContext tenant_context = 1;
+  string document_id = 2;
+}
+
+message ListDocumentsRequest {
+  TenantContext tenant_context = 1;
+  ListOptions options = 2;
+}
+
+message ListDocumentsResponse {
+  repeated Document documents = 1;
+  PageInfo page_info = 2;
+}

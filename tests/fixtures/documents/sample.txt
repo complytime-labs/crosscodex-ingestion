@@ -1,0 +1,11 @@
+Section 1. Introduction
+
+This document provides guidance for compliance requirements.
+
+Section 2. Access Control
+
+Organizations shall implement access control mechanisms.
+
+Section 3. Audit Logging
+
+All access events must be logged and monitored.

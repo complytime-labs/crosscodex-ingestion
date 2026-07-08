@@ -1,0 +1,54 @@
+name: MegaLinter
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: "17 3 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+jobs:
+  megalinter:
+    name: MegaLinter Analysis
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      security-events: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: MegaLinter
+        id: ml
+        uses: trevor-vaughan/megalint-config@2da93ca6173ca20edcde4be599de20f5a79197c6 # v0.4.0
+        with:
+          validate-all-codebase: ${{ github.event_name == 'schedule' }}
+          github-comment: "true"
+
+      - name: Archive reports
+        if: success() || failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: megalinter-reports
+          path: ${{ steps.ml.outputs.reports-dir }}
+
+      - name: Upload SARIF to GitHub Code Scanning
+        if: ${{ (success() || failure()) && steps.ml.outputs.sarif-has-results == 'true' }}
+        uses: github/codeql-action/upload-sarif@54f647b7e1bb85c95cddabcd46b0c578ec92bc1a # v4.36.3
+        with:
+          sarif_file: ${{ steps.ml.outputs.sarif-file }}

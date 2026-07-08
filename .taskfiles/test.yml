@@ -1,0 +1,31 @@
+version: '3'
+
+tasks:
+  default:
+    desc: Run unit tests
+    vars:
+      MODE: '{{.MODE | default "human"}}'
+    cmds:
+      - >-
+        uv run pytest tests/unit/ -v
+        {{if eq .MODE "llm"}}--tb=short --no-header -q{{end}}
+        --junitxml=.test-output/unit-results.xml
+        --cov=crosscodex_ingestion --cov-report=html:.test-output/coverage
+
+  integration:
+    desc: Integration tests (requires Docling)
+    cmds:
+      - uv run pytest tests/integration/ -v --junitxml=.test-output/integration-results.xml
+
+  container:
+    desc: Container tests (requires podman)
+    cmds:
+      - podman-compose -f docker-compose.yml up -d --build
+      - venom run tests/venom/ --output-dir=.test-output/venom || true
+      - podman-compose -f docker-compose.yml down
+
+  all:
+    desc: Run all test suites
+    cmds:
+      - task: default
+      - task: integration

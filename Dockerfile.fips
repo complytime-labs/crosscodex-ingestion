@@ -1,0 +1,78 @@
+# CrossCodex Ingestion Service - FIPS 140-2 Compliant Container Image
+# Multi-stage build using Red Hat Universal Base Image (UBI9) with FIPS mode enabled
+
+# Stage 1: Builder - Install dependencies and generate proto stubs
+FROM registry.access.redhat.com/ubi9/python-312:latest AS builder
+
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
+
+WORKDIR /app
+
+# UBI Python images run as arbitrary UID, ensure write access
+USER 0
+RUN chown -R 1001:0 /app && chmod -R g=u /app
+USER 1001
+
+# Copy and install Python dependencies first (layer caching)
+COPY --chown=1001:0 pyproject.toml .
+RUN uv pip install --system --no-cache .
+
+# Copy proto files and generate gRPC stubs
+COPY --chown=1001:0 proto/ proto/
+RUN uv pip install --system --no-cache grpcio-tools mypy-protobuf && \
+    mkdir -p src/crosscodex_ingestion/proto/crosscodex/v1 && \
+    python -m grpc_tools.protoc \
+      --proto_path=proto \
+      --python_out=src/crosscodex_ingestion/proto \
+      --grpc_python_out=src/crosscodex_ingestion/proto \
+      --mypy_out=src/crosscodex_ingestion/proto \
+      crosscodex/v1/common.proto crosscodex/v1/ingestion.proto && \
+    touch src/crosscodex_ingestion/proto/__init__.py \
+          src/crosscodex_ingestion/proto/crosscodex/__init__.py \
+          src/crosscodex_ingestion/proto/crosscodex/v1/__init__.py
+
+# Fix proto imports to match package path
+RUN find src/crosscodex_ingestion/proto -name '*_pb2*.py' -exec \
+    sed -i 's/from crosscodex\.v1/from crosscodex_ingestion.proto.crosscodex.v1/g' {} +
+
+# Copy application source
+COPY --chown=1001:0 src/ src/
+
+# Stage 2: Runtime - Minimal FIPS-compliant production image
+FROM registry.access.redhat.com/ubi9-minimal:latest
+
+# Enable FIPS mode
+ENV FIPS_MODE=true
+
+WORKDIR /app
+
+# Install Python 3.12 runtime (no pip needed at runtime)
+RUN microdnf install -y python3.12 && \
+    microdnf clean all
+
+# Create non-root user (UBI convention: uid 1001, gid 0)
+RUN useradd -u 1001 -g 0 -m appuser && \
+    chown -R 1001:0 /app && \
+    chmod -R g=u /app
+
+# Copy installed packages from builder
+# Note: UBI Python site-packages path differs from standard python:3.12-slim
+COPY --from=builder --chown=1001:0 /opt/app-root/lib64/python3.12/site-packages /opt/app-root/lib64/python3.12/site-packages
+COPY --from=builder --chown=1001:0 /opt/app-root/lib/python3.12/site-packages /opt/app-root/lib/python3.12/site-packages
+COPY --from=builder --chown=1001:0 /app/src /app/src
+
+# Set Python path to include both UBI and local site-packages
+ENV PYTHONPATH=/opt/app-root/lib64/python3.12/site-packages:/opt/app-root/lib/python3.12/site-packages:/app/src
+
+# Switch to non-root user
+USER 1001
+
+# Expose gRPC and metrics ports
+EXPOSE 8080 9090
+
+# Health check via gRPC channel ready check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
+  CMD python3.12 -c "import grpc; ch=grpc.insecure_channel('localhost:8080'); grpc.channel_ready_future(ch).result(timeout=5)" || exit 1
+
+# Run the service
+ENTRYPOINT ["python3.12", "-m", "crosscodex_ingestion"]

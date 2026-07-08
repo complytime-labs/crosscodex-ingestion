@@ -1,0 +1,17 @@
+.superpowers/
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.eggs/
+*.egg
+.test-output/
+.venv/
+src/crosscodex_ingestion/proto/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.coverage
+.task/
+megalinter-reports/
