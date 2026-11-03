@@ -1,0 +1,57 @@
+tests/unit/test_attestation.py
+  s_6db2b57b27fedb::t_a8ddc52a3ade55 4-5,12-88,90-93,96,98,138,140,148,150,165-187,190-198,201-208,211-218,221-222,225,227
+src/crosscodex_ingestion/config.py
+  s_6db2b57b27fedb::t_a8ddc52a3ade55 19-28,85-87
+  s_6db2b57b27fedb::t_fc5eeb13171fba 88
+Taskfile.yml
+  s_6db2b57b27fedb::t_a8ddc52a3ade55 10,51-62
+  s_6db2b57b27fedb::t_75d30e482cbd0b 63
+tests/unit/test_devpki.py
+  s_6db2b57b27fedb::t_a8ddc52a3ade55 1-164
+tests/unit/test_server.py
+  s_6db2b57b27fedb::t_a8ddc52a3ade55 32-60,70
+Dockerfile.fips
+  s_6db2b57b27fedb::t_a8ddc52a3ade55 92-93,95
+README.md
+  s_6db2b57b27fedb::t_a8ddc52a3ade55 97-105,153-198,221-223
+pyproject.toml
+  s_6db2b57b27fedb::t_a8ddc52a3ade55 49
+scripts/devpki.py
+  s_6db2b57b27fedb::t_a8ddc52a3ade55 1-284
+tests/conftest.py
+  s_6db2b57b27fedb::t_a8ddc52a3ade55 4,6,51-58,60-61,63-65,68,76-78,80-84,111,116,121-138
+tests/integration/test_mtls_e2e.py
+  s_6db2b57b27fedb::t_a8ddc52a3ade55 1-82
+docker-compose.yml
+  s_6db2b57b27fedb::t_a8ddc52a3ade55 20-32,48-50,59
+Dockerfile
+  s_6db2b57b27fedb::t_a8ddc52a3ade55 74-75,77
+src/crosscodex_ingestion/server.py
+  s_6db2b57b27fedb::t_a8ddc52a3ade55 26,51-58,145-148,150-152,154-159,161-165,167-169
+src/crosscodex_ingestion/tls.py
+  s_6db2b57b27fedb::t_a8ddc52a3ade55 1-118
+tests/unit/test_tls.py
+  s_6db2b57b27fedb::t_a8ddc52a3ade55 1-215
+src/crosscodex_ingestion/attestation.py
+  s_6db2b57b27fedb::t_a8ddc52a3ade55 7-8,12-13,20-38,47-48,58-60,66-69,72,75-76,78-85,88-89,91-95,97-110,168-170,173-176
+docs/superpowers/plans/2026-07-01-ingestion-service.md
+  s_6db2b57b27fedb::t_52ab02106b9093 884,899
+docs/superpowers/specs/2026-06-30-ingestion-service-design.md
+  s_6db2b57b27fedb::t_541deaa435cd63 403-404,601-602,704
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8aca84d2d32a7cd93b0a31280bd45d567613e03e",
+  "prompts": {},
+  "sessions": {
+    "s_6db2b57b27fedb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "99db3f86-87c3-48d7-8787-19135d41d357",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "LLM (riotbox) <llm@riotbox>"
+    }
+  }
+}
