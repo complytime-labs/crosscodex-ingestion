@@ -1,0 +1,25 @@
+Taskfile.yml
+  s_6db2b57b27fedb::t_1b814090deedc8 62-65
+README.md
+  s_6db2b57b27fedb::t_088f868ccdffd3 181-186
+docker-compose.yml
+  s_6db2b57b27fedb::t_d086a3a8a87ac8 4-22,67-68,70-75,89,105,124-125
+Dockerfile
+  s_6db2b57b27fedb::t_334ee0e7036547 5,48
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c76190591f75c3a5992614e907e81b13c7b7d4c1",
+  "prompts": {},
+  "sessions": {
+    "s_6db2b57b27fedb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "99db3f86-87c3-48d7-8787-19135d41d357",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "LLM (riotbox) <llm@riotbox>"
+    }
+  }
+}
