@@ -1,0 +1,33 @@
+README.md
+  s_6db2b57b27fedb::t_61c56238b19700 165-185
+Taskfile.yml
+  s_6db2b57b27fedb::t_ae88e1ab4457e2 10,51-63
+docker-compose.yml
+  s_6db2b57b27fedb::t_1417da73b3377b 20-26,28-31,48-50
+pyproject.toml
+  s_6db2b57b27fedb::t_de1de1a622bc29 49
+scripts/devpki.py
+  s_6db2b57b27fedb::t_384ff1b0d6faee 1-284
+tests/conftest.py
+  s_6db2b57b27fedb::t_3a72263ba7e6dd 4,6,51-58,60-61,63-65,68,76-78,80-84,116,121-138
+tests/integration/test_mtls_e2e.py
+  s_6db2b57b27fedb::t_cbd0bbb1daa1a2 1-82
+tests/unit/test_devpki.py
+  s_6db2b57b27fedb::t_12d99472dd7b58 1-164
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f87ded2da4ac4d8a2a3028b37df084b7ddb8a35b",
+  "prompts": {},
+  "sessions": {
+    "s_6db2b57b27fedb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "99db3f86-87c3-48d7-8787-19135d41d357",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "LLM (riotbox) <llm@riotbox>"
+    }
+  }
+}
