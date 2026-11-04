@@ -1,0 +1,27 @@
+src/crosscodex_ingestion/service.py
+  s_6db2b57b27fedb::t_1441a96e3b4f2d 13,57,160-165,198,228-235
+src/crosscodex_ingestion/storage.py
+  s_6db2b57b27fedb::t_9a4754218fca9b 31-33
+tests/unit/test_storage.py
+  s_6db2b57b27fedb::t_e0aa888a0dba0b 186-213
+src/crosscodex_ingestion/security.py
+  s_6db2b57b27fedb::t_cad890e208c971 19,27,31,53-84
+tests/unit/test_service.py
+  s_6db2b57b27fedb::t_5029e436e1e2f8 15-18,181,186,195,201,203,211,226,231,241,256,424,432-521
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1a6618e10833975fc9adacb51b3d6d20b136325c",
+  "prompts": {},
+  "sessions": {
+    "s_6db2b57b27fedb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "99db3f86-87c3-48d7-8787-19135d41d357",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "LLM (riotbox) <llm@riotbox>"
+    }
+  }
+}
