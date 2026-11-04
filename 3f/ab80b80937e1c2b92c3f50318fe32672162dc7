@@ -1,0 +1,29 @@
+tests/integration/test_health.py
+  s_6db2b57b27fedb::t_d037109e099f54 4
+tests/unit/test_service.py
+  s_6db2b57b27fedb::t_5e774791411680 10
+tests/unit/test_state.py
+  s_6db2b57b27fedb::t_11ba82e13dc7a2 7
+tests/integration/test_security_e2e.py
+  s_6db2b57b27fedb::t_e0c105239dd196 5
+tests/integration/test_conversion_e2e.py
+  s_6db2b57b27fedb::t_4057cceee3e00c 11
+tests/conftest.py
+  s_6db2b57b27fedb::t_256a12dfccfd32 12
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3fab80b80937e1c2b92c3f50318fe32672162dc7",
+  "prompts": {},
+  "sessions": {
+    "s_6db2b57b27fedb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "99db3f86-87c3-48d7-8787-19135d41d357",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "LLM (riotbox) <llm@riotbox>"
+    }
+  }
+}
