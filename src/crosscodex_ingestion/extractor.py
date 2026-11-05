@@ -7,7 +7,8 @@ Extraction strategy (two-stage):
     Iterates the DoclingDocument object using typed DocItemLabel elements.
     PAGE_HEADER/PAGE_FOOTER items are skipped. SECTION_HEADER items drive
     hierarchy via level (1-100). No regex or heuristics required for
-    well-structured documents.
+    well-structured documents. Each element records the page it starts on,
+    and the first TITLE item becomes the document title in metadata.
 
   Fallback — _parse_markdown() cascade (runs when primary finds no elements):
     Used for .txt files, scanned PDFs, and documents where Docling emits no
@@ -64,12 +65,19 @@ class DocumentExtractor:
     def __init__(self) -> None:
         self.elements: list[dict] = []
         self.discarded_content: list[str] = []
+        self.title: str | None = None
         self._element_counter = 0
 
     def _next_element_id(self) -> str:
         """Generate the next sequential element ID."""
         self._element_counter += 1
         return f"e-{self._element_counter:03d}"
+
+    @staticmethod
+    def _page_of(item: Any) -> int | None:
+        """Return the page an item starts on, or None when Docling recorded no provenance."""
+        prov = getattr(item, "prov", None)
+        return int(prov[0].page_no) if prov else None
 
     def _clean_text(self, text: str) -> str:
         """Clean text: remove HTML comments, collapse whitespace."""
@@ -86,6 +94,12 @@ class DocumentExtractor:
 
         Uses DocItemLabel types to classify content. PAGE_HEADER and PAGE_FOOTER
         elements are skipped. SectionHeaderItem.level drives hierarchy.
+
+        Unlike the markdown fallback, repeated headings are kept: Docling already
+        labels running page headers as PAGE_HEADER, and real documents repeat
+        section headings on purpose (NIST SP 800-171r3 has a DISCUSSION and a
+        REFERENCES section under each of its 98 requirements). Dropping them
+        merged informative discussion into the normative text above it.
         """
         try:
             from docling_core.types.doc import DocItemLabel
@@ -142,28 +156,19 @@ class DocumentExtractor:
             DocItemLabel.LIST_ITEM,
         }
 
-        # Pass 1: count SECTION_HEADER title occurrences
-        heading_title_counts: dict = {}
-        for item, _depth in doc.iterate_items():
-            if getattr(item, "label", None) in HEADING_LABELS:
-                t = getattr(item, "text", "").strip()
-                heading_title_counts[t] = heading_title_counts.get(t, 0) + 1
-        spurious_titles = {t for t, c in heading_title_counts.items() if c >= _MAX_HEADING_REPEATS}
-
-        # Pass 2: build elements from typed items
+        # Build elements from typed items
         current_heading_id = None  # The current heading element ID (for text content parent)
         heading_stack: list[tuple] = []  # (level, element_id)
 
         for item, _depth in doc.iterate_items():
             label = getattr(item, "label", None)
+            if label == DocItemLabel.TITLE and self.title is None:
+                self.title = getattr(item, "text", "").strip() or None
             if label is None or label in SKIP_LABELS:
                 continue
 
             if label in HEADING_LABELS:
                 title = getattr(item, "text", "").strip()
-                if title in spurious_titles:
-                    continue  # page artifact
-
                 level = getattr(item, "level", 1)
                 element_id = self._next_element_id()
 
@@ -181,7 +186,7 @@ class DocumentExtractor:
                         "element_id": element_id,
                         "type": "heading",
                         "content": title,
-                        "page": None,
+                        "page": self._page_of(item),
                         "level": level,
                         "parent_id": parent_id,
                         "style": {},
@@ -198,7 +203,7 @@ class DocumentExtractor:
                             "element_id": element_id,
                             "type": elem_type,
                             "content": text,
-                            "page": None,
+                            "page": self._page_of(item),
                             "level": None,
                             "parent_id": current_heading_id,
                             "style": {},
@@ -216,7 +221,7 @@ class DocumentExtractor:
                                 "element_id": element_id,
                                 "type": "table",
                                 "content": table_md,
-                                "page": None,
+                                "page": self._page_of(item),
                                 "level": None,
                                 "parent_id": current_heading_id,
                                 "style": {},
@@ -520,8 +525,9 @@ def extract_elements(
         "element_count": len(extractor.elements),
         "detected_format": format_hint,
         "processing_time_ms": round(elapsed_ms, 2),
-        "page_count": None,
-        "title": None,
+        # Docling reports 0 pages for unpaginated formats (HTML, DOCX).
+        "page_count": (doc.num_pages() or None) if doc is not None else None,
+        "title": extractor.title,
     }
 
     return ExtractionResult(elements=extractor.elements, metadata=metadata)
