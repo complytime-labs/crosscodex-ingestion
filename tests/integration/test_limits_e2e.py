@@ -13,7 +13,9 @@ ARTIFACTS = os.environ.get("DOCLING_ARTIFACTS_PATH", "")
 
 pytestmark = [
     pytest.mark.integration,
-    pytest.mark.skipif(not Path(ARTIFACTS).is_dir(), reason="DOCLING_ARTIFACTS_PATH models directory not available"),
+    pytest.mark.skipif(
+        not ARTIFACTS or not Path(ARTIFACTS).is_dir(), reason="DOCLING_ARTIFACTS_PATH models directory not available"
+    ),
 ]
 
 
