@@ -44,8 +44,8 @@ tasks:
   lint:
     desc: Run ruff + mypy
     cmds:
-      - uv run ruff check src/ tests/
-      - uv run ruff format --check src/ tests/
+      - uv run ruff check src/ tests/ scripts/
+      - uv run ruff format --check src/ tests/ scripts/
       - uv run mypy src/crosscodex_ingestion/ --ignore-missing-imports
 
   certs:

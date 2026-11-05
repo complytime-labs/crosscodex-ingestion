@@ -35,6 +35,9 @@ ignore = [
 ]
 
 [lint.per-file-ignores]
+"scripts/devpki.py" = [
+    "T201",   # command-line script reports results on stdout/stderr
+]
 "tests/fixtures/generate_fixtures.py" = [
     "T201",   # command-line script reports progress on stdout
 ]

@@ -15,7 +15,7 @@ pieces are never patched, so a set is always internally consistent.
 """
 
 import argparse
-import datetime
+import datetime as dt
 import fcntl
 import ipaddress
 import os
@@ -31,8 +31,8 @@ from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.x509.oid import ExtendedKeyUsageOID, NameOID
 
 DEFAULT_OUT = Path(".test-output/certs")
-DEFAULT_MIN_VALID = datetime.timedelta(hours=24)
-DEFAULT_VALIDITY = datetime.timedelta(days=90)
+DEFAULT_MIN_VALID = dt.timedelta(hours=24)
+DEFAULT_VALIDITY = dt.timedelta(days=90)
 
 SERVER_DNS_NAMES = ("localhost", "ingestion", "crosscodex-ingestion")  # compose service and container names
 SERVER_IPS = ("127.0.0.1",)
@@ -58,7 +58,8 @@ def _pem_pub(key: ec.EllipticCurvePublicKey) -> bytes:
 
 
 def _spki(public_key: object) -> bytes:
-    assert isinstance(public_key, ec.EllipticCurvePublicKey)
+    if not isinstance(public_key, ec.EllipticCurvePublicKey):
+        raise TypeError("not an ECDSA public key")
     return public_key.public_bytes(serialization.Encoding.DER, serialization.PublicFormat.SubjectPublicKeyInfo)
 
 
@@ -66,22 +67,22 @@ def _issue(
     cn: str,
     key: ec.EllipticCurvePrivateKey,
     issuer: tuple[x509.Name, ec.EllipticCurvePrivateKey] | None,
-    validity: datetime.timedelta,
+    validity: dt.timedelta,
     *,
     ca: bool = False,
     eku: x509.ObjectIdentifier | None = None,
     sans: list[x509.GeneralName] | None = None,
 ) -> x509.Certificate:
     subject = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, cn)])
-    issuer_name, issuer_key = issuer if issuer else (subject, key)
-    now = datetime.datetime.now(datetime.UTC)
+    issuer_name, issuer_key = issuer or (subject, key)
+    now = dt.datetime.now(dt.UTC)
     builder = (
         x509.CertificateBuilder()
         .subject_name(subject)
         .issuer_name(issuer_name)
         .public_key(key.public_key())
         .serial_number(x509.random_serial_number())
-        .not_valid_before(now - datetime.timedelta(minutes=5))
+        .not_valid_before(now - dt.timedelta(minutes=5))
         .not_valid_after(now + validity)
         .add_extension(x509.BasicConstraints(ca=ca, path_length=None), critical=True)
     )
@@ -108,7 +109,7 @@ def _fsync_dir(path: Path) -> None:
         os.close(fd)
 
 
-def _generate_into(directory: Path, validity: datetime.timedelta) -> None:
+def _generate_into(directory: Path, validity: dt.timedelta) -> None:
     ca_key = ec.generate_private_key(ec.SECP256R1())
     ca = _issue("crosscodex-test-ca", ca_key, None, validity, ca=True)
     ca_issuer = (ca.subject, ca_key)
@@ -153,12 +154,14 @@ def _load_cert(path: Path) -> x509.Certificate:
 
 def _load_key(path: Path) -> ec.EllipticCurvePrivateKey:
     key = serialization.load_pem_private_key(path.read_bytes(), password=None)
-    if not isinstance(key, ec.EllipticCurvePrivateKey) or not isinstance(key.curve, ec.SECP256R1):
-        raise ValueError("not an ECDSA P-256 key")
+    if not isinstance(key, ec.EllipticCurvePrivateKey):
+        raise TypeError("not an ECDSA key")
+    if not isinstance(key.curve, ec.SECP256R1):
+        raise TypeError("not an ECDSA P-256 key")
     return key
 
 
-def verify(out: Path, min_valid: datetime.timedelta = DEFAULT_MIN_VALID) -> list[str]:
+def verify(out: Path, min_valid: dt.timedelta = DEFAULT_MIN_VALID) -> list[str]:
     """Return a list of problems; empty means the set is complete, consistent and fresh."""
     problems = [f"leftover temp directory {p.name}" for p in _siblings(out)]
     if not out.is_dir():
@@ -180,7 +183,7 @@ def verify(out: Path, min_valid: datetime.timedelta = DEFAULT_MIN_VALID) -> list
     except (OSError, ValueError, TypeError) as exc:
         return [*problems, f"unreadable or unparseable file: {exc}"]
 
-    now = datetime.datetime.now(datetime.UTC)
+    now = dt.datetime.now(dt.UTC)
     for name, cert in (("ca.pem", ca), ("server.pem", server), ("client.pem", client)):
         if cert.not_valid_before_utc > now:
             problems.append(f"{name} is not yet valid")
@@ -232,13 +235,13 @@ def verify(out: Path, min_valid: datetime.timedelta = DEFAULT_MIN_VALID) -> list
 
 def ensure(
     out: Path,
-    min_valid: datetime.timedelta = DEFAULT_MIN_VALID,
-    validity: datetime.timedelta = DEFAULT_VALIDITY,
+    min_valid: dt.timedelta = DEFAULT_MIN_VALID,
+    validity: dt.timedelta = DEFAULT_VALIDITY,
 ) -> bool:
     """Make sure a valid set exists at out. Returns True if a new set was generated."""
     out = out.absolute()
     out.parent.mkdir(parents=True, exist_ok=True)
-    with open(out.parent / f"{out.name}.lock", "a") as lock:
+    with (out.parent / f"{out.name}.lock").open("a") as lock:
         fcntl.flock(lock, fcntl.LOCK_EX)
         # Holding the lock: nobody is mid-generation, so any temp/aside directory is stale.
         for leftover in _siblings(out):
@@ -269,7 +272,7 @@ def main() -> int:
     parser.add_argument("--min-valid-hours", type=float, default=24, help="regenerate if less validity remains")
     parser.add_argument("--verify", action="store_true", help="only check; exit 1 if the set is stale")
     args = parser.parse_args()
-    min_valid = datetime.timedelta(hours=args.min_valid_hours)
+    min_valid = dt.timedelta(hours=args.min_valid_hours)
 
     if args.verify:
         problems = verify(args.out.absolute(), min_valid)
