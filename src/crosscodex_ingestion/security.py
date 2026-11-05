@@ -313,6 +313,9 @@ def fetch_url(
     validate_url(url)
 
     session = requests.Session()
+    # Ignore HTTP(S)_PROXY / ALL_PROXY: a proxy connects to the target itself, so the
+    # peer check would only ever see the proxy's address and DNS rebinding would be open again.
+    session.trust_env = False
     session.mount("http://", _PublicOnlyAdapter())
     session.mount("https://", _PublicOnlyAdapter())
     resp = None

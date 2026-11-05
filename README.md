@@ -159,7 +159,7 @@ gRPC Request → Dispatch → Worker → [Converter → Extractor] → Storage �
 ```
 
 **Security Modules:**
-- `security.py`: SSRF prevention, URL validation, content type detection, resource limit enforcement
+- `security.py`: SSRF prevention, URL validation, content type detection, resource limit enforcement. URL fetches connect directly and ignore `HTTP_PROXY`/`HTTPS_PROXY`/`ALL_PROXY`: the address actually connected to is checked against the blocked ranges, and through a proxy that check would only see the proxy.
 - `converter.py`: Subprocess-based Docling execution with rlimits and timeout
 - `extractor.py`: Structured element extraction from Docling output
 

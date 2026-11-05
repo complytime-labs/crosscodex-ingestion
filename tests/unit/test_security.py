@@ -261,3 +261,19 @@ class TestDnsRebinding:
             assert open(path, "rb").read().startswith(b"%PDF-")
 
         assert handler.requests_seen == ["/doc.pdf"]
+
+    def test_proxy_environment_does_not_bypass_the_peer_check(self, local_server, monkeypatch):
+        """A proxy would connect to the target itself, so the peer check would never see it."""
+        server, handler = local_server
+        url = f"http://rebind.example:{server.server_address[1]}/doc.pdf"
+        for var in ("HTTP_PROXY", "HTTPS_PROXY", "http_proxy", "https_proxy", "ALL_PROXY"):
+            monkeypatch.setenv(var, "http://proxy.invalid:3128")
+        monkeypatch.delenv("NO_PROXY", raising=False)
+        monkeypatch.delenv("no_proxy", raising=False)
+
+        with patch("socket.getaddrinfo", side_effect=_rebinding_resolver("93.184.216.34", "127.0.0.1")):
+            with pytest.raises(ValueError, match="blocked address"):
+                with security.fetch_url(url):
+                    pytest.fail("fetch_url must not yield for a rebound private address")
+
+        assert handler.requests_seen == []
