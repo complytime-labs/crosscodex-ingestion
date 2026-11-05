@@ -1,0 +1,19 @@
+tests/unit/test_security.py
+  s_fb39b0db0ab69c::t_79cc069c2345aa 11-12,200,244-249,264,277-282,293,297,308
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "261f398c1056b49d39de095e4ce30bc7c9b8dd8b",
+  "prompts": {},
+  "sessions": {
+    "s_fb39b0db0ab69c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dd9c2da6-46aa-4166-a800-70bc062632de",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "LLM (riotbox) <llm@riotbox>"
+    }
+  }
+}
