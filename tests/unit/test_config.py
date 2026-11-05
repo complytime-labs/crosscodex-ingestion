@@ -57,3 +57,12 @@ def test_rlimit_as_default_fits_torch_virtual_address_space():
     from crosscodex_ingestion.config import IngestionSettings
 
     assert IngestionSettings().rlimit_as_mb == 65536
+
+
+def test_time_defaults_allow_large_documents():
+    """NIST SP 800-53r5 (492 pages) needs >12 min wall and >23 CPU-minutes (RLIMIT_CPU counts all threads)."""
+    from crosscodex_ingestion.config import IngestionSettings
+
+    settings = IngestionSettings()
+    assert settings.max_processing_time == 3600
+    assert settings.rlimit_cpu == 21600

@@ -14,7 +14,8 @@ class IngestionSettings(BaseSettings):
     max_concurrent_conversions: int = 4
 
     max_document_size: int = 52_428_800
-    max_processing_time: int = 300
+    # Wall-clock limit per conversion. A 492-page PDF (NIST SP 800-53r5) takes >12 minutes.
+    max_processing_time: int = 3600
     max_pages: int = 1000
     max_extraction_length: int = 10_485_760
     allowed_formats: str = "pdf,docx,html,txt"
@@ -23,7 +24,9 @@ class IngestionSettings(BaseSettings):
     # needs more than 4 GB of address space, and a 32-page PDF peaks near 40 GB VmPeak while
     # using ~2.7 GB RSS. The real memory bound is the container memory limit.
     rlimit_as_mb: int = 65536
-    rlimit_cpu: int = 300
+    # CPU-seconds limit; RLIMIT_CPU sums all threads and Docling uses ~6x wall time in CPU
+    # (1 hour wall -> 6 hours CPU).
+    rlimit_cpu: int = 21600
     rlimit_fsize_mb: int = 100
 
     max_url_bytes: int = 104_857_600
