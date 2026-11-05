@@ -1,0 +1,35 @@
+Dockerfile.fips
+  s_112bf114bd2fc4::t_1721394272b094 5,54
+.taskfiles/test.yml
+  s_112bf114bd2fc4::t_dd13f70ee13a25 1
+README.md
+  s_112bf114bd2fc4::t_dd13f70ee13a25 75-101,109-112
+proto/crosscodex/v1/common.proto
+  s_112bf114bd2fc4::t_53afaf3950ea21 7-8,28-29,89-90
+Dockerfile
+  s_112bf114bd2fc4::t_f6ab704adde823 11-12,52-53
+  s_112bf114bd2fc4::t_c85ef3219a2056 41-42,45-46,72,79
+Taskfile.yml
+  s_112bf114bd2fc4::t_dd13f70ee13a25 1
+docker-compose.yml
+  s_112bf114bd2fc4::t_dd13f70ee13a25 1,12-13,43-49,60-61,65-73,84-86,91-99
+proto/crosscodex/v1/ingestion.proto
+  s_112bf114bd2fc4::t_53afaf3950ea21 7
+  s_112bf114bd2fc4::t_183521b047e577 8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0d6ea2f4f63c53a19729d26e8ac5ded59193bc3f",
+  "prompts": {},
+  "sessions": {
+    "s_112bf114bd2fc4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "25a8825b-12de-494b-85b2-f4d715bea308",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "LLM (riotbox) <llm@riotbox>"
+    }
+  }
+}
