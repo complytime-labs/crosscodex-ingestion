@@ -16,29 +16,22 @@ services:
       GRPC_PORT: "8080"
       METRICS_PORT: "9090"
       LOG_LEVEL: "debug"
-      LOG_FORMAT: "json"
 
       # Storage configuration (filesystem mode for local development)
       STORAGE_BACKEND: "filesystem"
-      STORAGE_FILESYSTEM_ROOT: "/data/ingestion"
+      STORAGE_PATH: "/data/documents"
 
       # NATS configuration
       NATS_URL: "nats://nats:4222"
-      NATS_STREAM: "crosscodex-ingestion"
-      NATS_CONSUMER: "ingestion-service"
 
       # OpenTelemetry configuration
       OTEL_EXPORTER_OTLP_ENDPOINT: "http://jaeger:4317"
       OTEL_SERVICE_NAME: "crosscodex-ingestion"
-      OTEL_TRACES_EXPORTER: "otlp"
-      OTEL_METRICS_EXPORTER: "otlp"
 
-      # Security configuration
-      MAX_DOCUMENT_SIZE_MB: "100"
-      RATE_LIMIT_REQUESTS: "1000"
-      RATE_LIMIT_WINDOW_SECONDS: "60"
+      # Security configuration (bytes; see README "Limits and resource sizing")
+      MAX_DOCUMENT_SIZE: "104857600"
     volumes:
-      - ingestion-data:/data/ingestion
+      - ingestion-data:/data/documents
     depends_on:
       - nats
       - jaeger
