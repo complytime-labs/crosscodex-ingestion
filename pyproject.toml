@@ -52,23 +52,6 @@ markers = [
     "integration: marks tests as integration tests (may be slow, require external dependencies)",
 ]
 
-[tool.ruff]
-line-length = 120
-target-version = "py312"
-
-[tool.ruff.lint]
-select = ["E", "F", "W", "I", "UP", "S", "B"]
-ignore = [
-    "S603",  # subprocess with untrusted input - our usage is controlled by validation
-]
-
-[tool.ruff.lint.per-file-ignores]
-"tests/**" = [
-    "S101",  # assert allowed in tests
-    "S106",  # hardcoded password allowed in test fixtures
-    "S108",  # insecure temp file allowed in tests
-]
-
 [tool.mypy]
 python_version = "3.12"
 warn_return_any = true

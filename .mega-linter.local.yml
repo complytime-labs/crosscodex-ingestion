@@ -1,0 +1,7 @@
+# Repo overrides for the shared megalint-config profile (see .github/workflows/megalinter.yml).
+EXTENDS: .mega-linter.shared.yml
+
+# The shared profile passes `--select=...` to ruff on the command line, and a CLI --select
+# overrides `ignore` from .ruff.toml. Drop it so .ruff.toml is the single source of rules
+# for both `task lint` and MegaLinter.
+PYTHON_RUFF_ARGUMENTS: []
