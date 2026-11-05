@@ -7,7 +7,7 @@ from unittest.mock import AsyncMock, Mock, patch
 import pytest
 
 from crosscodex_ingestion.config import IngestionSettings
-from crosscodex_ingestion.converter import ConversionError, ConversionTimeout
+from crosscodex_ingestion.converter import ConversionError, ConversionTimeout, DocumentLimitError
 from crosscodex_ingestion.state import DocumentRecord, MemoryStateBackend
 from crosscodex_ingestion.storage import FilesystemStorage
 from crosscodex_ingestion.worker import run_conversion
@@ -629,6 +629,88 @@ async def test_max_redirects_setting_is_passed_to_fetch_url(state_backend, stora
         )
 
     mock_fetch.assert_called_once_with("https://example.com/a.pdf", max_bytes=1234, timeout=7, max_redirects=2)
+
+
+async def _failed_error_with(convert_side_effect, settings, state_backend, storage_backend, audit_publisher):
+    """Run a conversion whose convert_document raises; return (client error dict, audit event)."""
+    with patch("crosscodex_ingestion.worker.convert_document", side_effect=convert_side_effect):
+        await _run_pdf_conversion(settings, state_backend, storage_backend, audit_publisher)
+    record = state_backend.get("tenant-t", "doc-t")
+    assert record.status == 4
+    return record.error, audit_publisher.publish.call_args.kwargs["event"]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "exc",
+    [
+        ConversionError("exit code 1. stderr: Traceback (most recent call last): File '/srv/app/secret.py'"),
+        RuntimeError("connect to redis://user:pw@10.0.0.5 failed"),
+        OSError("[Errno 13] Permission denied: '/data/crosscodex/tenant/x'"),
+    ],
+)
+async def test_internal_failures_return_generic_message_and_log_detail(
+    exc, settings, state_backend, storage_backend, audit_publisher, caplog
+):
+    """CWE-209: internal exception text never reaches the client or the audit event."""
+    with caplog.at_level("ERROR"):
+        error, event = await _failed_error_with(exc, settings, state_backend, storage_backend, audit_publisher)
+
+    assert error["code"] == 6  # INTERNAL
+    assert "doc-t" in error["message"]
+    for leaked in ("Traceback", "/srv", "redis", "10.0.0.5", "/data"):
+        assert leaked not in error["message"]
+    assert event["error"] == error
+    # Full detail is logged server-side exactly once, tagged with the document id.
+    failure_logs = [r for r in caplog.records if r.levelname == "ERROR" and "doc-t" in r.getMessage()]
+    assert len(failure_logs) == 1
+    assert str(exc) in failure_logs[0].exc_text or str(exc) in failure_logs[0].getMessage()
+
+
+@pytest.mark.asyncio
+async def test_user_caused_value_error_keeps_specific_message(
+    settings, state_backend, storage_backend, audit_publisher
+):
+    error, _ = await _failed_error_with(
+        ValueError("SHA-256 mismatch: expected 'aa', got 'bb'"),
+        settings,
+        state_backend,
+        storage_backend,
+        audit_publisher,
+    )
+
+    assert error["code"] == 1  # INVALID_ARGUMENT
+    assert error["message"] == "SHA-256 mismatch: expected 'aa', got 'bb'"
+
+
+@pytest.mark.asyncio
+async def test_document_limit_error_is_resource_exhausted_with_specific_message(
+    settings, state_backend, storage_backend, audit_publisher
+):
+    error, _ = await _failed_error_with(
+        DocumentLimitError("Document exceeds the maximum of 10 pages"),
+        settings,
+        state_backend,
+        storage_backend,
+        audit_publisher,
+    )
+
+    assert error["code"] == 5  # RESOURCE_EXHAUSTED
+    assert error["message"] == "Document exceeds the maximum of 10 pages"
+
+
+@pytest.mark.asyncio
+async def test_timeout_message_is_generic_but_actionable(settings, state_backend, storage_backend, audit_publisher):
+    error, _ = await _failed_error_with(
+        ConversionTimeout("Conversion timed out after 3600 seconds"),
+        settings,
+        state_backend,
+        storage_backend,
+        audit_publisher,
+    )
+
+    assert error["code"] == 5
+    assert "timed out" in error["message"].lower()
 
 
 @pytest.mark.asyncio
