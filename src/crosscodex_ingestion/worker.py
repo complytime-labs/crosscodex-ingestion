@@ -11,6 +11,7 @@ This module provides the core run_conversion function that coordinates:
 8. State management (PENDING → RUNNING → COMPLETED/FAILED)
 """
 
+import asyncio
 import hashlib
 import json
 import logging
@@ -51,6 +52,21 @@ JOB_STATUS_FAILED = 4
 ERROR_CODE_INVALID_ARGUMENT = 1
 ERROR_CODE_RESOURCE_EXHAUSTED = 5
 ERROR_CODE_INTERNAL = 6
+
+
+def _fetch_source(source_uri: str, settings: IngestionSettings) -> tuple[bytes, str]:
+    """Validate and download *source_uri*; return (bytes, detected_format).
+
+    Blocking (DNS, HTTP); call via asyncio.to_thread.
+    """
+    validate_url(source_uri)
+    with fetch_url(
+        source_uri,
+        max_bytes=settings.max_url_bytes,
+        timeout=settings.url_timeout,
+        max_redirects=settings.max_redirects,
+    ) as (file_path, file_format):
+        return Path(file_path).read_bytes(), file_format
 
 
 async def run_conversion(
@@ -132,21 +148,10 @@ async def run_conversion(
                 span.set_attribute("tenant.id", tenant_id)
                 span.set_attribute("source.uri", source_uri)
 
-                # Validate URL first
-                validate_url(source_uri)
-
-                # Fetch from URL
                 logger.info("Fetching document from URL: %s", source_uri)
-                with fetch_url(
-                    source_uri,
-                    max_bytes=settings.max_url_bytes,
-                    timeout=settings.url_timeout,
-                ) as (file_path, file_format):
-                    # Read the fetched file
-                    input_bytes = Path(file_path).read_bytes()
-                    detected_format = file_format
-                    span.set_attribute("document.size_bytes", len(input_bytes))
-                    span.set_attribute("document.format", file_format)
+                input_bytes, detected_format = await asyncio.to_thread(_fetch_source, source_uri, settings)
+                span.set_attribute("document.size_bytes", len(input_bytes))
+                span.set_attribute("document.format", detected_format)
 
         elif content:
             # Use provided bytes
@@ -205,7 +210,9 @@ async def run_conversion(
             span.set_attribute("document.size_bytes", len(input_bytes))
 
             logger.info("Converting document %s (format: %s)", document_id, validated_format)
-            conversion_result: dict[str, Any] = convert_document(
+            # The subprocess call blocks for up to max_processing_time; keep the event loop free.
+            conversion_result: dict[str, Any] = await asyncio.to_thread(
+                convert_document,
                 str(temp_file_path),
                 validated_format,
                 settings,

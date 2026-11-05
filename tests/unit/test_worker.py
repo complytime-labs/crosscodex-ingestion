@@ -1,5 +1,7 @@
 """Unit tests for worker module."""
 
+import asyncio
+import time
 from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
@@ -534,3 +536,96 @@ async def test_run_conversion_hash_validation(settings, state_backend, storage_b
     assert mock_validate.call_count == 1
     assert mock_validate.call_args[0][0] == content
     assert mock_validate.call_args[0][1] == correct_hash
+
+
+async def _run_pdf_conversion(settings, state_backend, storage_backend, audit_publisher, source_uri=None):
+    """Submit a PENDING record and run the pipeline for a PDF given as bytes (or by URL)."""
+    state_backend.create(DocumentRecord(document_id="doc-t", tenant_id="tenant-t", status=1, metadata={}))
+    await run_conversion(
+        document_id="doc-t",
+        tenant_id="tenant-t",
+        content=None if source_uri else b"%PDF-1.4 test",
+        source_uri=source_uri,
+        metadata={},
+        settings=settings,
+        state=state_backend,
+        storage=storage_backend,
+        attestation=None,
+        audit=audit_publisher,
+    )
+
+
+async def _count_ticks_while(coro):
+    """Run *coro* while a ticker coroutine counts event-loop turns; return the tick count."""
+    ticks = 0
+
+    async def ticker():
+        nonlocal ticks
+        while True:
+            await asyncio.sleep(0.01)
+            ticks += 1
+
+    ticker_task = asyncio.create_task(ticker())
+    try:
+        await coro
+    finally:
+        ticker_task.cancel()
+    return ticks
+
+
+@pytest.mark.asyncio
+async def test_slow_conversion_does_not_block_event_loop(settings, state_backend, storage_backend, audit_publisher):
+    """The blocking subprocess call runs in a thread, so other coroutines (e.g. GetDocument) keep running."""
+
+    def slow_convert(*args, **kwargs):
+        time.sleep(0.5)
+        return {"elements": [], "metadata": {}}
+
+    with patch("crosscodex_ingestion.worker.convert_document", side_effect=slow_convert):
+        ticks = await _count_ticks_while(_run_pdf_conversion(settings, state_backend, storage_backend, audit_publisher))
+
+    assert ticks >= 20  # ~50 expected; a blocked loop yields ~0
+    assert state_backend.get("tenant-t", "doc-t").status == 3
+
+
+@pytest.mark.asyncio
+async def test_slow_url_fetch_does_not_block_event_loop(settings, state_backend, storage_backend, audit_publisher):
+    """DNS resolution and the HTTP download run in a thread too."""
+
+    def slow_validate(url):
+        time.sleep(0.5)
+
+    with (
+        patch("crosscodex_ingestion.worker.validate_url", side_effect=slow_validate),
+        patch("crosscodex_ingestion.worker.fetch_url") as mock_fetch,
+        patch("crosscodex_ingestion.worker.convert_document", return_value={"elements": [], "metadata": {}}),
+        patch("pathlib.Path.read_bytes", return_value=b"%PDF-1.4 test"),
+    ):
+        mock_fetch.return_value.__enter__ = Mock(return_value=("/tmp/x.pdf", "pdf"))
+        mock_fetch.return_value.__exit__ = Mock(return_value=False)
+        ticks = await _count_ticks_while(
+            _run_pdf_conversion(
+                settings, state_backend, storage_backend, audit_publisher, source_uri="https://example.com/a.pdf"
+            )
+        )
+
+    assert ticks >= 20
+
+
+@pytest.mark.asyncio
+async def test_max_redirects_setting_is_passed_to_fetch_url(state_backend, storage_backend, audit_publisher):
+    settings = IngestionSettings(max_redirects=2, max_url_bytes=1234, url_timeout=7)
+
+    with (
+        patch("crosscodex_ingestion.worker.validate_url"),
+        patch("crosscodex_ingestion.worker.fetch_url") as mock_fetch,
+        patch("crosscodex_ingestion.worker.convert_document", return_value={"elements": [], "metadata": {}}),
+        patch("pathlib.Path.read_bytes", return_value=b"%PDF-1.4 test"),
+    ):
+        mock_fetch.return_value.__enter__ = Mock(return_value=("/tmp/x.pdf", "pdf"))
+        mock_fetch.return_value.__exit__ = Mock(return_value=False)
+        await _run_pdf_conversion(
+            settings, state_backend, storage_backend, audit_publisher, source_uri="https://example.com/a.pdf"
+        )
+
+    mock_fetch.assert_called_once_with("https://example.com/a.pdf", max_bytes=1234, timeout=7, max_redirects=2)
