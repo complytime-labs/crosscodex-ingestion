@@ -14,7 +14,7 @@ class IngestionSettings(BaseSettings):
     max_concurrent_conversions: int = 4
 
     max_document_size: int = 52_428_800
-    # Wall-clock limit per conversion. A 492-page PDF (NIST SP 800-53r5) takes >12 minutes.
+    # Wall-clock limit per conversion. A 492-page PDF (NIST SP 800-53r5) takes ~13.5 minutes (807 s).
     max_processing_time: int = 3600
     max_pages: int = 1000
     max_extraction_length: int = 10_485_760
@@ -26,11 +26,12 @@ class IngestionSettings(BaseSettings):
     docling_artifacts_path: str = ""
 
     # RLIMIT_AS bounds virtual address space only, not resident memory. Importing torch alone
-    # needs more than 4 GB of address space, and a 32-page PDF peaks near 40 GB VmPeak while
-    # using ~2.7 GB RSS. The real memory bound is the container memory limit.
+    # needs more than 4 GB of address space; a 32-page PDF peaks near 40 GB VmPeak at ~2.7 GB RSS
+    # and a 492-page PDF at 43 GB VmPeak / 4.3 GB RSS. The real memory bound is the container
+    # memory limit (allow >= 6 GB per concurrent conversion).
     rlimit_as_mb: int = 65536
-    # CPU-seconds limit; RLIMIT_CPU sums all threads and Docling uses ~6x wall time in CPU
-    # (1 hour wall -> 6 hours CPU).
+    # CPU-seconds limit; RLIMIT_CPU sums all threads and Docling uses ~4-6x wall time in CPU
+    # (SP 800-53r5: 3221 CPU-s; 1 hour wall -> 6 hours CPU).
     rlimit_cpu: int = 21600
     rlimit_fsize_mb: int = 100
 

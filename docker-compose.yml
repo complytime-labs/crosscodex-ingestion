@@ -43,6 +43,9 @@ services:
       - nats
       - jaeger
     restart: unless-stopped
+    # RLIMIT_AS only bounds virtual address space; this is the real memory bound.
+    # Allow >= 6 GB per concurrent conversion (MAX_CONCURRENT_CONVERSIONS, default 4).
+    mem_limit: 24g
     healthcheck:
       test: ["CMD", "python", "-c", "import grpc; ch=grpc.insecure_channel('localhost:8080'); grpc.channel_ready_future(ch).result(timeout=5)"]
       interval: 30s

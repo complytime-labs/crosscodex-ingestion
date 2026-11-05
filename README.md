@@ -10,433 +10,197 @@
 
 ----
 
-Python gRPC service that wraps Docling to provide secure, multi-format document conversion for the CrossCodex multi-service compliance mapping platform.
+Python gRPC service for secure multi-format document ingestion and conversion using Docling.
 
-## Purpose
+## What It Does
 
-The Ingestion service handles the first stage of the CrossCodex pipeline:
+The Ingestion service receives documents via gRPC, validates them for security, converts them to structured JSON using Docling, stores the results, and optionally generates cryptographic attestations. It supports both embedded (same-process) and distributed (NATS JetStream) execution modes.
 
-1. **Document Format Conversion**: PDF, DOCX, HTML, and other formats → structured text and elements
-2. **Security Hardening**: SSRF prevention, format validation, resource limits, subprocess isolation  
-3. **gRPC Interface**: Stateless service that integrates with Go-based CrossCodex services
+**Key Features:**
+- Multi-format document support (PDF, DOCX, HTML, TXT)
+- Security hardening (SSRF prevention, format validation, subprocess isolation, resource limits)
+- Structured element extraction (headings, paragraphs, tables, lists)
+- State management (memory, Redis)
+- Storage backends (filesystem, S3)
+- In-toto cryptographic attestations
+- NATS-based audit event publishing
+- Prometheus metrics and OpenTelemetry tracing
 
-**Important**: This service handles format conversion only. OSCAL catalog structuring (section detection, decomposition, LLM-assisted extraction) has been moved to the Go-based Catalog service in the main repository.
-
-## Architecture Integration
-
-```mermaid
-flowchart LR
-    subgraph input ["Input"]
-        docs["Documents<br/>PDF, DOCX, HTML"]
-    end
-
-    subgraph svc ["Ingestion Service"]
-        direction TB
-        validate["Security Validation<br/>SSRF Prevention<br/>Format Verification"]
-        convert["Docling Conversion<br/>Text Extraction<br/>Element Structure"]
-        output["gRPC Response<br/>DocumentElements<br/>Metadata"]
-
-        validate --> convert
-        convert --> output
-    end
-
-    subgraph downstream ["Downstream Services"]
-        direction TB
-        catalog["Catalog Service<br/>Go + OSCAL"]
-        analysis["Analysis Engine<br/>Go + AI"]
-
-        catalog --> analysis
-    end
-
-    docs --> validate
-    output --> catalog
-
-```
-
-The Ingestion service is stateless and security-focused - it receives documents, converts them via Docling, and returns structured elements without maintaining any OSCAL knowledge or business logic.
-
-## gRPC API
-
-### Service Definition
-
-```protobuf
-service IngestionService {
-  rpc ConvertDocument(ConvertDocumentRequest) returns (ConvertDocumentResponse);
-  rpc Health(HealthRequest) returns (HealthResponse);
-}
-
-message ConvertDocumentRequest {
-  bytes document = 1;
-  string format = 2;  // "pdf", "docx", "html", etc.
-  ConvertOptions options = 3;
-}
-
-message ConvertDocumentResponse {
-  repeated DocumentElement elements = 1;
-  ConvertMetadata metadata = 2;
-}
-
-message DocumentElement {
-  string type = 1;      // "heading", "paragraph", "table", etc.
-  string content = 2;   // extracted text
-  int32 page = 3;       // source page number
-  ElementStyle style = 4;
-}
-```
-
-### Example Usage
-
-```python
-import grpc
-from crosscodex.v1 import ingestion_pb2_grpc, ingestion_pb2
-
-# Connect to service
-channel = grpc.insecure_channel('localhost:8080')
-client = ingestion_pb2_grpc.IngestionServiceStub(channel)
-
-# Convert document
-with open('document.pdf', 'rb') as f:
-    request = ingestion_pb2.ConvertDocumentRequest(
-        document=f.read(),
-        format='pdf'
-    )
-    response = client.ConvertDocument(request)
-    
-    for element in response.elements:
-        print(f"{element.type}: {element.content[:100]}...")
-```
-
-## Development Setup
+## Quick Start
 
 ### Prerequisites
 
-- Python 3.9 or higher
-- pip or poetry for dependency management
-- Docker/Podman (for containerized development)
+- Python 3.12+
+- [uv](https://docs.astral.sh/uv/) (Python package manager)
+- podman or docker (for containerized deployment)
 
 ### Local Development
 
 ```bash
-# Clone and setup
-git clone https://github.com/complytime-labs/crosscodex-ingestion
-cd crosscodex-ingestion
+# Create .venv and install all dependencies
+task setup
 
-# Install dependencies
-pip install -r requirements.txt
-pip install -e .
+# Generate protobuf stubs
+task proto
+
+# Download the Docling models once (see "Docling models" below)
+uv run docling-tools models download -o ~/.cache/crosscodex/docling-models
 
 # Run the server (embedded mode, filesystem storage, memory state)
-task run
+DOCLING_ARTIFACTS_PATH=~/.cache/crosscodex/docling-models STORAGE_PATH=/tmp/crosscodex-data task run
 
-# Generate gRPC stubs (if proto files updated)
-python -m grpc_tools.protoc \
-    --python_out=src/ \
-    --grpc_python_out=src/ \
-    --proto_path=proto/ \
-    crosscodex/v1/*.proto
+# Run tests
+task test
 
-# Run service locally
-python -m crosscodex_ingestion.server --port 8080 --log-level debug
-
-# Run with auto-reload for development
-python -m crosscodex_ingestion.server --port 8080 --debug --reload
+# Run integration tests (requires docling and the downloaded models)
+DOCLING_ARTIFACTS_PATH=~/.cache/crosscodex/docling-models task test:integration
 ```
 
-### Integration with Main Repository
+## Docling models
 
-The ingestion service integrates with CrossCodex monorepo testing:
+The conversion worker runs in a sandboxed subprocess with no network access to model hubs
+(`HF_HUB_OFFLINE=1`), so Docling's layout, table, and OCR models must already be on disk.
 
 ```bash
-# In main crosscodex repository
-task test:integration:embedded    # Starts ingestion service automatically
-task test:integration:distributed # Uses ingestion container
+docling-tools models download -o <dir>
+export DOCLING_ARTIFACTS_PATH=<dir>
 ```
 
-### Proto Stub Updates
+The server **refuses to start** if `DOCLING_ARTIFACTS_PATH` is unset or not a directory. The container
+images download the models at build time (`/opt/docling-models` in the standard image,
+`/opt/app-root/docling-models` in the FIPS image) and set `DOCLING_ARTIFACTS_PATH` for you.
 
-This repository consumes proto-generated Python stubs from the main CrossCodex monorepo:
+## Environment Variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `DOCLING_ARTIFACTS_PATH` | (required) | Directory with pre-downloaded Docling models; server refuses to start without it |
+| `GRPC_PORT` | `8080` | gRPC server port |
+| `METRICS_PORT` | `9090` | Prometheus metrics port |
+| `EXECUTION_MODE` | `embedded` | `embedded` or `distributed` (NATS) |
+| `MAX_CONCURRENT_CONVERSIONS` | `4` | Conversions running at once (each is a separate subprocess) |
+| `STATE_BACKEND` | `memory` | `memory` or `redis` |
+| `STORAGE_BACKEND` | `filesystem` | `filesystem` or `s3` |
+| `STORAGE_PATH` | `/data/documents` | Filesystem storage root |
+| `ALLOWED_FORMATS` | `pdf,docx,html,txt` | Comma-separated list of allowed formats |
+| `MAX_DOCUMENT_SIZE` | `52428800` | Maximum uploaded document size in bytes (50 MB) |
+| `MAX_URL_BYTES` | `104857600` | Maximum bytes to fetch from URLs (100 MB) |
+| `URL_TIMEOUT` | `30` | URL fetch timeout in seconds |
+| `MAX_REDIRECTS` | `5` | Maximum redirects followed when fetching a URL |
+| `MAX_PAGES` | `1000` | Documents with more pages fail (never silently truncated) |
+| `MAX_EXTRACTION_LENGTH` | `10485760` | Maximum serialized output size in bytes (10 MB); larger output fails |
+| `MAX_PROCESSING_TIME` | `3600` | Wall-clock limit per conversion in seconds |
+| `RLIMIT_CPU` | `21600` | CPU-seconds limit for the conversion subprocess |
+| `RLIMIT_AS_MB` | `65536` | Virtual address space limit for the conversion subprocess (MB) |
+| `RLIMIT_FSIZE_MB` | `100` | Maximum size of any file the conversion subprocess writes (MB) |
+| `ATTESTATION_ENABLED` | `true` | Enable in-toto attestation generation |
+| `ATTESTATION_PRIVATE_KEY_PATH` | (empty) | Path to private key for attestation signing (empty: ephemeral key per process) |
+| `ATTESTATION_PUBLIC_KEY_PATH` | (empty) | Path to public key for attestation verification |
+| `NATS_URL` | (empty) | NATS server URL (e.g., `nats://localhost:4222`) |
+| `REDIS_URL` | (empty) | Redis URL for state backend |
+| `S3_ENDPOINT`, `S3_BUCKET`, `S3_ACCESS_KEY`, `S3_SECRET_KEY`, `S3_REGION` | (see `config.py`) | S3 storage backend settings |
+
+See `src/crosscodex_ingestion/config.py` for the full list.
+
+### Limits and resource sizing
+
+The defaults are sized from measurements of real documents (Docling offline, models pre-downloaded):
+
+| Document | Pages | Wall time | CPU time | VmPeak | RSS peak |
+|----------|-------|-----------|----------|--------|----------|
+| NIST CSF 2.0 | 32 | 44 s | 186 s | ~40 GB | 2.7 GB |
+| NIST SP 800-53r5 | 492 | 807 s | 3221 s | 43.2 GB | 4.3 GB |
+
+- **Time**: Docling uses several threads, and `RLIMIT_CPU` counts CPU time across all threads (CPU is
+  roughly 4-6x wall time). `MAX_PROCESSING_TIME=3600` and `RLIMIT_CPU=21600` leave headroom for documents
+  several times larger than SP 800-53r5.
+- **Memory**: `RLIMIT_AS` bounds *virtual address space only*. Importing torch alone needs more than 4 GB of
+  address space and conversions peak at ~40 GB `VmPeak` while using only a few GB resident, so the default is
+  64 GB. It is not a memory cap. **The real memory bound is the container memory limit**: allow at least
+  6 GB per concurrent conversion (`MAX_CONCURRENT_CONVERSIONS`).
+- **Pages and output size**: `MAX_PAGES` and `MAX_EXTRACTION_LENGTH` fail the conversion with a clear
+  message instead of truncating.
+
+### Identifiers
+
+`tenant_id` must match `^[a-z][a-z0-9-]{1,50}[a-z0-9]$` (3-52 characters: lowercase letters, digits, hyphens;
+starts with a letter, does not end with a hyphen). It is used in storage paths and NATS subjects, so other
+values are rejected with `INVALID_ARGUMENT`. `GetDocument` requires the `document_id` returned by
+`ConvertDocument` (a UUID).
+
+## Container Build
 
 ```bash
-# Install specific proto version
-pip install crosscodex-proto==0.1.0
+# Standard build (downloads torch and the Docling models; slow and large)
+podman build -t crosscodex-ingestion:latest .
 
-# Update to latest (check compatibility first)
-pip install --upgrade crosscodex-proto
+# FIPS build (UBI9)
+podman build -t crosscodex-ingestion:fips -f Dockerfile.fips .
+
+# Run the container (see "Limits and resource sizing" for the memory limit)
+podman run --memory 8g -p 8080:8080 \
+  crosscodex-ingestion:latest
 ```
 
-The main repository's CI publishes `crosscodex-proto` Python package to GitHub Packages when proto definitions change.
+Without a volume, converted output is stored inside the container (`/data/documents`) and lost when it is
+removed. Mount a volume at `/data/documents` to keep it. Without `ATTESTATION_PRIVATE_KEY_PATH`, attestation
+uses an ephemeral signing key generated at startup.
 
-## Security Features
+## Architecture
 
-### SSRF Prevention
+The service has three primary components:
 
-```python
-# Allowlisted schemes and domains
-ALLOWED_SCHEMES = ['http', 'https', 'file']
-BLOCKED_DOMAINS = ['localhost', '127.0.0.1', '169.254.169.254']
-BLOCKED_NETWORKS = ['10.0.0.0/8', '192.168.0.0/16', '172.16.0.0/12']
+1. **gRPC Service** (`service.py`, `server.py`): Handles `ConvertDocument`, `GetDocument`, and `ListDocuments` RPCs.
+2. **Dispatch Layer** (`dispatch.py`): Routes jobs to either embedded workers or NATS JetStream.
+3. **Worker** (`worker.py`): Fetches, validates, converts, extracts, stores, and attests documents.
 
-def validate_url(url: str) -> bool:
-    """Prevent Server-Side Request Forgery attacks"""
-    parsed = urllib.parse.urlparse(url)
-    
-    if parsed.scheme not in ALLOWED_SCHEMES:
-        raise ValueError(f"Scheme {parsed.scheme} not allowed")
-    
-    # Additional validation...
+```
+gRPC Request → Dispatch → Worker → [Converter → Extractor] → Storage → State → Response
 ```
 
-### Format Validation
+**Security Modules:**
+- `security.py`: SSRF prevention, URL validation, content type detection, resource limit enforcement
+- `converter.py`: Subprocess-based Docling execution with rlimits and timeout
+- `extractor.py`: Structured element extraction from Docling output
 
-```python
-# Strict format allowlist
-ALLOWED_FORMATS = {
-    'pdf': ['application/pdf'],
-    'docx': ['application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
-    'html': ['text/html', 'application/xhtml+xml'],
-    'txt': ['text/plain']
-}
-
-def validate_document_format(content: bytes, declared_format: str) -> bool:
-    """Validate document format matches declaration"""
-    detected_mime = magic.from_buffer(content, mime=True)
-    return detected_mime in ALLOWED_FORMATS.get(declared_format, [])
-```
-
-### Resource Limits
-
-```python
-# Memory and processing limits
-MAX_DOCUMENT_SIZE = 50 * 1024 * 1024  # 50MB
-MAX_PROCESSING_TIME = 300  # 5 minutes
-MAX_PAGES = 1000
-MAX_EXTRACTION_LENGTH = 10 * 1024 * 1024  # 10MB text
-
-@timeout(MAX_PROCESSING_TIME)
-def convert_document(document: bytes) -> List[DocumentElement]:
-    if len(document) > MAX_DOCUMENT_SIZE:
-        raise ValueError("Document too large")
-    # Processing...
-```
-
-### Subprocess Isolation
-
-```python
-import subprocess
-import tempfile
-import os
-
-def run_docling_isolated(input_path: str, output_path: str) -> None:
-    """Run Docling in isolated subprocess with resource limits"""
-    with tempfile.TemporaryDirectory() as temp_dir:
-        # Copy input to isolated temp directory
-        isolated_input = os.path.join(temp_dir, 'input.pdf')
-        shutil.copy2(input_path, isolated_input)
-        
-        # Run with resource limits
-        subprocess.run([
-            'docling', '--input', isolated_input, '--output', output_path
-        ], 
-        timeout=MAX_PROCESSING_TIME,
-        cwd=temp_dir,
-        env={'PATH': os.environ['PATH']})  # Minimal environment
-```
+**Supporting Modules:**
+- `state.py`: Document record state management (memory or Redis)
+- `storage.py`: Blob storage (filesystem or S3)
+- `attestation.py`: In-toto link metadata generation
+- `audit.py`: NATS JetStream audit event publisher
+- `config.py`: Pydantic settings with environment variable overrides
 
 ## Testing
 
-### Test Structure
-
-```
-tests/
-  unit/
-    test_security.py           # SSRF, format validation, limits
-    test_conversion.py         # Document processing logic
-    test_grpc_server.py        # gRPC service behavior
-  integration/
-    test_docling_integration.py # Real Docling conversion
-    test_crosscodex_e2e.py      # End-to-end with main system
-  fixtures/
-    documents/                 # Test documents (various formats)
-    expected_outputs/          # Expected conversion results
-```
-
-### Running Tests
-
 ```bash
-# Unit tests only
-pytest tests/unit/ -v
+# Unit tests (fast, no external dependencies)
+task test
 
-# Integration tests (requires Docling)
-pytest tests/integration/ -v
+# Integration tests (requires docling and DOCLING_ARTIFACTS_PATH, may be slow)
+task test:integration
 
-# Security-focused tests
-pytest tests/unit/test_security.py -v
-
-# Test with coverage
-pytest --cov=crosscodex_ingestion --cov-report=html
-
-# Performance tests
-pytest tests/performance/ -v --benchmark-only
+# Lint (ruff + ruff format --check + mypy)
+task lint
 ```
 
-### Mock gRPC Client for Testing
+## gRPC API
 
-```python
-import grpc_testing
-from crosscodex.v1 import ingestion_pb2, ingestion_pb2_grpc
+See `proto/crosscodex/v1/ingestion.proto` for the full API definition.
 
-def test_convert_document():
-    # Setup mock gRPC
-    servicers = {
-        ingestion_pb2.DESCRIPTOR.services_by_name['IngestionService']: 
-        MockIngestionService()
-    }
-    
-    channel = grpc_testing.channel(servicers, grpc_testing.strict_real_time())
-    client = ingestion_pb2_grpc.IngestionServiceStub(channel)
-    
-    # Test conversion
-    request = ingestion_pb2.ConvertDocumentRequest(
-        document=b"test pdf content",
-        format="pdf"
-    )
-    
-    response = client.ConvertDocument(request)
-    assert len(response.elements) > 0
-```
-
-### Security Test Examples
-
-```python
-def test_ssrf_prevention():
-    """Test that SSRF attempts are blocked"""
-    malicious_urls = [
-        'http://localhost:8080/admin',
-        'http://169.254.169.254/metadata',
-        'file:///etc/passwd'
-    ]
-    
-    for url in malicious_urls:
-        with pytest.raises(ValueError):
-            validate_url(url)
-
-def test_document_size_limit():
-    """Test that oversized documents are rejected"""
-    large_document = b'x' * (MAX_DOCUMENT_SIZE + 1)
-    
-    with pytest.raises(ValueError, match="Document too large"):
-        convert_document(large_document)
-
-def test_format_validation():
-    """Test that format spoofing is detected"""
-    # PDF content with HTML extension claim
-    pdf_content = b'%PDF-1.4...'
-    
-    with pytest.raises(ValueError, match="Format mismatch"):
-        validate_document_format(pdf_content, 'html')
-```
-
-## Deployment
-
-### Container Build
-
-```bash
-# Standard build
-docker build -t crosscodex-ingestion:latest .
-
-# FIPS build (Red Hat UBI with FIPS OpenSSL)
-docker build -f Dockerfile.fips -t crosscodex-ingestion:latest-fips .
-
-# Multi-architecture build
-docker buildx build --platform linux/amd64,linux/arm64 -t crosscodex-ingestion:latest .
-```
-
-### Configuration
-
-Environment variables for container deployment:
-
-```bash
-# Service configuration
-GRPC_PORT=8080
-LOG_LEVEL=info
-METRICS_PORT=9090
-
-# Security settings
-MAX_DOCUMENT_SIZE=52428800    # 50MB
-MAX_PROCESSING_TIME=300       # 5 minutes
-ALLOWED_FORMATS=pdf,docx,html,txt
-
-# Integration
-HEALTH_CHECK_INTERVAL=30
-GRACEFUL_SHUTDOWN_TIMEOUT=10
-```
-
-### RPM Packaging
-
-For air-gapped environments, the service is packaged as an RPM:
-
-```bash
-# Build RPM
-python setup.py bdist_rpm
-
-# Install RPM
-sudo dnf localinstall dist/crosscodex-ingestion-*.rpm
-
-# Service management
-sudo systemctl enable crosscodex-ingestion
-sudo systemctl start crosscodex-ingestion
-sudo journalctl -u crosscodex-ingestion -f
-```
-
-### Health Checks
-
-```python
-# Docker health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-  CMD python -m crosscodex_ingestion.health_check || exit 1
-
-# Kubernetes liveness/readiness
-GET /health/live   -> 200 OK (service running)
-GET /health/ready  -> 200 OK (service ready to accept requests)
-```
-
-## Integration Points
-
-### With Main CrossCodex System
-
-1. **Pipeline Integration**: Catalog service calls Ingestion via gRPC
-2. **Error Handling**: Failed conversions propagate as structured errors
-3. **Observability**: Traces, metrics, and logs integrate with CrossCodex telemetry
-4. **Authentication**: Service-to-service mTLS in distributed mode
-5. **Storage Integration**: Conversion metadata stored in PostgreSQL via Catalog service
-6. **Message Bus**: Error events and audit trails published to NATS JetStream
-
-### Development Workflow
-
-1. **Proto Changes**: Update proto files in main repo, rebuild stubs
-2. **Feature Development**: Implement in this repo, test against main system
-3. **Version Alignment**: Pin to compatible proto versions, test integration
-4. **Release**: Tag this repo, update main repo's kustomize/deployment files
-
-## Security Design
-
-### Core Security Features
-- SSRF prevention with strict URL validation
-- Document format validation patterns
-- Resource limit enforcement
-- Subprocess isolation approach
+**Key RPCs:**
+- `ConvertDocument`: Submit a document for asynchronous conversion.
+- `GetDocument`: Retrieve conversion status and results.
+- `ListDocuments`: Paginate through documents for a tenant.
 
 ## Development Workflow
 
-### Security Hardening
-- Strict format allowlists
-- Memory limit enforcement  
-- Timeout protection on all operations
-- Isolated temporary directories
-- Minimal container attack surface
+1. Make changes to `src/crosscodex_ingestion/`
+2. Add tests to `tests/unit/` or `tests/integration/`
+3. Run `task lint` and `task test`
+4. Commit changes (see commit message style in git log)
+5. Build container with `podman build -t crosscodex-ingestion:latest .`
 
 ## Support
 
-- **Issues**: [GitHub Issues](https://github.com/complytime-labs/crosscodex-ingestion/issues)
-- **Main Project**: [CrossCodex Repository](https://github.com/complytime-labs/crosscodex)
-- **Docling**: [Document extraction library](https://github.com/DS4SD/docling)
+- Issues: [GitHub Issues](https://github.com/complytime-labs/crosscodex-ingestion/issues)
+- Docling: [Document extraction library](https://github.com/DS4SD/docling)
