@@ -143,9 +143,15 @@ def create_grpc_server(settings: IngestionSettings) -> grpc.aio.Server:
     max_document_size (the 6 MB NIST SP 800-53r5 PDF failed with "Received
     message larger than max"). Allowing max_document_size plus request overhead
     lets the servicer enforce max_document_size with its own actionable error.
+
+    SO_REUSEPORT is off: gRPC enables it by default, so a second process could
+    bind the same port without error and receive a share of the connections.
     """
     return grpc.aio.server(
-        options=[("grpc.max_receive_message_length", settings.max_document_size + _GRPC_REQUEST_OVERHEAD)]
+        options=[
+            ("grpc.max_receive_message_length", settings.max_document_size + _GRPC_REQUEST_OVERHEAD),
+            ("grpc.so_reuseport", 0),
+        ]
     )
 
 

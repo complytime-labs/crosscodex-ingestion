@@ -9,6 +9,8 @@ Security measures:
   - The hostname is resolved to all its IP addresses before connecting; any address
     in a loopback, link-local, multicast, private, or other non-routable range is
     rejected (SSRF prevention).
+  - The address actually connected to is checked again (sock.getpeername()) before any bytes
+    are sent, closing the DNS-rebinding window between validate_url and the connection.
   - Redirects are followed manually so each hop is re-validated before connecting.
   - Download size is capped.
   - A per-request timeout is enforced.
@@ -16,19 +18,25 @@ Security measures:
     Content-Type header, then the URL path extension.
   - The temp file is always deleted when the context manager exits.
   - Content hash verification (SHA-256) is provided for integrity checking.
+  - tenant_id and document_id are validated before use in storage paths and NATS subjects.
 """
 
 import contextlib
 import hashlib
 import ipaddress
 import logging
+import re
 import socket
 import tempfile
 import urllib.parse
+import uuid
 from collections.abc import Iterator
 from pathlib import Path
 
 import requests
+from requests.adapters import HTTPAdapter
+from urllib3.connection import HTTPConnection, HTTPSConnection
+from urllib3.connectionpool import HTTPConnectionPool, HTTPSConnectionPool
 
 log = logging.getLogger(__name__)
 
@@ -40,11 +48,53 @@ _EXTRA_BLOCKED = [
 ]
 
 _ALLOWED_SCHEMES = {"https", "http"}
+
+# One message for every host refusal. It reaches the client through GetDocument,
+# so it names no address or resolver error, and an unresolvable name reads the same
+# as an internal one: otherwise a caller could map internal DNS one request at a
+# time (CWE-209). The detail is logged server-side instead.
+_NOT_PUBLIC_HOST = (
+    "The URL's host is not a public internet address (it does not resolve, or resolves to a private, "
+    "loopback, link-local or multicast address). Only documents on public hosts can be fetched; "
+    "upload the document's bytes instead."
+)
 _REDIRECT_CODES = {301, 302, 303, 307, 308}
 
 DEFAULT_MAX_BYTES = 100 * 1024 * 1024  # 100 MB
 DEFAULT_TIMEOUT = 30  # seconds per request
 DEFAULT_MAX_REDIRECTS = 5
+
+
+# Platform-wide tenant identifier rule (shared with the Go services): 3-52 chars,
+# lowercase letters, digits and hyphens; starts with a letter, does not end with a hyphen.
+TENANT_ID_PATTERN = r"^[a-z][a-z0-9-]{1,50}[a-z0-9]$"
+_TENANT_ID_RE = re.compile(TENANT_ID_PATTERN)
+
+
+def validate_tenant_id(tenant_id: str) -> None:
+    """Raise ValueError unless *tenant_id* satisfies the platform tenant rule.
+
+    tenant_id is interpolated into filesystem paths and NATS subjects, so characters such as
+    '/', '.', '*' and '>' must never pass. fullmatch is used so a trailing newline is rejected.
+    """
+    if not _TENANT_ID_RE.fullmatch(tenant_id):
+        raise ValueError(
+            f"tenant_id {tenant_id[:64]!r} is invalid: it must be 3-52 characters of lowercase letters, "
+            f"digits and hyphens, start with a letter and not end with a hyphen (pattern {TENANT_ID_PATTERN})."
+        )
+
+
+def validate_document_id(document_id: str) -> None:
+    """Raise ValueError unless *document_id* is a canonical lowercase UUID (server-assigned uuid4)."""
+    try:
+        canonical: str | None = str(uuid.UUID(document_id))
+    except ValueError:
+        canonical = None
+    if canonical != document_id:
+        raise ValueError(
+            f"document_id {document_id[:64]!r} is invalid: it must be a UUID as returned by ConvertDocument "
+            "(for example 123e4567-e89b-42d3-a456-426614174000)."
+        )
 
 
 def _is_blocked_ip(ip: ipaddress.IPv4Address | ipaddress.IPv6Address) -> bool:
@@ -79,10 +129,12 @@ def validate_url(url: str) -> None:
     try:
         addr_infos = socket.getaddrinfo(hostname, None)
     except socket.gaierror as exc:
-        raise ValueError(f"Cannot resolve hostname {hostname!r}: {exc}") from exc
+        log.warning("Refusing URL host %r: cannot resolve: %s", hostname, exc)
+        raise ValueError(_NOT_PUBLIC_HOST) from exc
 
     if not addr_infos:
-        raise ValueError(f"Hostname {hostname!r} resolved to no addresses.")
+        log.warning("Refusing URL host %r: resolved to no addresses", hostname)
+        raise ValueError(_NOT_PUBLIC_HOST)
 
     for _family, _type, _proto, _canon, sockaddr in addr_infos:
         ip_str = sockaddr[0]
@@ -91,10 +143,54 @@ def validate_url(url: str) -> None:
         except ValueError:
             continue
         if _is_blocked_ip(ip):
-            raise ValueError(
-                f"URL resolves to a blocked address ({ip}). "
-                "Private, loopback, link-local, and multicast hosts are not allowed."
-            )
+            log.warning("Refusing URL host %r: resolves to blocked address %s", hostname, ip)
+            raise ValueError(_NOT_PUBLIC_HOST)
+
+
+def _check_peer_is_public(sock: socket.socket) -> None:
+    """Close *sock* and raise ValueError if it is connected to a blocked address."""
+    peer_ip = ipaddress.ip_address(sock.getpeername()[0])
+    if _is_blocked_ip(peer_ip):
+        sock.close()
+        log.warning("Refusing connection: peer %s is a blocked address", peer_ip)
+        raise ValueError(_NOT_PUBLIC_HOST)
+
+
+class _CheckedHTTPConnection(HTTPConnection):
+    """Checks the TCP peer right after connect, before any request bytes or TLS handshake."""
+
+    def _new_conn(self) -> socket.socket:
+        sock = super()._new_conn()
+        _check_peer_is_public(sock)
+        return sock
+
+
+class _CheckedHTTPSConnection(HTTPSConnection):
+    """As _CheckedHTTPConnection; TLS (SNI, certificate hostname) still uses the original hostname."""
+
+    def _new_conn(self) -> socket.socket:
+        sock = super()._new_conn()
+        _check_peer_is_public(sock)
+        return sock
+
+
+class _CheckedHTTPConnectionPool(HTTPConnectionPool):
+    ConnectionCls = _CheckedHTTPConnection
+
+
+class _CheckedHTTPSConnectionPool(HTTPSConnectionPool):
+    ConnectionCls = _CheckedHTTPSConnection
+
+
+class _PublicOnlyAdapter(HTTPAdapter):
+    """HTTPAdapter whose connections refuse blocked peer addresses (DNS-rebinding defence)."""
+
+    def init_poolmanager(self, *args, **kwargs) -> None:  # type: ignore[no-untyped-def]
+        super().init_poolmanager(*args, **kwargs)
+        self.poolmanager.pool_classes_by_scheme = {
+            "http": _CheckedHTTPConnectionPool,
+            "https": _CheckedHTTPSConnectionPool,
+        }
 
 
 _TYPE_SUFFIX = {
@@ -225,6 +321,11 @@ def fetch_url(
     validate_url(url)
 
     session = requests.Session()
+    # Ignore HTTP(S)_PROXY / ALL_PROXY: a proxy connects to the target itself, so the
+    # peer check would only ever see the proxy's address and DNS rebinding would be open again.
+    session.trust_env = False
+    session.mount("http://", _PublicOnlyAdapter())
+    session.mount("https://", _PublicOnlyAdapter())
     resp = None
     tmp_path = None
 

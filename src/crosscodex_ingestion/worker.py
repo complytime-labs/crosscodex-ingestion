@@ -25,7 +25,7 @@ from opentelemetry import trace
 from crosscodex_ingestion.attestation import AttestationManager
 from crosscodex_ingestion.audit import AuditPublisher
 from crosscodex_ingestion.config import IngestionSettings
-from crosscodex_ingestion.converter import ConversionError, ConversionTimeout, convert_document
+from crosscodex_ingestion.converter import ConversionError, ConversionTimeout, DocumentLimitError, convert_document
 from crosscodex_ingestion.metrics import ACTIVE_CONVERSIONS, DURATION, ERRORS_TOTAL, REQUESTS_TOTAL
 from crosscodex_ingestion.security import (
     fetch_url,
@@ -324,22 +324,29 @@ async def run_conversion(
         # Handle all errors by updating state to FAILED
         logger.exception("Conversion failed for document %s", document_id)
 
-        # Determine error code based on exception type
+        # Client-visible messages: specific only for failures the caller caused and can fix
+        # (ValueError family, our own timeout text); generic for everything else so internals
+        # (paths, tracebacks, hostnames) never leak (CWE-209). Full detail is logged above.
         error_code = ERROR_CODE_INTERNAL
-        error_message = str(exc)
+        error_message = (
+            f"Document conversion failed due to an internal error (document ID {document_id}); contact the operator."
+        )
         error_type = "internal"
 
-        if isinstance(exc, ValueError):
+        if isinstance(exc, DocumentLimitError):
+            error_code = ERROR_CODE_RESOURCE_EXHAUSTED
+            error_message = str(exc)
+            error_type = "limit_exceeded"
+        elif isinstance(exc, ValueError):
             # Format validation, SSRF, hash mismatch
             error_code = ERROR_CODE_INVALID_ARGUMENT
+            error_message = str(exc)
             error_type = "invalid_argument"
         elif isinstance(exc, ConversionTimeout):
-            # Timeout/resource exhaustion
             error_code = ERROR_CODE_RESOURCE_EXHAUSTED
+            error_message = str(exc)
             error_type = "timeout"
         elif isinstance(exc, ConversionError):
-            # Conversion failure
-            error_code = ERROR_CODE_INTERNAL
             error_type = "conversion_error"
 
         error_dict = {

@@ -11,6 +11,9 @@ from crosscodex_ingestion.proto.crosscodex.v1 import common_pb2, ingestion_pb2
 from crosscodex_ingestion.service import IngestionServiceServicer
 from crosscodex_ingestion.state import DocumentRecord, MemoryStateBackend
 
+DOC_ID = "6f1c1c1e-3b2a-4c55-9d0e-0a1b2c3d4e5f"
+MISSING_ID = "00000000-0000-4000-8000-000000000000"
+
 
 class MockServicerContext:
     """Mock grpc.aio servicer context: abort() is a coroutine that raises only when awaited."""
@@ -174,12 +177,12 @@ class TestGetDocument:
         """GetDocument returns completed document with structured_json_uri."""
         now = datetime.now(UTC).isoformat()
         record = DocumentRecord(
-            document_id="doc-123",
+            document_id=DOC_ID,
             tenant_id="tenant-a",
             status=common_pb2.JOB_STATUS_COMPLETED,
             metadata={"mime_type": "application/pdf"},
             audit={"created_by": "user-1"},
-            structured_json_uri="s3://bucket/doc-123.json",
+            structured_json_uri=f"s3://bucket/{DOC_ID}.json",
             error=None,
             created_at=now,
             updated_at=now,
@@ -188,15 +191,15 @@ class TestGetDocument:
 
         request = ingestion_pb2.GetDocumentRequest(
             tenant_context=common_pb2.TenantContext(tenant_id="tenant-a"),
-            document_id="doc-123",
+            document_id=DOC_ID,
         )
         context = MockServicerContext()
 
         response = await servicer.GetDocument(request, context)
 
-        assert response.document.document_id == "doc-123"
+        assert response.document.document_id == DOC_ID
         assert response.document.conversion_status == common_pb2.JOB_STATUS_COMPLETED
-        assert response.document.structured_json_uri == "s3://bucket/doc-123.json"
+        assert response.document.structured_json_uri == f"s3://bucket/{DOC_ID}.json"
         assert response.document.tenant_context.tenant_id == "tenant-a"
 
     @pytest.mark.asyncio
@@ -204,7 +207,7 @@ class TestGetDocument:
         """GetDocument for missing document calls abort(NOT_FOUND)."""
         request = ingestion_pb2.GetDocumentRequest(
             tenant_context=common_pb2.TenantContext(tenant_id="tenant-a"),
-            document_id="nonexistent",
+            document_id=MISSING_ID,
         )
         context = MockServicerContext()
 
@@ -219,12 +222,12 @@ class TestGetDocument:
         """GetDocument tenant isolation: different tenant gets NOT_FOUND."""
         now = datetime.now(UTC).isoformat()
         record = DocumentRecord(
-            document_id="doc-123",
+            document_id=DOC_ID,
             tenant_id="tenant-a",
             status=common_pb2.JOB_STATUS_COMPLETED,
             metadata={},
             audit={},
-            structured_json_uri="s3://bucket/doc-123.json",
+            structured_json_uri=f"s3://bucket/{DOC_ID}.json",
             error=None,
             created_at=now,
             updated_at=now,
@@ -234,7 +237,7 @@ class TestGetDocument:
         # Try to access with different tenant
         request = ingestion_pb2.GetDocumentRequest(
             tenant_context=common_pb2.TenantContext(tenant_id="tenant-b"),
-            document_id="doc-123",
+            document_id=DOC_ID,
         )
         context = MockServicerContext()
 
@@ -249,7 +252,7 @@ class TestGetDocument:
         """GetDocument missing tenant_id calls abort(INVALID_ARGUMENT)."""
         request = ingestion_pb2.GetDocumentRequest(
             tenant_context=common_pb2.TenantContext(tenant_id=""),
-            document_id="doc-123",
+            document_id=DOC_ID,
         )
         context = MockServicerContext()
 
@@ -417,7 +420,7 @@ class TestAbortStopsProcessing:
     async def test_get_missing_document_aborts_not_found_not_runtime_error(self, servicer):
         request = ingestion_pb2.GetDocumentRequest(
             tenant_context=common_pb2.TenantContext(tenant_id="tenant-a"),
-            document_id="nonexistent",
+            document_id=MISSING_ID,
         )
         context = MockServicerContext()
 
@@ -425,3 +428,93 @@ class TestAbortStopsProcessing:
             await servicer.GetDocument(request, context)
 
         assert context.abort_code == grpc.StatusCode.NOT_FOUND
+
+
+BAD_TENANTS = [
+    "../../x",
+    "a.>",
+    "tenant.*",
+    "Acme",
+    "ab",
+    "a" * 53,
+    "-acme",
+    "acme-",
+    "1acme",
+    "ac me",
+    "acme\n",
+    "acm_e",
+]
+
+
+class TestTenantIdValidation:
+    """tenant_id feeds filesystem paths and NATS subjects, so it is validated at the boundary."""
+
+    @pytest.mark.parametrize("tenant", BAD_TENANTS)
+    @pytest.mark.asyncio
+    async def test_convert_rejects_invalid_tenant(self, servicer, mock_dispatch, state_backend, tenant):
+        request = ingestion_pb2.ConvertDocumentRequest(
+            tenant_context=common_pb2.TenantContext(tenant_id=tenant),
+            content=b"fake PDF content",
+        )
+        context = MockServicerContext()
+
+        with pytest.raises(grpc.RpcError):
+            await servicer.ConvertDocument(request, context)
+
+        assert context.abort_code == grpc.StatusCode.INVALID_ARGUMENT
+        assert "^[a-z][a-z0-9-]{1,50}[a-z0-9]$" in context.abort_details
+        mock_dispatch.dispatch.assert_not_called()
+
+    @pytest.mark.parametrize("tenant", BAD_TENANTS)
+    @pytest.mark.asyncio
+    async def test_get_rejects_invalid_tenant(self, servicer, tenant):
+        request = ingestion_pb2.GetDocumentRequest(
+            tenant_context=common_pb2.TenantContext(tenant_id=tenant),
+            document_id=DOC_ID,
+        )
+        context = MockServicerContext()
+
+        with pytest.raises(grpc.RpcError):
+            await servicer.GetDocument(request, context)
+
+        assert context.abort_code == grpc.StatusCode.INVALID_ARGUMENT
+
+    @pytest.mark.parametrize("tenant", BAD_TENANTS)
+    @pytest.mark.asyncio
+    async def test_list_rejects_invalid_tenant(self, servicer, tenant):
+        request = ingestion_pb2.ListDocumentsRequest(tenant_context=common_pb2.TenantContext(tenant_id=tenant))
+        context = MockServicerContext()
+
+        with pytest.raises(grpc.RpcError):
+            await servicer.ListDocuments(request, context)
+
+        assert context.abort_code == grpc.StatusCode.INVALID_ARGUMENT
+
+    @pytest.mark.parametrize("tenant", ["acme", "tenant-a", "a1b", "a" + "b" * 50 + "c"])
+    @pytest.mark.asyncio
+    async def test_convert_accepts_valid_tenant(self, servicer, mock_dispatch, tenant):
+        request = ingestion_pb2.ConvertDocumentRequest(
+            tenant_context=common_pb2.TenantContext(tenant_id=tenant),
+            content=b"fake PDF content",
+        )
+
+        await servicer.ConvertDocument(request, MockServicerContext())
+
+        mock_dispatch.dispatch.assert_called_once()
+
+    @pytest.mark.parametrize(
+        "document_id", ["doc-123", "../../etc/passwd", "", "6F1C1C1E-3B2A-4C55-9D0E-0A1B2C3D4E5F "]
+    )
+    @pytest.mark.asyncio
+    async def test_get_rejects_non_uuid_document_id(self, servicer, document_id):
+        request = ingestion_pb2.GetDocumentRequest(
+            tenant_context=common_pb2.TenantContext(tenant_id="tenant-a"),
+            document_id=document_id,
+        )
+        context = MockServicerContext()
+
+        with pytest.raises(grpc.RpcError):
+            await servicer.GetDocument(request, context)
+
+        assert context.abort_code == grpc.StatusCode.INVALID_ARGUMENT
+        assert "document_id" in context.abort_details

@@ -9,7 +9,8 @@ import time
 
 import pytest
 
-from crosscodex_ingestion.server import serve
+from crosscodex_ingestion.config import IngestionSettings
+from crosscodex_ingestion.server import create_grpc_server, serve
 
 
 @pytest.mark.asyncio
@@ -69,3 +70,19 @@ def _free_port() -> int:
     with socket.socket() as s:
         s.bind(("127.0.0.1", 0))
         return int(s.getsockname()[1])
+
+
+@pytest.mark.asyncio
+async def test_server_refuses_a_port_another_server_holds():
+    """gRPC sets SO_REUSEPORT by default, so a second instance on the same port started
+    without error and the kernel split connections between the two."""
+    settings = IngestionSettings()
+    first = create_grpc_server(settings)
+    port = first.add_insecure_port("[::]:0")
+    await first.start()
+    try:
+        second = create_grpc_server(settings)
+        with pytest.raises(RuntimeError, match="Failed to bind"):
+            second.add_insecure_port(f"[::]:{port}")
+    finally:
+        await first.stop(None)
