@@ -1,28 +1,101 @@
-import tempfile
 from pathlib import Path
 
 import pytest
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric import ec, ed25519, rsa
 from securesystemslib.signer import CryptoSigner
 
 from crosscodex_ingestion.attestation import AttestationManager, create_attestation_manager
 from crosscodex_ingestion.config import IngestionSettings
 
 
-def test_ephemeral_key_generation():
-    """Verify that ephemeral ECDSA key is generated when no key path is provided."""
-    settings = IngestionSettings(attestation_private_key_path="")
-    manager = AttestationManager(settings)
+def _write_key_pair(directory: Path, private_key, name: str = "key") -> tuple[Path, Path]:
+    """Write private_key and its public half as PEM files; return (private_path, public_path)."""
+    private_path = directory / f"{name}.pem"
+    public_path = directory / f"{name}.pub.pem"
+    private_path.write_bytes(
+        private_key.private_bytes(
+            serialization.Encoding.PEM,
+            serialization.PrivateFormat.PKCS8,
+            serialization.NoEncryption(),
+        )
+    )
+    public_path.write_bytes(
+        private_key.public_key().public_bytes(
+            serialization.Encoding.PEM, serialization.PublicFormat.SubjectPublicKeyInfo
+        )
+    )
+    return private_path, public_path
 
-    # Should have a valid public key ID
-    key_id = manager.public_key_id()
-    assert isinstance(key_id, str)
-    assert len(key_id) > 0
+
+@pytest.fixture
+def key_settings(tmp_path) -> IngestionSettings:
+    """Settings pointing at a freshly generated, matching ECDSA P-256 key pair."""
+    private_path, public_path = _write_key_pair(tmp_path, ec.generate_private_key(ec.SECP256R1()))
+    return IngestionSettings(
+        attestation_private_key_path=str(private_path),
+        attestation_public_key_path=str(public_path),
+    )
 
 
-def test_create_link_produces_valid_structure():
+def test_enabled_without_any_key_paths_refuses_to_start():
+    """Fail closed: an ephemeral key would sign attestations nobody can verify."""
+    with pytest.raises(
+        ValueError, match="ATTESTATION_PRIVATE_KEY_PATH.*ATTESTATION_PUBLIC_KEY_PATH.*ATTESTATION_ENABLED=false"
+    ):
+        AttestationManager(IngestionSettings())
+
+
+def test_enabled_without_public_key_path_refuses_to_start(key_settings):
+    key_settings.attestation_public_key_path = ""
+    with pytest.raises(ValueError, match="ATTESTATION_PUBLIC_KEY_PATH"):
+        AttestationManager(key_settings)
+
+
+def test_enabled_without_private_key_path_refuses_to_start(key_settings):
+    key_settings.attestation_private_key_path = ""
+    with pytest.raises(ValueError, match="ATTESTATION_PRIVATE_KEY_PATH"):
+        AttestationManager(key_settings)
+
+
+def test_missing_public_key_file_refuses_to_start(key_settings, tmp_path):
+    key_settings.attestation_public_key_path = str(tmp_path / "absent.pub.pem")
+    with pytest.raises(FileNotFoundError, match="Public key not found"):
+        AttestationManager(key_settings)
+
+
+def test_unparseable_public_key_refuses_to_start(key_settings, tmp_path):
+    bad = tmp_path / "bad.pub.pem"
+    bad.write_bytes(b"not a pem")
+    key_settings.attestation_public_key_path = str(bad)
+    with pytest.raises(ValueError, match="Cannot load attestation public key"):
+        AttestationManager(key_settings)
+
+
+def test_unparseable_private_key_refuses_to_start(key_settings, tmp_path):
+    bad = tmp_path / "bad.pem"
+    bad.write_bytes(b"not a pem")
+    key_settings.attestation_private_key_path = str(bad)
+    with pytest.raises(ValueError, match="Cannot load attestation private key"):
+        AttestationManager(key_settings)
+
+
+def test_mismatched_key_pair_refuses_to_start(key_settings, tmp_path):
+    _, other_public = _write_key_pair(tmp_path, ec.generate_private_key(ec.SECP256R1()), name="other")
+    key_settings.attestation_public_key_path = str(other_public)
+    with pytest.raises(ValueError, match="not a key pair"):
+        AttestationManager(key_settings)
+
+
+def test_disabled_attestation_creates_no_manager_and_warns(caplog):
+    with caplog.at_level("WARNING"):
+        assert create_attestation_manager(IngestionSettings(attestation_enabled=False)) is None
+    assert "unattested" in caplog.text
+
+
+def test_create_link_produces_valid_structure(key_settings):
     """Verify that create_link produces a dict with materials, products, byproducts."""
-    settings = IngestionSettings()
-    manager = AttestationManager(settings)
+    manager = AttestationManager(key_settings)
 
     materials = {"input.pdf": {"sha256": "abc123"}}
     products = {"output.proto": {"sha256": "def456"}}
@@ -62,10 +135,9 @@ def test_create_link_produces_valid_structure():
     assert "sig" in result["signatures"][0]
 
 
-def test_create_link_signature_non_empty():
+def test_create_link_signature_non_empty(key_settings):
     """Verify that the signature is non-empty."""
-    settings = IngestionSettings()
-    manager = AttestationManager(settings)
+    manager = AttestationManager(key_settings)
 
     result = manager.create_link(step_name="test-step", materials={}, products={}, byproducts={})
 
@@ -73,10 +145,9 @@ def test_create_link_signature_non_empty():
     assert len(sig) > 0
 
 
-def test_signed_link_verification():
+def test_signed_link_verification(key_settings):
     """Verify that a signed link can be verified with the public key."""
-    settings = IngestionSettings()
-    manager = AttestationManager(settings)
+    manager = AttestationManager(key_settings)
 
     result = manager.create_link(step_name="test-step", materials={}, products={}, byproducts={})
 
@@ -91,87 +162,69 @@ def test_signed_link_verification():
     assert metablock.signatures[0]["keyid"] == manager.public_key_id()
 
 
-def test_file_based_key_loading():
-    """Verify that keys can be loaded from files."""
-    with tempfile.TemporaryDirectory() as tmpdir:
-        private_key_path = Path(tmpdir) / "private_key.pem"
-
-        # Generate an ECDSA key and save it
-        signer = CryptoSigner.generate_ecdsa()
-        private_key_path.write_bytes(signer.private_bytes)
-
-        # Load the key
-        settings = IngestionSettings(attestation_private_key_path=str(private_key_path))
-        manager = AttestationManager(settings)
-
-        # Should use the loaded key
-        assert manager.public_key_id() == signer.public_key.keyid
+def test_file_based_key_loading(key_settings):
+    """The manager signs with the configured private key."""
+    manager = AttestationManager(key_settings)
+    private = serialization.load_pem_private_key(
+        Path(key_settings.attestation_private_key_path).read_bytes(), password=None
+    )
+    assert manager.public_key_id() == CryptoSigner(private).public_key.keyid
 
 
-def test_fips_mode_rejects_ed25519():
-    """Verify that FIPS mode rejects Ed25519 keys."""
-    with tempfile.TemporaryDirectory() as tmpdir:
-        private_key_path = Path(tmpdir) / "private_key.pem"
-
-        # Generate an Ed25519 key
-        signer = CryptoSigner.generate_ed25519()
-        private_key_path.write_bytes(signer.private_bytes)
-
-        settings = IngestionSettings(attestation_private_key_path=str(private_key_path), fips_mode=True)
-
-        with pytest.raises(ValueError, match="FIPS mode requires ECDSA"):
-            AttestationManager(settings)
-
-
-def test_fips_mode_rejects_rsa():
-    """Verify that FIPS mode rejects RSA keys."""
-    with tempfile.TemporaryDirectory() as tmpdir:
-        private_key_path = Path(tmpdir) / "private_key.pem"
-
-        # Generate an RSA key
-        signer = CryptoSigner.generate_rsa()
-        private_key_path.write_bytes(signer.private_bytes)
-
-        settings = IngestionSettings(attestation_private_key_path=str(private_key_path), fips_mode=True)
-
-        with pytest.raises(ValueError, match="FIPS mode requires ECDSA"):
-            AttestationManager(settings)
+@pytest.mark.parametrize(
+    "key",
+    [ed25519.Ed25519PrivateKey.generate(), rsa.generate_private_key(65537, 2048)],
+    ids=["ed25519", "rsa"],
+)
+def test_fips_mode_rejects_non_ecdsa(tmp_path, key):
+    private_path, public_path = _write_key_pair(tmp_path, key)
+    settings = IngestionSettings(
+        attestation_private_key_path=str(private_path),
+        attestation_public_key_path=str(public_path),
+        fips_mode=True,
+    )
+    with pytest.raises(ValueError, match="FIPS mode requires ECDSA"):
+        AttestationManager(settings)
 
 
-def test_fips_mode_accepts_ecdsa():
-    """Verify that FIPS mode accepts ECDSA keys."""
-    with tempfile.TemporaryDirectory() as tmpdir:
-        private_key_path = Path(tmpdir) / "private_key.pem"
-
-        # Generate an ECDSA key
-        signer = CryptoSigner.generate_ecdsa()
-        private_key_path.write_bytes(signer.private_bytes)
-
-        settings = IngestionSettings(attestation_private_key_path=str(private_key_path), fips_mode=True)
-
-        # Should not raise
-        manager = AttestationManager(settings)
-        assert manager.public_key_id() == signer.public_key.keyid
+def test_fips_mode_rejects_unapproved_curve(tmp_path):
+    private_path, public_path = _write_key_pair(tmp_path, ec.generate_private_key(ec.SECP256K1()))
+    settings = IngestionSettings(
+        attestation_private_key_path=str(private_path),
+        attestation_public_key_path=str(public_path),
+        fips_mode=True,
+    )
+    with pytest.raises(ValueError, match="approved curve"):
+        AttestationManager(settings)
 
 
-def test_create_attestation_manager_returns_none_when_disabled():
-    """Verify that create_attestation_manager returns None when attestation is disabled."""
-    settings = IngestionSettings(attestation_enabled=False)
-    manager = create_attestation_manager(settings)
-    assert manager is None
+def test_fips_mode_accepts_p256(tmp_path):
+    private_path, public_path = _write_key_pair(tmp_path, ec.generate_private_key(ec.SECP256R1()))
+    settings = IngestionSettings(
+        attestation_private_key_path=str(private_path),
+        attestation_public_key_path=str(public_path),
+        fips_mode=True,
+    )
+    assert AttestationManager(settings).public_key_id()
 
 
-def test_create_attestation_manager_returns_instance_when_enabled():
-    """Verify that create_attestation_manager returns an instance when enabled."""
-    settings = IngestionSettings(attestation_enabled=True)
-    manager = create_attestation_manager(settings)
-    assert isinstance(manager, AttestationManager)
+def test_p384_key_rejected_with_actionable_error(tmp_path):
+    """Approved by FIPS but unsupported by securesystemslib's signer: fail at startup, not per conversion."""
+    private_path, public_path = _write_key_pair(tmp_path, ec.generate_private_key(ec.SECP384R1()))
+    settings = IngestionSettings(
+        attestation_private_key_path=str(private_path), attestation_public_key_path=str(public_path)
+    )
+    with pytest.raises(ValueError, match="not usable by the signer"):
+        AttestationManager(settings)
 
 
-def test_byproducts_preserved_in_output():
+def test_create_attestation_manager_returns_instance_when_enabled(key_settings):
+    assert isinstance(create_attestation_manager(key_settings), AttestationManager)
+
+
+def test_byproducts_preserved_in_output(key_settings):
     """Verify that all byproducts fields are preserved in the output."""
-    settings = IngestionSettings()
-    manager = AttestationManager(settings)
+    manager = AttestationManager(key_settings)
 
     byproducts = {
         "trace_id": "trace-abc",
