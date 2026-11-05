@@ -12,7 +12,7 @@ from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.sampling import ParentBasedTraceIdRatio
 from prometheus_client import start_http_server
-from pythonjsonlogger import jsonlogger
+from pythonjsonlogger.json import JsonFormatter
 
 from crosscodex_ingestion.attestation import create_attestation_manager
 from crosscodex_ingestion.audit import AuditPublisher
@@ -222,7 +222,7 @@ def _init_telemetry(settings: IngestionSettings) -> None:
     level = level_map.get(settings.log_level.lower(), logging.INFO)
 
     # Create JSON formatter with trace correlation
-    json_formatter = jsonlogger.JsonFormatter(
+    json_formatter = JsonFormatter(
         "%(asctime)s %(levelname)s %(name)s %(message)s",
         timestamp=True,
     )
