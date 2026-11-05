@@ -10,6 +10,7 @@ from crosscodex_ingestion.audit import AuditPublisher
 from crosscodex_ingestion.config import IngestionSettings
 from crosscodex_ingestion.dispatch import create_dispatch
 from crosscodex_ingestion.proto.crosscodex.v1 import ingestion_pb2_grpc
+from crosscodex_ingestion.server import create_grpc_server
 from crosscodex_ingestion.service import IngestionServiceServicer
 from crosscodex_ingestion.state import create_state_backend
 from crosscodex_ingestion.storage import create_storage
@@ -99,7 +100,7 @@ async def grpc_server_and_channel() -> AsyncGenerator[tuple[grpc.aio.Server, grp
         )
 
         # Create gRPC server
-        server = grpc.aio.server()
+        server = create_grpc_server(settings)
         ingestion_pb2_grpc.add_IngestionServiceServicer_to_server(servicer, server)
 
         # Bind to ephemeral port

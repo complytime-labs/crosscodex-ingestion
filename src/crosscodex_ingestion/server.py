@@ -86,7 +86,7 @@ async def serve() -> None:
     )
 
     # Create gRPC server
-    server = grpc.aio.server()
+    server = create_grpc_server(settings)
     ingestion_pb2_grpc.add_IngestionServiceServicer_to_server(servicer, server)
 
     # Bind to port
@@ -129,6 +129,24 @@ async def serve() -> None:
     await audit_publisher.close()
 
     logger.info("Server shutdown complete")
+
+
+# Room in a ConvertDocument message for everything but the document bytes:
+# tenant context, metadata and protobuf framing.
+_GRPC_REQUEST_OVERHEAD = 1024 * 1024
+
+
+def create_grpc_server(settings: IngestionSettings) -> grpc.aio.Server:
+    """Create the gRPC server with a receive limit that fits max_document_size.
+
+    gRPC's default 4 MB receive limit rejected real documents long before
+    max_document_size (the 6 MB NIST SP 800-53r5 PDF failed with "Received
+    message larger than max"). Allowing max_document_size plus request overhead
+    lets the servicer enforce max_document_size with its own actionable error.
+    """
+    return grpc.aio.server(
+        options=[("grpc.max_receive_message_length", settings.max_document_size + _GRPC_REQUEST_OVERHEAD)]
+    )
 
 
 def _init_telemetry(settings: IngestionSettings) -> None:
