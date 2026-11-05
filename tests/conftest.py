@@ -2,6 +2,7 @@ import tempfile
 from collections.abc import AsyncGenerator
 from pathlib import Path
 
+import devpki
 import grpc
 import pytest
 
@@ -42,45 +43,52 @@ def sample_docx() -> bytes:
     return (FIXTURES_DIR / "sample.docx").read_bytes()
 
 
-@pytest.fixture
-async def grpc_server_and_channel() -> AsyncGenerator[tuple[grpc.aio.Server, grpc.aio.Channel], None]:
-    """Start an in-process gRPC server with filesystem backends and return server + channel.
+@pytest.fixture(scope="session")
+def pki_dir(tmp_path_factory) -> Path:
+    """Fake CA, server/client certs and attestation keys, private to this pytest run (see scripts/devpki.py)."""
+    out = tmp_path_factory.mktemp("pki") / "certs"
+    devpki.ensure(out)
+    return out
 
-    This fixture creates a real gRPC server in embedded mode with:
-    - Memory state backend
-    - Filesystem storage backend (in a temp directory)
-    - No attestation
-    - No audit publishing (noop)
+
+@pytest.fixture
+async def running_grpc_server(pki_dir: Path) -> AsyncGenerator[tuple[grpc.aio.Server, int], None]:
+    """Start the real server (mutual TLS, attestation on, allowlist set) with filesystem backends.
+
+    Built through create_grpc_server, so tests exercise the production credential and
+    interceptor wiring. Uses the memory state backend, a temp storage directory and no audit
+    publishing (noop).
 
     Yields:
-        Tuple of (server, channel) for integration tests.
+        Tuple of (server, bound port).
     """
     with tempfile.TemporaryDirectory() as tmpdir:
-        # Create settings for embedded mode with filesystem storage
         settings = IngestionSettings(
             execution_mode="embedded",
             state_backend="memory",
             storage_backend="filesystem",
             storage_path=tmpdir,
-            attestation_enabled=False,
+            attestation_enabled=True,
+            attestation_private_key_path=str(pki_dir / "attestation.key"),
+            attestation_public_key_path=str(pki_dir / "attestation.pub"),
             max_concurrent_conversions=2,
-            grpc_port=0,  # Will bind to ephemeral port
-            grpc_tls_mode="off",  # in-process test server; TLS is covered in tests/unit/test_tls.py
+            grpc_tls_mode="mutual",
+            grpc_tls_cert=str(pki_dir / "server.pem"),
+            grpc_tls_key=str(pki_dir / "server.key"),
+            grpc_tls_ca=str(pki_dir / "ca.pem"),
+            grpc_allowed_clients=devpki.CLIENT_NAME,
             rlimit_as_mb=0,  # Unlimited for integration tests
             rlimit_cpu=0,
             rlimit_fsize_mb=0,
         )
 
-        # Create backends
         state_backend = create_state_backend(settings)
         storage_backend = create_storage(settings)
         attestation_manager = create_attestation_manager(settings)
 
-        # Create audit publisher (noop when disabled)
         audit_publisher = AuditPublisher(settings)
         await audit_publisher.connect()
 
-        # Create dispatch backend
         dispatch_backend = create_dispatch(
             settings=settings,
             state=state_backend,
@@ -89,26 +97,37 @@ async def grpc_server_and_channel() -> AsyncGenerator[tuple[grpc.aio.Server, grp
             audit=audit_publisher,
         )
 
-        # Create servicer
         servicer = IngestionServiceServicer(
             settings=settings,
             state_backend=state_backend,
             dispatch_backend=dispatch_backend,
         )
 
-        # Create gRPC server
         server, port = create_grpc_server(settings, "[::]:0")  # port 0: ephemeral
         ingestion_pb2_grpc.add_IngestionServiceServicer_to_server(servicer, server)
         await server.start()
 
-        # Create client channel
-        channel = grpc.aio.insecure_channel(f"localhost:{port}")
-
         try:
-            yield server, channel
+            yield server, port
         finally:
-            # Cleanup
-            await channel.close()
             await dispatch_backend.shutdown(grace_seconds=5)
             await audit_publisher.close()
             await server.stop(grace=1.0)
+
+
+@pytest.fixture
+async def grpc_server_and_channel(
+    running_grpc_server: tuple[grpc.aio.Server, int], pki_dir: Path
+) -> AsyncGenerator[tuple[grpc.aio.Server, grpc.aio.Channel], None]:
+    """Running server plus a channel authenticated with the allowlisted client certificate."""
+    server, port = running_grpc_server
+    credentials = grpc.ssl_channel_credentials(
+        root_certificates=(pki_dir / "ca.pem").read_bytes(),
+        private_key=(pki_dir / "client.key").read_bytes(),
+        certificate_chain=(pki_dir / "client.pem").read_bytes(),
+    )
+    channel = grpc.aio.secure_channel(f"localhost:{port}", credentials)
+    try:
+        yield server, channel
+    finally:
+        await channel.close()

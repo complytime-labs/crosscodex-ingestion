@@ -162,6 +162,27 @@ chosen by this service, so the FIPS image inherits whatever its OpenSSL FIPS pro
 The container health check only opens a TCP connection to the gRPC port, because a gRPC channel check would
 need a client certificate.
 
+### Dev and test certificates
+
+`task certs` runs `scripts/devpki.py`, which writes a throwaway PKI to `.test-output/certs` (override with
+`CERTS_DIR=...`): `ca.pem`/`ca.key`, `server.pem`/`server.key` (SANs `localhost`, `127.0.0.1`, `ingestion`,
+`crosscodex-ingestion`), `client.pem`/`client.key` (CN `crosscodex-gateway`) and an ECDSA P-256 attestation pair
+(`attestation.key`, `attestation.pub`). Key files are mode 0600. Never use this CA outside development.
+
+- **Stale** means any of: a file missing or unparseable; a leftover temp directory from an interrupted run;
+  a key file readable by group/other; `ca.pem` not a CA; server/client not issued by the CA or missing the
+  right extended key usage; a private key not matching its certificate; a required server SAN missing;
+  the attestation keys not a pair; or less than 24 hours of validity left (`--min-valid-hours`).
+  `task certs` skips work when the set is fresh and `python scripts/devpki.py --verify` reports why it is not.
+- **Regeneration replaces the whole set with a new CA**, never individual files, so every previously issued
+  client certificate and any verifier holding the old `attestation.pub` must be re-issued or updated.
+- Concurrent runs are safe: generation holds a file lock next to the output directory, re-checks inside it, and
+  swaps the finished set in with a rename. pytest generates its own PKI in a temporary directory per run.
+- `task compose:up` generates the certs and starts `docker-compose.yml` with mutual TLS and attestation on,
+  mounting the directory read-only at `/certs`. The container user (uid 1000) must be able to read the 0600
+  keys: use host uid 1000 or, with rootless podman, `--userns=keep-id`. Verifiers use
+  `.test-output/certs/attestation.pub`; callers use `client.pem`, `client.key` and `ca.pem`.
+
 ### Attestation keys
 
 Attestations are signed with the key at `ATTESTATION_PRIVATE_KEY_PATH` and are verifiable with the key at

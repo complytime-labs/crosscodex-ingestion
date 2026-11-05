@@ -17,13 +17,18 @@ services:
       METRICS_PORT: "9090"
       LOG_LEVEL: "debug"
 
-      # DEVELOPMENT ONLY: plaintext, unauthenticated gRPC. Production must use the default
-      # GRPC_TLS_MODE=mutual with GRPC_TLS_CERT, GRPC_TLS_KEY and GRPC_TLS_CA (see README).
-      GRPC_TLS_MODE: "off"
+      # Mutual TLS with the throwaway PKI from `task certs` (mounted at /certs). Compose
+      # starts only after `task compose:up` has generated it. Never use this CA in production.
+      GRPC_TLS_MODE: "mutual"
+      GRPC_TLS_CERT: "/certs/server.pem"
+      GRPC_TLS_KEY: "/certs/server.key"
+      GRPC_TLS_CA: "/certs/ca.pem"
+      GRPC_ALLOWED_CLIENTS: "crosscodex-gateway"
 
-      # DEVELOPMENT ONLY: conversions are unattested. Production must set
-      # ATTESTATION_PRIVATE_KEY_PATH and ATTESTATION_PUBLIC_KEY_PATH (see README).
-      ATTESTATION_ENABLED: "false"
+      # Attestation signed with the generated key pair; verify with /certs/attestation.pub
+      ATTESTATION_ENABLED: "true"
+      ATTESTATION_PRIVATE_KEY_PATH: "/certs/attestation.key"
+      ATTESTATION_PUBLIC_KEY_PATH: "/certs/attestation.pub"
 
       # Storage configuration (filesystem mode for local development)
       STORAGE_BACKEND: "filesystem"
@@ -40,6 +45,9 @@ services:
       MAX_DOCUMENT_SIZE: "104857600"
     volumes:
       - ingestion-data:/data/documents
+      # Key files are mode 0600 owned by the host user; the container user (uid 1000) must be
+      # that user (rootless podman: add --userns=keep-id). See README "Dev and test certificates".
+      - ${CERTS_DIR:-./.test-output/certs}:/certs:ro
     depends_on:
       - nats
       - jaeger
