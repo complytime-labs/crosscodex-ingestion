@@ -1,0 +1,70 @@
+src/crosscodex_ingestion/state.py
+  s_112bf114bd2fc4::t_9cd6aa98aed339 149,151
+tests/integration/test_health.py
+  s_112bf114bd2fc4::t_9f3bcdb00ede97 12
+tests/unit/test_security.py
+  s_112bf114bd2fc4::t_39dcf53338921a 159
+  s_112bf114bd2fc4::t_9f3bcdb00ede97 21,25,29
+  s_112bf114bd2fc4::t_9cd6aa98aed339 150,167-168
+  s_112bf114bd2fc4::t_1cba6db9f19967 9
+src/crosscodex_ingestion/server.py
+  s_112bf114bd2fc4::t_fa61655d729e1e 101,114,211,213
+  s_112bf114bd2fc4::t_37f9ef75459605 164,182
+src/crosscodex_ingestion/security.py
+  s_112bf114bd2fc4::t_46dd7389639435 29
+  s_112bf114bd2fc4::t_e3ac7178063e4b 294-295,314-317,319
+src/crosscodex_ingestion/storage.py
+  s_112bf114bd2fc4::t_e3ac7178063e4b 93-94
+  s_112bf114bd2fc4::t_9cd6aa98aed339 77,101,109
+src/crosscodex_ingestion/audit.py
+  s_112bf114bd2fc4::t_fa61655d729e1e 15,21-23,40
+tests/unit/test_converter.py
+  s_112bf114bd2fc4::t_9f3bcdb00ede97 43,113,166,206,237,286,295
+tests/integration/test_conversion_e2e.py
+  s_112bf114bd2fc4::t_9f3bcdb00ede97 27-28,79,110,136,165,192
+  s_112bf114bd2fc4::t_1cba6db9f19967 20
+tests/fixtures/generate_fixtures.py
+  s_112bf114bd2fc4::t_9f3bcdb00ede97 42,64
+  s_112bf114bd2fc4::t_39dcf53338921a 4
+src/crosscodex_ingestion/service.py
+  s_112bf114bd2fc4::t_37f9ef75459605 104
+tests/unit/test_audit.py
+  s_112bf114bd2fc4::t_39dcf53338921a 165-184
+src/crosscodex_ingestion/attestation.py
+  s_112bf114bd2fc4::t_fa61655d729e1e 71-72
+  s_112bf114bd2fc4::t_9cd6aa98aed339 75-76
+src/crosscodex_ingestion/dispatch.py
+  s_112bf114bd2fc4::t_e3ac7178063e4b 28-30
+  s_112bf114bd2fc4::t_fa61655d729e1e 17,176
+  s_112bf114bd2fc4::t_9cd6aa98aed339 285,288
+src/crosscodex_ingestion/converter.py
+  s_112bf114bd2fc4::t_fa61655d729e1e 218,242
+src/crosscodex_ingestion/worker.py
+  s_112bf114bd2fc4::t_e3ac7178063e4b 196,200-202
+  s_112bf114bd2fc4::t_fa61655d729e1e 325
+  s_112bf114bd2fc4::t_9cd6aa98aed339 190
+tests/conftest.py
+  s_112bf114bd2fc4::t_1cba6db9f19967 3
+  s_112bf114bd2fc4::t_9f3bcdb00ede97 18,24,30,36,42
+tests/integration/test_security_e2e.py
+  s_112bf114bd2fc4::t_9f3bcdb00ede97 14,33,51,75,114
+src/crosscodex_ingestion/extractor.py
+  s_112bf114bd2fc4::t_9cd6aa98aed339 312-325,327,393,396-397,399
+  s_112bf114bd2fc4::t_fa61655d729e1e 89,353-354,436-437,465-468
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9012bb7dc2fa12ab4be6ac88cba18fedaa7e1ce2",
+  "prompts": {},
+  "sessions": {
+    "s_112bf114bd2fc4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "25a8825b-12de-494b-85b2-f4d715bea308",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "LLM (riotbox) <llm@riotbox>"
+    }
+  }
+}
