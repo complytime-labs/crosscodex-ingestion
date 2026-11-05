@@ -2,9 +2,9 @@ syntax = "proto3";
 
 package crosscodex.v1;
 
-option go_package = "github.com/complytime-labs/crosscodex/api/gen/go/crosscodex/v1;crosscodexv1";
-
 import "crosscodex/v1/common.proto";
+
+option go_package = "github.com/complytime-labs/crosscodex/api/gen/go/crosscodex/v1;crosscodexv1";  // protolint:disable:this MAX_LINE_LENGTH
 
 // IngestionService handles document conversion using Docling.
 // Converts PDF, DOCX, HTML to structured JSON without OSCAL knowledge.

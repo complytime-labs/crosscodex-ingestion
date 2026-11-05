@@ -2,9 +2,9 @@ from datetime import UTC, datetime
 from unittest.mock import MagicMock, patch
 
 import pytest
-from crosscodex_ingestion.proto.crosscodex.v1.common_pb2 import JobStatus
 
 from crosscodex_ingestion.config import IngestionSettings
+from crosscodex_ingestion.proto.crosscodex.v1.common_pb2 import JobStatus
 from crosscodex_ingestion.state import (
     DocumentRecord,
     MemoryStateBackend,

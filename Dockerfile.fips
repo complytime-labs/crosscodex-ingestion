@@ -1,25 +1,32 @@
 # CrossCodex Ingestion Service - FIPS 140-2 Compliant Container Image
 # Multi-stage build using Red Hat Universal Base Image (UBI9) with FIPS mode enabled
 
-# Stage 1: Builder - Install dependencies and generate proto stubs
-FROM registry.access.redhat.com/ubi9/python-312:latest AS builder
+# Stage 1: Builder - Install dependencies, generate proto stubs, install the package, fetch models
+FROM registry.access.redhat.com/ubi9/python-312:1-1793738546 AS builder
 
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 
 WORKDIR /app
 
-# UBI Python images run as arbitrary UID, ensure write access
+# UBI Python images run as arbitrary UID, ensure write access. Also install the shared libraries
+# OpenCV (imported by Docling's RapidOCR) needs, because docling-tools imports Docling to
+# download the models.
 USER 0
-RUN chown -R 1001:0 /app && chmod -R g=u /app
+RUN dnf install -y mesa-libGL glib2 libxcb && dnf clean all && \
+    chown -R 1001:0 /app && chmod -R g=u /app
 USER 1001
 
-# Copy and install Python dependencies first (layer caching)
+# The UBI Python image ships its Python 3.12 as a venv at /opt/app-root. `uv pip install --system`
+# ignores it and targets the system Python 3.9, so point uv at the venv instead.
+ENV VIRTUAL_ENV=/opt/app-root
+
+# Install third-party dependencies first (layer caching); the package itself needs src/ and README.md
 COPY --chown=1001:0 pyproject.toml .
-RUN uv pip install --system --no-cache .
+RUN uv pip install --no-cache -r pyproject.toml
 
 # Copy proto files and generate gRPC stubs
 COPY --chown=1001:0 proto/ proto/
-RUN uv pip install --system --no-cache grpcio-tools mypy-protobuf && \
+RUN uv pip install --no-cache grpcio-tools mypy-protobuf && \
     mkdir -p src/crosscodex_ingestion/proto/crosscodex/v1 && \
     python -m grpc_tools.protoc \
       --proto_path=proto \
@@ -35,34 +42,43 @@ RUN uv pip install --system --no-cache grpcio-tools mypy-protobuf && \
 RUN find src/crosscodex_ingestion/proto -name '*_pb2*.py' -exec \
     sed -i 's/from crosscodex\.v1/from crosscodex_ingestion.proto.crosscodex.v1/g' {} +
 
-# Copy application source
+# Copy application source and install the package (hatchling reads README.md and src/)
+COPY --chown=1001:0 README.md .
 COPY --chown=1001:0 src/ src/
+RUN uv pip install --no-cache --no-deps .
+
+# Pre-download Docling models: the sandboxed worker runs offline (HF_HUB_OFFLINE=1)
+RUN docling-tools models download -o /opt/app-root/docling-models
 
 # Stage 2: Runtime - Minimal FIPS-compliant production image
-FROM registry.access.redhat.com/ubi9-minimal:latest
+FROM registry.access.redhat.com/ubi9-minimal:9.8
 
 # Enable FIPS mode
 ENV FIPS_MODE=true
 
 WORKDIR /app
 
-# Install Python 3.12 runtime (no pip needed at runtime)
-RUN microdnf install -y python3.12 && \
+# Install Python 3.12 runtime (no pip needed at runtime) and the shared libraries OpenCV
+# (imported by Docling's RapidOCR) needs at import time
+RUN microdnf install -y python3.12 mesa-libGL glib2 libxcb && \
     microdnf clean all
 
 # Create non-root user (UBI convention: uid 1001, gid 0)
 RUN useradd -u 1001 -g 0 -m appuser && \
-    chown -R 1001:0 /app && \
-    chmod -R g=u /app
+    mkdir -p /data/documents && \
+    chown -R 1001:0 /app /data && \
+    chmod -R g=u /app /data
 
 # Copy installed packages from builder
 # Note: UBI Python site-packages path differs from standard python:3.12-slim
 COPY --from=builder --chown=1001:0 /opt/app-root/lib64/python3.12/site-packages /opt/app-root/lib64/python3.12/site-packages
 COPY --from=builder --chown=1001:0 /opt/app-root/lib/python3.12/site-packages /opt/app-root/lib/python3.12/site-packages
-COPY --from=builder --chown=1001:0 /app/src /app/src
+COPY --from=builder --chown=1001:0 /opt/app-root/docling-models /opt/app-root/docling-models
+
+ENV DOCLING_ARTIFACTS_PATH=/opt/app-root/docling-models
 
 # Set Python path to include both UBI and local site-packages
-ENV PYTHONPATH=/opt/app-root/lib64/python3.12/site-packages:/opt/app-root/lib/python3.12/site-packages:/app/src
+ENV PYTHONPATH=/opt/app-root/lib64/python3.12/site-packages:/opt/app-root/lib/python3.12/site-packages
 
 # Switch to non-root user
 USER 1001

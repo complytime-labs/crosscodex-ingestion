@@ -50,3 +50,19 @@ def test_rlimit_zero_unlimited():
 
     settings = IngestionSettings(rlimit_as_mb=0)
     assert settings.rlimit_as_mb == 0
+
+
+def test_rlimit_as_default_fits_torch_virtual_address_space():
+    """Docling/torch need tens of GB of virtual address space (measured ~40 GB VmPeak for a 32-page PDF)."""
+    from crosscodex_ingestion.config import IngestionSettings
+
+    assert IngestionSettings().rlimit_as_mb == 65536
+
+
+def test_time_defaults_allow_large_documents():
+    """NIST SP 800-53r5 (492 pages) needs >12 min wall and >23 CPU-minutes (RLIMIT_CPU counts all threads)."""
+    from crosscodex_ingestion.config import IngestionSettings
+
+    settings = IngestionSettings()
+    assert settings.max_processing_time == 3600
+    assert settings.rlimit_cpu == 21600

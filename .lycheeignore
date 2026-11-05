@@ -1,0 +1,38 @@
+# .lycheeignore — URLs lychee should NOT check
+#
+# lychee reads exactly one such file, so this repo-root copy replaces the shared one from
+# megalint-config: the shared entries are copied below, repo-specific ones are at the end.
+#
+# Format: one regular expression per line, matched against the extracted URL.
+# Lines starting with `#` are comments.
+#
+# Curation principle: only ignore URLs that cannot resolve by design. A link
+# that is merely slow or rate-limited belongs in lychee's retry and accept
+# settings; a link that is genuinely broken must be fixed, not ignored.
+
+# -----------------------------------------------------------------------------
+# URLs assembled at runtime
+# -----------------------------------------------------------------------------
+# lychee extracts the literal source text, so template placeholders are never
+# substituted. A shell `${VAR}` survives verbatim (or percent-encoded as
+# `$%7BVAR%7D` when it follows the host), and a GitHub Actions `${{ ... }}`
+# expression truncates at the `$` because `{` cannot appear in a URL. All three
+# forms produce a request to an address that only exists once the job expands
+# it, so the result says nothing about link health.
+^https?://.*(\$\{|\$%7B|\$$)
+
+# -----------------------------------------------------------------------------
+# in-toto predicate type URIs
+# -----------------------------------------------------------------------------
+# `cosign attest --type=<uri>` takes a namespace identifier, not a fetchable
+# document — cosign uses the URI verbatim as the statement's predicateType.
+# cosign.sigstore.dev has no DNS record at all, so the check fails as a
+# connection error on every run regardless of network conditions.
+^https://cosign\.sigstore\.dev/attestation/
+
+# -----------------------------------------------------------------------------
+# Repo-specific exclusions
+# -----------------------------------------------------------------------------
+# docker-compose.yml health-check and OTLP endpoints address compose services
+# (or the container's own loopback), which only resolve inside the compose network.
+^https?://(localhost|jaeger|nats)(:[0-9]+)?(/|$)

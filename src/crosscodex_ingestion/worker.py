@@ -11,6 +11,7 @@ This module provides the core run_conversion function that coordinates:
 8. State management (PENDING → RUNNING → COMPLETED/FAILED)
 """
 
+import asyncio
 import hashlib
 import json
 import logging
@@ -51,6 +52,21 @@ JOB_STATUS_FAILED = 4
 ERROR_CODE_INVALID_ARGUMENT = 1
 ERROR_CODE_RESOURCE_EXHAUSTED = 5
 ERROR_CODE_INTERNAL = 6
+
+
+def _fetch_source(source_uri: str, settings: IngestionSettings) -> tuple[bytes, str]:
+    """Validate and download *source_uri*; return (bytes, detected_format).
+
+    Blocking (DNS, HTTP); call via asyncio.to_thread.
+    """
+    validate_url(source_uri)
+    with fetch_url(
+        source_uri,
+        max_bytes=settings.max_url_bytes,
+        timeout=settings.url_timeout,
+        max_redirects=settings.max_redirects,
+    ) as (file_path, file_format):
+        return Path(file_path).read_bytes(), file_format
 
 
 async def run_conversion(
@@ -132,21 +148,10 @@ async def run_conversion(
                 span.set_attribute("tenant.id", tenant_id)
                 span.set_attribute("source.uri", source_uri)
 
-                # Validate URL first
-                validate_url(source_uri)
-
-                # Fetch from URL
                 logger.info("Fetching document from URL: %s", source_uri)
-                with fetch_url(
-                    source_uri,
-                    max_bytes=settings.max_url_bytes,
-                    timeout=settings.url_timeout,
-                ) as (file_path, file_format):
-                    # Read the fetched file
-                    input_bytes = Path(file_path).read_bytes()
-                    detected_format = file_format
-                    span.set_attribute("document.size_bytes", len(input_bytes))
-                    span.set_attribute("document.format", file_format)
+                input_bytes, detected_format = await asyncio.to_thread(_fetch_source, source_uri, settings)
+                span.set_attribute("document.size_bytes", len(input_bytes))
+                span.set_attribute("document.format", detected_format)
 
         elif content:
             # Use provided bytes
@@ -182,20 +187,19 @@ async def run_conversion(
             span.set_attribute("document.validated_format", validated_format)
 
         # Step 4: Validate content hash (if provided)
-        if "sha256" in metadata and metadata["sha256"]:
+        if metadata.get("sha256"):
             logger.info("Validating content hash for document %s", document_id)
             validate_content_hash(input_bytes, metadata["sha256"])
 
         # Step 5: Write bytes to temp file
         logger.info("Writing input to temp file for document %s", document_id)
-        temp_file = tempfile.NamedTemporaryFile(
+        with tempfile.NamedTemporaryFile(
             suffix=f".{validated_format}",
             delete=False,
             prefix=f"crosscodex_{document_id}_",
-        )
-        temp_file_path = Path(temp_file.name)
-        temp_file.write(input_bytes)
-        temp_file.close()
+        ) as temp_file:
+            temp_file_path = Path(temp_file.name)
+            temp_file.write(input_bytes)
 
         # Step 6: Convert document
         with tracer.start_as_current_span("ingestion.convert") as span:
@@ -205,7 +209,9 @@ async def run_conversion(
             span.set_attribute("document.size_bytes", len(input_bytes))
 
             logger.info("Converting document %s (format: %s)", document_id, validated_format)
-            conversion_result: dict[str, Any] = convert_document(
+            # The subprocess call blocks for up to max_processing_time; keep the event loop free.
+            conversion_result: dict[str, Any] = await asyncio.to_thread(
+                convert_document,
                 str(temp_file_path),
                 validated_format,
                 settings,
@@ -221,7 +227,9 @@ async def run_conversion(
             structured_json_bytes = structured_json.encode("utf-8")
             span.set_attribute("output.size_bytes", len(structured_json_bytes))
 
-            structured_json_uri = storage.upload(
+            # Network I/O for S3; keep it off the event loop.
+            structured_json_uri = await asyncio.to_thread(
+                storage.upload,
                 tenant_id,
                 document_id,
                 "structured.json",
@@ -268,7 +276,8 @@ async def run_conversion(
                 # Upload attestation link to storage
                 logger.info("Uploading attestation link for document %s", document_id)
                 link_bytes = json.dumps(link, separators=(",", ":")).encode("utf-8")
-                attestation_uri = storage.upload(
+                attestation_uri = await asyncio.to_thread(
+                    storage.upload,
                     tenant_id,
                     document_id,
                     "attestation.link",
@@ -313,7 +322,7 @@ async def run_conversion(
 
     except Exception as exc:
         # Handle all errors by updating state to FAILED
-        logger.exception("Conversion failed for document %s: %s", document_id, exc)
+        logger.exception("Conversion failed for document %s", document_id)
 
         # Determine error code based on exception type
         error_code = ERROR_CODE_INTERNAL

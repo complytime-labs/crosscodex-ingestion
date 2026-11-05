@@ -68,14 +68,12 @@ class AttestationManager:
             signer = CryptoSigner(private_key)
 
             # FIPS mode validation
-            if self._settings.fips_mode:
-                if not signer.public_key.scheme.startswith("ecdsa-"):
-                    raise ValueError(f"FIPS mode requires ECDSA keys, got {signer.public_key.scheme}")
+            if self._settings.fips_mode and not signer.public_key.scheme.startswith("ecdsa-"):
+                raise ValueError(f"FIPS mode requires ECDSA keys, got {signer.public_key.scheme}")
 
             return signer
-        else:
-            # Generate ephemeral ECDSA key
-            return CryptoSigner.generate_ecdsa()
+        # Generate ephemeral ECDSA key
+        return CryptoSigner.generate_ecdsa()
 
     def create_link(
         self,

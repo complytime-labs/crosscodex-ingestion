@@ -1,48 +1,45 @@
-import os
 import tempfile
 from collections.abc import AsyncGenerator
+from pathlib import Path
 
 import grpc
 import pytest
-from crosscodex_ingestion.proto.crosscodex.v1 import ingestion_pb2_grpc
 
 from crosscodex_ingestion.attestation import create_attestation_manager
 from crosscodex_ingestion.audit import AuditPublisher
 from crosscodex_ingestion.config import IngestionSettings
 from crosscodex_ingestion.dispatch import create_dispatch
+from crosscodex_ingestion.proto.crosscodex.v1 import ingestion_pb2_grpc
+from crosscodex_ingestion.server import create_grpc_server
 from crosscodex_ingestion.service import IngestionServiceServicer
 from crosscodex_ingestion.state import create_state_backend
 from crosscodex_ingestion.storage import create_storage
 
-FIXTURES_DIR = os.path.join(os.path.dirname(__file__), "fixtures", "documents")
+FIXTURES_DIR = Path(__file__).parent / "fixtures" / "documents"
 
 
 @pytest.fixture
 def sample_html() -> bytes:
     """Load sample HTML fixture."""
-    with open(os.path.join(FIXTURES_DIR, "sample.html"), "rb") as f:
-        return f.read()
+    return (FIXTURES_DIR / "sample.html").read_bytes()
 
 
 @pytest.fixture
 def sample_txt() -> bytes:
     """Load sample TXT fixture."""
-    with open(os.path.join(FIXTURES_DIR, "sample.txt"), "rb") as f:
-        return f.read()
+    return (FIXTURES_DIR / "sample.txt").read_bytes()
 
 
 @pytest.fixture
 def sample_pdf() -> bytes:
     """Load sample PDF fixture."""
-    with open(os.path.join(FIXTURES_DIR, "sample.pdf"), "rb") as f:
-        return f.read()
+    return (FIXTURES_DIR / "sample.pdf").read_bytes()
 
 
 @pytest.fixture
 def sample_docx() -> bytes:
     """Load sample DOCX fixture."""
-    with open(os.path.join(FIXTURES_DIR, "sample.docx"), "rb") as f:
-        return f.read()
+    return (FIXTURES_DIR / "sample.docx").read_bytes()
 
 
 @pytest.fixture
@@ -99,7 +96,7 @@ async def grpc_server_and_channel() -> AsyncGenerator[tuple[grpc.aio.Server, grp
         )
 
         # Create gRPC server
-        server = grpc.aio.server()
+        server = create_grpc_server(settings)
         ingestion_pb2_grpc.add_IngestionServiceServicer_to_server(servicer, server)
 
         # Bind to ephemeral port

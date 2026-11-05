@@ -1,0 +1,56 @@
+# Single ruff config for `task lint` and MegaLinter (.mega-linter.local.yml drops the
+# shared profile's CLI --select, which would otherwise override `ignore` below).
+line-length = 120
+target-version = "py312"
+src = ["src", "tests"]
+
+[lint]
+select = [
+    "E", "W", "F", "I", "N", "UP", "YTT", "BLE", "B", "A", "COM", "C4", "DTZ", "T10", "DJ", "EM",
+    "EXE", "ICN", "G", "INP", "PIE", "T20", "PT", "Q", "RSE", "RET", "SLF", "SIM", "TID", "TCH",
+    "INT", "ARG", "PTH", "TD", "FIX", "ERA", "PD", "PGH", "PL", "TRY", "FLY", "NPY", "PERF",
+    "FURB", "LOG", "RUF", "S",
+]
+ignore = [
+    "COM812",  # conflicts with the formatter
+    "EM101",   # exception messages as literals/f-strings are clearer than a temp variable
+    "EM102",
+    "TRY003",  # same: messages are specific to the raise site
+    "PLR2004", # magic values: protocol/status constants read better inline
+    "PLR0912", # branch/statement/argument counts: worker and security entry points are linear pipelines
+    "PLR0913",
+    "PLR0917",
+    "PLR0915",
+    "PLC0415", # docling/torch are imported lazily to keep server start and the worker fast
+    "ARG001",  # unused arguments are dictated by gRPC/NATS/pytest callback signatures
+    "ARG002",
+    "N802",    # gRPC servicer method names come from the generated proto
+    "N818",    # ConversionTimeout is a public exception name used across modules and tests
+    "TRY301",
+    "BLE001",  # service boundaries catch broad exceptions to report FAILED rather than crash
+    "TD002",   # TODO author/link rules: no TODOs are allowed in this repo anyway (see FIX002)
+    "TD003",
+    "FIX002",
+    "S603",    # subprocess with untrusted input - our usage is controlled by validation
+]
+
+[lint.per-file-ignores]
+"tests/fixtures/generate_fixtures.py" = [
+    "T201",   # command-line script reports progress on stdout
+]
+"src/crosscodex_ingestion/extractor.py" = [
+    "N806",   # local aliases mirror the docling enum constants
+    "SLF001", # parse_document drives the extractor's own internals
+]
+"tests/**" = [
+    "S101",   # assert allowed in tests
+    "S106",   # hardcoded password allowed in test fixtures
+    "S108",   # insecure temp file allowed in tests
+    "SLF001", # tests exercise private members
+    "INP001", # test directories are not packages
+]
+
+[lint.isort]
+# The generated proto package is gitignored, so ruff cannot resolve crosscodex_ingestion.proto.*
+# on a clean checkout (CI) and would classify the whole package as third-party.
+known-first-party = ["crosscodex_ingestion"]

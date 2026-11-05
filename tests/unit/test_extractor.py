@@ -1,7 +1,7 @@
 """Unit tests for the extractor module."""
 
 from collections.abc import Iterator
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from crosscodex_ingestion.extractor import ExtractionResult, extract_elements
 
@@ -18,6 +18,14 @@ class DocItemLabel:
     PAGE_HEADER = "page_header"
     PAGE_FOOTER = "page_footer"
     PICTURE = "picture"
+    TITLE = "title"
+
+
+@dataclass
+class MockProvenance:
+    """Mock Docling ProvenanceItem (only the page number is read)."""
+
+    page_no: int
 
 
 @dataclass
@@ -27,13 +35,18 @@ class MockDocItem:
     label: str
     text: str = ""
     level: int = 1
+    prov: list[MockProvenance] = field(default_factory=list)
 
 
 class MockDoclingDocument:
     """Mock DoclingDocument for testing."""
 
-    def __init__(self, items: list[MockDocItem]):
+    def __init__(self, items: list[MockDocItem], pages: int = 0):
         self._items = items
+        self._pages = pages
+
+    def num_pages(self) -> int:
+        return self._pages
 
     def iterate_items(self) -> Iterator[tuple[MockDocItem, int]]:
         """Yield (item, depth) tuples."""
@@ -306,3 +319,57 @@ Normal text here.
         all_content = " ".join(e["content"] for e in result.elements)
         assert "<!--" not in all_content
         assert "comment -->" not in all_content
+
+
+class TestDoclingStructureFidelity:
+    """Real documents (NIST SP 800-171r3) repeat section headings such as DISCUSSION on every requirement."""
+
+    def test_repeated_section_headings_are_kept_in_typed_documents(self):
+        """Docling labels page headers separately, so a repeated SECTION_HEADER is real structure."""
+        items = []
+        for req in ("03.01.01 Account Management", "03.01.02 Access Enforcement", "03.01.03 Flow Enforcement"):
+            items += [
+                MockDocItem(label=DocItemLabel.SECTION_HEADER, text=req, level=2),
+                MockDocItem(label=DocItemLabel.TEXT, text=f"Requirement text of {req}."),
+                MockDocItem(label=DocItemLabel.SECTION_HEADER, text="DISCUSSION", level=3),
+                MockDocItem(label=DocItemLabel.TEXT, text=f"Informative discussion of {req}."),
+            ]
+        result = extract_elements(MockDoclingDocument(items), "", "pdf")
+
+        by_id = {e["element_id"]: e for e in result.elements}
+        discussions = [e for e in result.elements if e["type"] == "heading" and e["content"] == "DISCUSSION"]
+        assert len(discussions) == 3
+        for d in discussions:
+            assert by_id[d["parent_id"]]["level"] == 2
+        informative = [e for e in result.elements if e["content"].startswith("Informative discussion")]
+        assert all(by_id[e["parent_id"]]["content"] == "DISCUSSION" for e in informative)
+
+    def test_elements_carry_their_source_page(self):
+        items = [
+            MockDocItem(label=DocItemLabel.SECTION_HEADER, text="Scope", prov=[MockProvenance(page_no=3)]),
+            MockDocItem(label=DocItemLabel.TEXT, text="Applies to all systems.", prov=[MockProvenance(page_no=4)]),
+            MockDocItem(label=DocItemLabel.TEXT, text="No provenance recorded."),
+        ]
+        result = extract_elements(MockDoclingDocument(items, pages=4), "", "pdf")
+
+        assert [e["page"] for e in result.elements] == [3, 4, None]
+
+    def test_metadata_reports_page_count_and_document_title(self):
+        items = [
+            MockDocItem(label=DocItemLabel.TITLE, text="  Protecting Controlled Unclassified Information  "),
+            MockDocItem(label=DocItemLabel.SECTION_HEADER, text="Introduction"),
+            MockDocItem(label=DocItemLabel.TITLE, text="A later title-styled line"),
+        ]
+        result = extract_elements(MockDoclingDocument(items, pages=120), "", "pdf")
+
+        assert result.metadata["page_count"] == 120
+        assert result.metadata["title"] == "Protecting Controlled Unclassified Information"
+        assert all(e["type"] != "title" for e in result.elements)
+
+    def test_unpaginated_documents_report_no_page_count(self):
+        """HTML and DOCX have no pages; Docling reports 0, which is not a page count."""
+        items = [MockDocItem(label=DocItemLabel.TEXT, text="Body text of an HTML page.")]
+        result = extract_elements(MockDoclingDocument(items, pages=0), "", "html")
+
+        assert result.metadata["page_count"] is None
+        assert result.metadata["title"] is None

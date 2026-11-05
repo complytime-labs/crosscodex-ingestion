@@ -1,27 +1,27 @@
 """Unit tests for gRPC service layer."""
 
 from datetime import UTC, datetime
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, MagicMock
 
 import grpc
 import pytest
-from crosscodex_ingestion.proto.crosscodex.v1 import common_pb2, ingestion_pb2
 
 from crosscodex_ingestion.config import IngestionSettings
+from crosscodex_ingestion.proto.crosscodex.v1 import common_pb2, ingestion_pb2
 from crosscodex_ingestion.service import IngestionServiceServicer
 from crosscodex_ingestion.state import DocumentRecord, MemoryStateBackend
 
 
 class MockServicerContext:
-    """Mock gRPC servicer context that captures abort() calls."""
+    """Mock grpc.aio servicer context: abort() is a coroutine that raises only when awaited."""
 
     def __init__(self):
         self.aborted = False
         self.abort_code = None
         self.abort_details = None
 
-    def abort(self, code: grpc.StatusCode, details: str):
-        """Capture abort call."""
+    async def abort(self, code: grpc.StatusCode, details: str):
+        """Capture abort call and stop processing, as grpc.aio does."""
         self.aborted = True
         self.abort_code = code
         self.abort_details = details
@@ -371,3 +371,57 @@ class TestListDocuments:
 
         assert context.aborted
         assert context.abort_code == grpc.StatusCode.INVALID_ARGUMENT
+
+
+class TestAbortStopsProcessing:
+    """A failed validation must stop the RPC before any state or dispatch side effect."""
+
+    @pytest.mark.asyncio
+    async def test_convert_empty_tenant_creates_no_state_and_dispatches_nothing(
+        self, servicer, mock_dispatch, state_backend
+    ):
+        request = ingestion_pb2.ConvertDocumentRequest(
+            tenant_context=common_pb2.TenantContext(tenant_id=""),
+            content=b"fake PDF content",
+        )
+
+        with pytest.raises(grpc.RpcError):
+            await servicer.ConvertDocument(request, MockServicerContext())
+
+        mock_dispatch.dispatch.assert_not_called()
+        records, _ = state_backend.list_documents(tenant_id="", page_size=10, page_token="")
+        assert records == []
+
+    @pytest.mark.asyncio
+    async def test_convert_without_source_dispatches_nothing(self, servicer, mock_dispatch):
+        request = ingestion_pb2.ConvertDocumentRequest(
+            tenant_context=common_pb2.TenantContext(tenant_id="tenant-a"),
+        )
+
+        with pytest.raises(grpc.RpcError):
+            await servicer.ConvertDocument(request, MockServicerContext())
+
+        mock_dispatch.dispatch.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_list_empty_tenant_does_not_query_state(self, servicer):
+        servicer._state = MagicMock()
+        request = ingestion_pb2.ListDocumentsRequest(tenant_context=common_pb2.TenantContext(tenant_id=""))
+
+        with pytest.raises(grpc.RpcError):
+            await servicer.ListDocuments(request, MockServicerContext())
+
+        servicer._state.list_documents.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_get_missing_document_aborts_not_found_not_runtime_error(self, servicer):
+        request = ingestion_pb2.GetDocumentRequest(
+            tenant_context=common_pb2.TenantContext(tenant_id="tenant-a"),
+            document_id="nonexistent",
+        )
+        context = MockServicerContext()
+
+        with pytest.raises(grpc.RpcError):
+            await servicer.GetDocument(request, context)
+
+        assert context.abort_code == grpc.StatusCode.NOT_FOUND

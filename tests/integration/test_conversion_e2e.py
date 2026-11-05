@@ -8,23 +8,24 @@ import asyncio
 import sys
 
 import pytest
+
 from crosscodex_ingestion.proto.crosscodex.v1 import common_pb2, ingestion_pb2, ingestion_pb2_grpc
 
 # Check if Docling can actually run (import + subprocess viability)
 DOCLING_AVAILABLE = False
 try:
-    import os
     import subprocess
     import sys
     import tempfile
+    from pathlib import Path
 
     import docling  # noqa: F401
 
     with tempfile.NamedTemporaryFile(suffix=".py", mode="w", delete=False) as f:
         f.write("from docling.document_converter import DocumentConverter; print('ok')")
         f.flush()
-        r = subprocess.run([sys.executable, f.name], capture_output=True, timeout=30)
-        os.unlink(f.name)
+        r = subprocess.run([sys.executable, f.name], capture_output=True, timeout=30, check=False)
+        Path(f.name).unlink()
         DOCLING_AVAILABLE = r.returncode == 0
 except Exception:  # noqa: S110
     # Docling availability check is best-effort
@@ -75,7 +76,7 @@ async def poll_until_complete(
 @pytest.mark.asyncio
 async def test_convert_html_end_to_end(grpc_server_and_channel, sample_html):
     """Convert HTML document and verify COMPLETED status with structured output."""
-    server, channel = grpc_server_and_channel
+    _server, channel = grpc_server_and_channel
     stub = ingestion_pb2_grpc.IngestionServiceStub(channel)
 
     # Submit conversion request
@@ -106,7 +107,7 @@ async def test_convert_html_end_to_end(grpc_server_and_channel, sample_html):
 @pytest.mark.asyncio
 async def test_convert_txt_end_to_end(grpc_server_and_channel, sample_txt):
     """Convert TXT document and verify COMPLETED status."""
-    server, channel = grpc_server_and_channel
+    _server, channel = grpc_server_and_channel
     stub = ingestion_pb2_grpc.IngestionServiceStub(channel)
 
     request = ingestion_pb2.ConvertDocumentRequest(
@@ -132,7 +133,7 @@ async def test_convert_pdf_end_to_end(grpc_server_and_channel, sample_pdf):
 
     PDF conversion with Docling may require model downloads and is slower.
     """
-    server, channel = grpc_server_and_channel
+    _server, channel = grpc_server_and_channel
     stub = ingestion_pb2_grpc.IngestionServiceStub(channel)
 
     request = ingestion_pb2.ConvertDocumentRequest(
@@ -161,7 +162,7 @@ async def test_convert_docx_end_to_end(grpc_server_and_channel, sample_docx):
 
     DOCX conversion with Docling may require model downloads and is slower.
     """
-    server, channel = grpc_server_and_channel
+    _server, channel = grpc_server_and_channel
     stub = ingestion_pb2_grpc.IngestionServiceStub(channel)
 
     request = ingestion_pb2.ConvertDocumentRequest(
@@ -188,7 +189,7 @@ async def test_convert_docx_end_to_end(grpc_server_and_channel, sample_docx):
 @pytest.mark.asyncio
 async def test_list_documents_returns_submitted_documents(grpc_server_and_channel, sample_txt):
     """Verify ListDocuments returns documents submitted for a tenant."""
-    server, channel = grpc_server_and_channel
+    _server, channel = grpc_server_and_channel
     stub = ingestion_pb2_grpc.IngestionServiceStub(channel)
 
     tenant_id = "tenant-list-test"

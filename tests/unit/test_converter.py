@@ -12,9 +12,12 @@ import pytest
 
 from crosscodex_ingestion.config import IngestionSettings
 from crosscodex_ingestion.converter import (
+    PAGE_LIMIT_EXIT_CODE,
     ConversionError,
     ConversionTimeout,
+    DocumentLimitError,
     convert_document,
+    validate_artifacts_path,
 )
 
 
@@ -37,7 +40,7 @@ class TestConvertDocument:
                 "metadata": {"element_count": 1, "detected_format": "pdf", "processing_time_ms": 123.45},
             }
             output_path.parent.mkdir(parents=True, exist_ok=True)
-            with open(output_path, "w") as f:
+            with Path(output_path).open("w") as f:
                 json.dump(output_data, f)
             return Mock(returncode=0)
 
@@ -107,7 +110,7 @@ class TestConvertDocument:
             output_path = Path(cmd[3])
             output_data = {"elements": [], "metadata": {}}
             output_path.parent.mkdir(parents=True, exist_ok=True)
-            with open(output_path, "w") as f:
+            with Path(output_path).open("w") as f:
                 json.dump(output_data, f)
             return Mock(returncode=0)
 
@@ -160,7 +163,7 @@ class TestConvertDocument:
             output_path = Path(cmd[3])
             output_data = {"elements": [], "metadata": {}}
             output_path.parent.mkdir(parents=True, exist_ok=True)
-            with open(output_path, "w") as f:
+            with Path(output_path).open("w") as f:
                 json.dump(output_data, f)
             return Mock(returncode=0)
 
@@ -200,7 +203,7 @@ class TestConvertDocument:
             output_path = Path(cmd[3])
             output_data = {"elements": [], "metadata": {}}
             output_path.parent.mkdir(parents=True, exist_ok=True)
-            with open(output_path, "w") as f:
+            with Path(output_path).open("w") as f:
                 json.dump(output_data, f)
             return Mock(returncode=0)
 
@@ -218,8 +221,8 @@ class TestConvertDocument:
 
         # Should have three "0" values for the rlimits
         # The args are: script_path, input_path, output_path, format_hint, rlimit_as, rlimit_cpu, rlimit_fsize
-        # Last three should be "0"
-        assert cmd[-3:] == ["0", "0", "0"]
+        # The three rlimits precede the artifacts path and should be "0"
+        assert cmd[-5:-2] == ["0", "0", "0"]
 
     @patch("crosscodex_ingestion.converter.subprocess.run")
     @patch("crosscodex_ingestion.converter.shutil.copy2")
@@ -231,7 +234,7 @@ class TestConvertDocument:
             output_path = Path(cmd[3])
             output_data = {"elements": [], "metadata": {}}
             output_path.parent.mkdir(parents=True, exist_ok=True)
-            with open(output_path, "w") as f:
+            with Path(output_path).open("w") as f:
                 json.dump(output_data, f)
             return Mock(returncode=0)
 
@@ -280,6 +283,7 @@ with open("{output_file}", "w") as f:
                 [sys.executable, str(worker_script), "arg1", "arg2"],
                 capture_output=True,
                 timeout=5,
+                check=False,
                 env={"PATH": os.environ.get("PATH", "")},
             )
 
@@ -288,7 +292,7 @@ with open("{output_file}", "w") as f:
             assert output_file.exists()
 
             # Verify the content
-            with open(output_file) as f:
+            with Path(output_file).open() as f:
                 data = json.load(f)
 
             assert data["test"] == "success"
@@ -309,3 +313,143 @@ class TestExceptionClasses:
         exc = ConversionTimeout("test timeout")
         assert isinstance(exc, Exception)
         assert str(exc) == "test timeout"
+
+
+def _capture_cmd_and_env(mock_subprocess_run):
+    """Make the mocked subprocess write a valid output file; return the recorded call kwargs."""
+
+    def write_output_file(cmd, *args, **kwargs):
+        Path(cmd[3]).write_text(json.dumps({"elements": [], "metadata": {}}))
+        return Mock(returncode=0)
+
+    mock_subprocess_run.side_effect = write_output_file
+
+
+class TestOfflineModels:
+    """The sandboxed worker must use pre-downloaded models and never reach the network."""
+
+    @patch("crosscodex_ingestion.converter.subprocess.run")
+    @patch("crosscodex_ingestion.converter.shutil.copy2")
+    def test_artifacts_path_passed_to_worker(self, mock_copy2, mock_subprocess_run):
+        _capture_cmd_and_env(mock_subprocess_run)
+        settings = IngestionSettings(docling_artifacts_path="/opt/docling-models")
+
+        convert_document("/path/to/doc.pdf", "pdf", settings)
+
+        assert "/opt/docling-models" in mock_subprocess_run.call_args[0][0]
+
+    @patch("crosscodex_ingestion.converter.subprocess.run")
+    @patch("crosscodex_ingestion.converter.shutil.copy2")
+    def test_worker_env_forces_hf_offline_and_leaks_nothing_else(self, mock_copy2, mock_subprocess_run, monkeypatch):
+        monkeypatch.setenv("AWS_SECRET_ACCESS_KEY", "should-not-leak")
+        _capture_cmd_and_env(mock_subprocess_run)
+
+        convert_document("/path/to/doc.pdf", "pdf", IngestionSettings(docling_artifacts_path="/m"))
+
+        env = mock_subprocess_run.call_args.kwargs["env"]
+        assert env["HF_HUB_OFFLINE"] == "1"
+        assert set(env) <= {"PATH", "HF_HUB_OFFLINE", "PYTHONPATH"}
+
+    @patch("crosscodex_ingestion.converter.subprocess.run")
+    @patch("crosscodex_ingestion.converter.shutil.copy2")
+    def test_worker_inherits_pythonpath_so_it_can_import_the_package(
+        self, mock_copy2, mock_subprocess_run, monkeypatch
+    ):
+        """The FIPS image locates the package and Docling only through PYTHONPATH."""
+        monkeypatch.setenv("PYTHONPATH", "/opt/app-root/lib/python3.12/site-packages")
+        _capture_cmd_and_env(mock_subprocess_run)
+
+        convert_document("/path/to/doc.pdf", "pdf", IngestionSettings(docling_artifacts_path="/m"))
+
+        assert mock_subprocess_run.call_args.kwargs["env"]["PYTHONPATH"] == "/opt/app-root/lib/python3.12/site-packages"
+
+    @patch("crosscodex_ingestion.converter.subprocess.run")
+    @patch("crosscodex_ingestion.converter.shutil.copy2")
+    def test_worker_env_has_no_pythonpath_when_parent_has_none(self, mock_copy2, mock_subprocess_run, monkeypatch):
+        monkeypatch.delenv("PYTHONPATH", raising=False)
+        _capture_cmd_and_env(mock_subprocess_run)
+
+        convert_document("/path/to/doc.pdf", "pdf", IngestionSettings(docling_artifacts_path="/m"))
+
+        assert "PYTHONPATH" not in mock_subprocess_run.call_args.kwargs["env"]
+
+
+class TestValidateArtifactsPath:
+    def test_unset_path_is_refused_with_download_instructions(self):
+        with pytest.raises(ValueError, match=r"DOCLING_ARTIFACTS_PATH.*docling-tools models download -o"):
+            validate_artifacts_path("")
+
+    def test_missing_directory_is_refused(self, tmp_path):
+        with pytest.raises(ValueError, match="not a directory"):
+            validate_artifacts_path(str(tmp_path / "absent"))
+
+    def test_regular_file_is_refused(self, tmp_path):
+        file_path = tmp_path / "f"
+        file_path.write_text("x")
+        with pytest.raises(ValueError, match="not a directory"):
+            validate_artifacts_path(str(file_path))
+
+    def test_existing_directory_is_accepted(self, tmp_path):
+        validate_artifacts_path(str(tmp_path))
+
+
+class TestDocumentLimits:
+    """max_pages and max_extraction_length are enforced, never silently truncated."""
+
+    @patch("crosscodex_ingestion.converter.subprocess.run")
+    @patch("crosscodex_ingestion.converter.shutil.copy2")
+    def test_max_pages_passed_to_worker(self, mock_copy2, mock_subprocess_run):
+        _capture_cmd_and_env(mock_subprocess_run)
+
+        convert_document("/path/to/doc.pdf", "pdf", IngestionSettings(max_pages=42))
+
+        assert mock_subprocess_run.call_args[0][0][-1] == "42"
+
+    @patch("crosscodex_ingestion.converter.subprocess.run")
+    @patch("crosscodex_ingestion.converter.shutil.copy2")
+    def test_page_limit_exit_code_raises_limit_error_without_leaking_stderr(self, mock_copy2, mock_subprocess_run):
+        mock_subprocess_run.return_value = Mock(returncode=PAGE_LIMIT_EXIT_CODE, stderr="Traceback /srv/secret/path")
+
+        with pytest.raises(DocumentLimitError) as exc_info:
+            convert_document("/path/to/doc.pdf", "pdf", IngestionSettings(max_pages=10))
+
+        assert "10 pages" in str(exc_info.value)
+        assert "/srv/secret" not in str(exc_info.value)
+        assert isinstance(exc_info.value, ValueError)
+
+    @patch("crosscodex_ingestion.converter.subprocess.run")
+    @patch("crosscodex_ingestion.converter.shutil.copy2")
+    def test_other_nonzero_exit_is_not_a_limit_error(self, mock_copy2, mock_subprocess_run):
+        mock_subprocess_run.return_value = Mock(returncode=1, stderr="boom")
+
+        with pytest.raises(ConversionError):
+            convert_document("/path/to/doc.pdf", "pdf", IngestionSettings())
+
+    @patch("crosscodex_ingestion.converter.subprocess.run")
+    @patch("crosscodex_ingestion.converter.shutil.copy2")
+    def test_output_over_max_extraction_length_is_rejected(self, mock_copy2, mock_subprocess_run):
+        payload = json.dumps({"elements": [], "metadata": {}}, separators=(",", ":"))
+
+        def write_output(cmd, *args, **kwargs):
+            Path(cmd[3]).write_text(payload)
+            return Mock(returncode=0)
+
+        mock_subprocess_run.side_effect = write_output
+
+        with pytest.raises(DocumentLimitError, match="exceeds the maximum of"):
+            convert_document("/path/to/doc.pdf", "pdf", IngestionSettings(max_extraction_length=len(payload) - 1))
+
+    @patch("crosscodex_ingestion.converter.subprocess.run")
+    @patch("crosscodex_ingestion.converter.shutil.copy2")
+    def test_output_exactly_at_max_extraction_length_is_accepted(self, mock_copy2, mock_subprocess_run):
+        payload = json.dumps({"elements": [], "metadata": {}}, separators=(",", ":"))
+
+        def write_output(cmd, *args, **kwargs):
+            Path(cmd[3]).write_text(payload)
+            return Mock(returncode=0)
+
+        mock_subprocess_run.side_effect = write_output
+
+        result = convert_document("/path/to/doc.pdf", "pdf", IngestionSettings(max_extraction_length=len(payload)))
+
+        assert result == {"elements": [], "metadata": {}}

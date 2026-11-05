@@ -39,7 +39,7 @@ class IngestionServiceServicer(ingestion_pb2_grpc.IngestionServiceServicer):
         self._dispatch = dispatch_backend
 
     async def ConvertDocument(
-        self, request: ingestion_pb2.ConvertDocumentRequest, context: grpc.ServicerContext
+        self, request: ingestion_pb2.ConvertDocumentRequest, context: grpc.aio.ServicerContext
     ) -> ingestion_pb2.ConvertDocumentResponse:
         """Convert a document to structured JSON.
 
@@ -55,7 +55,7 @@ class IngestionServiceServicer(ingestion_pb2_grpc.IngestionServiceServicer):
         """
         # Validate tenant_id
         if not request.tenant_context.tenant_id:
-            context.abort(
+            await context.abort(
                 grpc.StatusCode.INVALID_ARGUMENT,
                 "tenant_id is required in tenant_context",
             )
@@ -65,7 +65,7 @@ class IngestionServiceServicer(ingestion_pb2_grpc.IngestionServiceServicer):
         has_source_uri = request.WhichOneof("source") == "source_uri"
 
         if not has_content and not has_source_uri:
-            context.abort(
+            await context.abort(
                 grpc.StatusCode.INVALID_ARGUMENT,
                 "Either content or source_uri must be provided",
             )
@@ -76,7 +76,7 @@ class IngestionServiceServicer(ingestion_pb2_grpc.IngestionServiceServicer):
             DOC_SIZE.observe(content_size)
             if content_size > self._settings.max_document_size:
                 ERRORS_TOTAL.labels(error_type="resource_exhausted").inc()
-                context.abort(
+                await context.abort(
                     grpc.StatusCode.RESOURCE_EXHAUSTED,
                     f"Document size {content_size} exceeds maximum {self._settings.max_document_size}",
                 )
@@ -101,7 +101,7 @@ class IngestionServiceServicer(ingestion_pb2_grpc.IngestionServiceServicer):
         now = datetime.now(UTC).isoformat()
         audit = {
             "created_at": now,
-            "created_by": "system",  # TODO: Extract from mTLS or auth context
+            "created_by": "system",  # no caller identity until mTLS/auth context exists
         }
 
         # Create DocumentRecord in state backend
@@ -147,7 +147,7 @@ class IngestionServiceServicer(ingestion_pb2_grpc.IngestionServiceServicer):
         )
 
     async def GetDocument(
-        self, request: ingestion_pb2.GetDocumentRequest, context: grpc.ServicerContext
+        self, request: ingestion_pb2.GetDocumentRequest, context: grpc.aio.ServicerContext
     ) -> ingestion_pb2.GetDocumentResponse:
         """Get document conversion status and metadata.
 
@@ -163,7 +163,7 @@ class IngestionServiceServicer(ingestion_pb2_grpc.IngestionServiceServicer):
         """
         # Validate tenant_id
         if not request.tenant_context.tenant_id:
-            context.abort(
+            await context.abort(
                 grpc.StatusCode.INVALID_ARGUMENT,
                 "tenant_id is required in tenant_context",
             )
@@ -172,11 +172,11 @@ class IngestionServiceServicer(ingestion_pb2_grpc.IngestionServiceServicer):
         record = self._state.get(request.tenant_context.tenant_id, request.document_id)
 
         if record is None:
-            context.abort(
+            await context.abort(
                 grpc.StatusCode.NOT_FOUND,
                 f"Document {request.document_id} not found",
             )
-            # Unreachable, but mypy doesn't know abort raises
+            # abort() always raises; grpc has no type stubs, so mypy cannot see that
             raise RuntimeError("unreachable")
 
         # Map DocumentRecord to Document proto message
@@ -185,7 +185,7 @@ class IngestionServiceServicer(ingestion_pb2_grpc.IngestionServiceServicer):
         return ingestion_pb2.GetDocumentResponse(document=document)
 
     async def ListDocuments(
-        self, request: ingestion_pb2.ListDocumentsRequest, context: grpc.ServicerContext
+        self, request: ingestion_pb2.ListDocumentsRequest, context: grpc.aio.ServicerContext
     ) -> ingestion_pb2.ListDocumentsResponse:
         """List documents for a tenant with pagination.
 
@@ -201,7 +201,7 @@ class IngestionServiceServicer(ingestion_pb2_grpc.IngestionServiceServicer):
         """
         # Validate tenant_id
         if not request.tenant_context.tenant_id:
-            context.abort(
+            await context.abort(
                 grpc.StatusCode.INVALID_ARGUMENT,
                 "tenant_id is required in tenant_context",
             )

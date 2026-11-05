@@ -21,13 +21,20 @@ from crosscodex_ingestion.config import IngestionSettings
 class ConversionError(Exception):
     """Raised when document conversion fails."""
 
-    pass
-
 
 class ConversionTimeout(Exception):
     """Raised when document conversion exceeds timeout."""
 
-    pass
+
+# Worker exit code meaning "Docling rejected the document for exceeding max_pages".
+PAGE_LIMIT_EXIT_CODE = 3
+
+
+class DocumentLimitError(ValueError):
+    """Raised when a document exceeds max_pages or its output exceeds max_extraction_length.
+
+    Subclasses ValueError because the message is safe and actionable for the client.
+    """
 
 
 # Worker script executed in the subprocess
@@ -38,10 +45,10 @@ import sys
 
 
 def main():
-    if len(sys.argv) < 7:
+    if len(sys.argv) < 9:
         print(
             "Usage: worker.py <input_path> <output_path> <format_hint> "
-            "<rlimit_as> <rlimit_cpu> <rlimit_fsize>",
+            "<rlimit_as> <rlimit_cpu> <rlimit_fsize> <artifacts_path> <max_pages>",
             file=sys.stderr,
         )
         sys.exit(1)
@@ -52,6 +59,8 @@ def main():
     rlimit_as = int(sys.argv[4])
     rlimit_cpu = int(sys.argv[5])
     rlimit_fsize = int(sys.argv[6])
+    artifacts_path = sys.argv[7]
+    max_pages = int(sys.argv[8])
 
     # Set resource limits before importing Docling
     if rlimit_as > 0:
@@ -63,11 +72,25 @@ def main():
 
     # Import after setting rlimits
     from crosscodex_ingestion.extractor import extract_elements
-    from docling.document_converter import DocumentConverter
+    from docling.datamodel.base_models import ConversionStatus, InputFormat
+    from docling.datamodel.pipeline_options import PdfPipelineOptions
+    from docling.document_converter import DocumentConverter, PdfFormatOption
 
-    # Run Docling conversion
-    converter = DocumentConverter()
-    result = converter.convert(input_path)
+    # Models come from the pre-downloaded artifacts directory; HF_HUB_OFFLINE=1 in the
+    # environment guarantees nothing is fetched from the network.
+    pdf_options = PdfPipelineOptions(artifacts_path=artifacts_path)
+    converter = DocumentConverter(format_options={InputFormat.PDF: PdfFormatOption(pipeline_options=pdf_options)})
+    # Docling fails (rather than truncates) a document longer than max_num_pages. Any status
+    # other than SUCCESS is a failure: a PARTIAL_SUCCESS would silently drop pages.
+    result = converter.convert(input_path, max_num_pages=max_pages, raises_on_error=False)
+    if result.status != ConversionStatus.SUCCESS:
+        for error in result.errors:
+            print(error.error_message, file=sys.stderr)
+        # Docling's POLICY category also covers "file format not allowed", so check the
+        # page count itself rather than reporting every policy failure as the page limit.
+        if result.input.page_count > max_pages:
+            sys.exit(@PAGE_LIMIT_EXIT_CODE@)
+        sys.exit(1)
     doc = result.document
     markdown = doc.export_to_markdown()
 
@@ -81,12 +104,30 @@ def main():
     }
 
     with open(output_path, "w") as f:
-        json.dump(output_data, f)
+        json.dump(output_data, f, separators=(",", ":"))
 
 
 if __name__ == "__main__":
     main()
-"""
+""".replace("@PAGE_LIMIT_EXIT_CODE@", str(PAGE_LIMIT_EXIT_CODE))
+
+
+def validate_artifacts_path(artifacts_path: str) -> None:
+    """Raise ValueError unless *artifacts_path* is an existing directory.
+
+    Called at server startup so a missing models directory fails closed with instructions
+    instead of failing every conversion at request time.
+    """
+    if not artifacts_path:
+        raise ValueError(
+            "DOCLING_ARTIFACTS_PATH is not set. Download the Docling models with "
+            "`docling-tools models download -o <dir>` and set DOCLING_ARTIFACTS_PATH=<dir>."
+        )
+    if not Path(artifacts_path).is_dir():
+        raise ValueError(
+            f"DOCLING_ARTIFACTS_PATH {artifacts_path!r} is not a directory. Download the Docling models with "
+            "`docling-tools models download -o <dir>` and point DOCLING_ARTIFACTS_PATH at <dir>."
+        )
 
 
 def convert_document(input_path: str, format_hint: str, settings: IngestionSettings) -> dict[str, Any]:
@@ -118,6 +159,8 @@ def convert_document(input_path: str, format_hint: str, settings: IngestionSetti
     ------
     ConversionTimeout
         When subprocess exceeds max_processing_time.
+    DocumentLimitError
+        When the document exceeds max_pages or the output exceeds max_extraction_length.
     ConversionError
         When subprocess fails (non-zero exit code).
     """
@@ -153,10 +196,16 @@ def convert_document(input_path: str, format_hint: str, settings: IngestionSetti
             str(rlimit_as_bytes),
             str(rlimit_cpu_seconds),
             str(rlimit_fsize_bytes),
+            settings.docling_artifacts_path,
+            str(settings.max_pages),
         ]
 
-        # Minimal environment (PATH only)
-        env = {"PATH": os.environ.get("PATH", "")}
+        # Minimal environment: HF_HUB_OFFLINE keeps the sandboxed worker off the network.
+        env = {"PATH": os.environ.get("PATH", ""), "HF_HUB_OFFLINE": "1"}
+        # The worker must import the same packages as this process; the FIPS image finds them
+        # only via PYTHONPATH.
+        if "PYTHONPATH" in os.environ:
+            env["PYTHONPATH"] = os.environ["PYTHONPATH"]
 
         # Run subprocess
         try:
@@ -166,11 +215,14 @@ def convert_document(input_path: str, format_hint: str, settings: IngestionSetti
                 timeout=settings.max_processing_time,
                 env=env,
                 text=True,
+                check=False,
             )
         except subprocess.TimeoutExpired as e:
             raise ConversionTimeout(f"Conversion timed out after {settings.max_processing_time} seconds") from e
 
-        # Check exit code
+        if result.returncode == PAGE_LIMIT_EXIT_CODE:
+            raise DocumentLimitError(f"Document exceeds the maximum of {settings.max_pages} pages")
+
         if result.returncode != 0:
             raise ConversionError(
                 f"Conversion subprocess failed with exit code {result.returncode}. stderr: {result.stderr}"
@@ -180,7 +232,14 @@ def convert_document(input_path: str, format_hint: str, settings: IngestionSetti
         if not output_path.exists():
             raise ConversionError("Conversion subprocess completed but did not create output file")
 
-        with open(output_path) as f:
+        # The worker serializes compactly, so the file size is the serialized output length.
+        output_size = output_path.stat().st_size
+        if output_size > settings.max_extraction_length:
+            raise DocumentLimitError(
+                f"Extracted output ({output_size} bytes) exceeds the maximum of {settings.max_extraction_length} bytes"
+            )
+
+        with Path(output_path).open() as f:
             output_data: dict[str, Any] = json.load(f)
 
         return output_data

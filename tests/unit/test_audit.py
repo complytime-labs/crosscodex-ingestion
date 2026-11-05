@@ -162,24 +162,26 @@ async def test_tls_connection_when_certs_provided():
         nats_tls_ca="/path/to/ca.pem",
     )
 
-    with patch("nats.connect", new_callable=AsyncMock) as mock_connect:
-        with patch("ssl.create_default_context") as mock_ssl_context:
-            mock_ctx = MagicMock()
-            mock_ssl_context.return_value = mock_ctx
-            mock_nc = AsyncMock()
-            mock_connect.return_value = mock_nc
+    with (
+        patch("nats.connect", new_callable=AsyncMock) as mock_connect,
+        patch("ssl.create_default_context") as mock_ssl_context,
+    ):
+        mock_ctx = MagicMock()
+        mock_ssl_context.return_value = mock_ctx
+        mock_nc = AsyncMock()
+        mock_connect.return_value = mock_nc
 
-            publisher = AuditPublisher(settings)
-            await publisher.connect()
+        publisher = AuditPublisher(settings)
+        await publisher.connect()
 
-            # Verify SSL context was created
-            mock_ssl_context.assert_called_once()
+        # Verify SSL context was created
+        mock_ssl_context.assert_called_once()
 
-            # Verify connect was called with tls parameter
-            mock_connect.assert_called_once()
-            call_kwargs = mock_connect.call_args[1]
-            assert "tls" in call_kwargs
-            assert call_kwargs["tls"] == mock_ctx
+        # Verify connect was called with tls parameter
+        mock_connect.assert_called_once()
+        call_kwargs = mock_connect.call_args[1]
+        assert "tls" in call_kwargs
+        assert call_kwargs["tls"] == mock_ctx
 
 
 @pytest.mark.asyncio

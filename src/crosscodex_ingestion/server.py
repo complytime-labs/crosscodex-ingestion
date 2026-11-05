@@ -4,7 +4,6 @@ import asyncio
 import logging
 import signal
 import socket
-from typing import Any
 
 import grpc
 from opentelemetry import trace
@@ -13,11 +12,12 @@ from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.sampling import ParentBasedTraceIdRatio
 from prometheus_client import start_http_server
-from pythonjsonlogger import jsonlogger
+from pythonjsonlogger.json import JsonFormatter
 
 from crosscodex_ingestion.attestation import create_attestation_manager
 from crosscodex_ingestion.audit import AuditPublisher
 from crosscodex_ingestion.config import IngestionSettings
+from crosscodex_ingestion.converter import validate_artifacts_path
 from crosscodex_ingestion.dispatch import create_dispatch
 from crosscodex_ingestion.proto.crosscodex.v1 import ingestion_pb2_grpc
 from crosscodex_ingestion.service import IngestionServiceServicer
@@ -41,6 +41,11 @@ async def serve() -> None:
     """
     # Load settings from environment
     settings = IngestionSettings()
+
+    try:
+        validate_artifacts_path(settings.docling_artifacts_path)
+    except ValueError as exc:
+        raise SystemExit(f"Configuration error: {exc}") from exc
 
     # Initialize telemetry (OTel + metrics + structured logging)
     _init_telemetry(settings)
@@ -81,28 +86,32 @@ async def serve() -> None:
     )
 
     # Create gRPC server
-    server = grpc.aio.server()
+    server = create_grpc_server(settings)
     ingestion_pb2_grpc.add_IngestionServiceServicer_to_server(servicer, server)
 
     # Bind to port
     listen_addr = f"[::]:{settings.grpc_port}"
     server.add_insecure_port(listen_addr)
 
-    # Start server
-    await server.start()
-    logger.info(f"gRPC server listening on {listen_addr}")
-
     # Set up graceful shutdown
     shutdown_event = asyncio.Event()
 
-    def signal_handler(sig: int, frame: Any) -> None:
+    def signal_handler(sig: signal.Signals) -> None:
         """Handle shutdown signals."""
-        logger.info(f"Received signal {sig}, initiating graceful shutdown")
+        logger.info("Received signal %s, initiating graceful shutdown", sig.value)
         shutdown_event.set()
 
-    # Register signal handlers
-    signal.signal(signal.SIGTERM, signal_handler)
-    signal.signal(signal.SIGINT, signal_handler)
+    # Register through the loop: a plain signal.signal handler runs, but setting the
+    # event from it does not wake a loop blocked in gRPC's poller, so SIGTERM never
+    # ended the process (the runtime had to SIGKILL it). Registered before the
+    # server starts so a signal at any point after "listening" is handled.
+    loop = asyncio.get_running_loop()
+    for sig in (signal.SIGTERM, signal.SIGINT):
+        loop.add_signal_handler(sig, signal_handler, sig)
+
+    # Start server
+    await server.start()
+    logger.info("gRPC server listening on %s", listen_addr)
 
     # Wait for shutdown signal
     await shutdown_event.wait()
@@ -122,6 +131,24 @@ async def serve() -> None:
     logger.info("Server shutdown complete")
 
 
+# Room in a ConvertDocument message for everything but the document bytes:
+# tenant context, metadata and protobuf framing.
+_GRPC_REQUEST_OVERHEAD = 1024 * 1024
+
+
+def create_grpc_server(settings: IngestionSettings) -> grpc.aio.Server:
+    """Create the gRPC server with a receive limit that fits max_document_size.
+
+    gRPC's default 4 MB receive limit rejected real documents long before
+    max_document_size (the 6 MB NIST SP 800-53r5 PDF failed with "Received
+    message larger than max"). Allowing max_document_size plus request overhead
+    lets the servicer enforce max_document_size with its own actionable error.
+    """
+    return grpc.aio.server(
+        options=[("grpc.max_receive_message_length", settings.max_document_size + _GRPC_REQUEST_OVERHEAD)]
+    )
+
+
 def _init_telemetry(settings: IngestionSettings) -> None:
     """Initialize OpenTelemetry tracing, Prometheus metrics, and structured logging.
 
@@ -134,7 +161,7 @@ def _init_telemetry(settings: IngestionSettings) -> None:
         resource = Resource.create(
             attributes={
                 "service.name": settings.otel_service_name,
-                "service.version": "0.1.0",  # TODO: Extract from package metadata
+                "service.version": "0.1.0",  # static; not read from package metadata
                 "host.name": socket.gethostname(),
             }
         )
@@ -152,7 +179,7 @@ def _init_telemetry(settings: IngestionSettings) -> None:
         # Create OTLP exporter
         otlp_exporter = OTLPSpanExporter(
             endpoint=settings.otel_exporter_otlp_endpoint,
-            insecure=True,  # TODO: Support TLS configuration
+            insecure=True,  # plaintext OTLP; TLS is not configurable yet
         )
 
         # Create and configure TracerProvider
@@ -181,9 +208,9 @@ def _init_telemetry(settings: IngestionSettings) -> None:
     # Step 2: Start Prometheus metrics HTTP server
     try:
         start_http_server(settings.metrics_port)
-        logger.info(f"Prometheus metrics server started on port {settings.metrics_port}")
+        logger.info("Prometheus metrics server started on port %s", settings.metrics_port)
     except OSError as e:
-        logger.warning(f"Failed to start Prometheus metrics server: {e}")
+        logger.warning("Failed to start Prometheus metrics server: %s", e)
 
     # Step 3: Configure structured JSON logging
     level_map = {
@@ -195,7 +222,7 @@ def _init_telemetry(settings: IngestionSettings) -> None:
     level = level_map.get(settings.log_level.lower(), logging.INFO)
 
     # Create JSON formatter with trace correlation
-    json_formatter = jsonlogger.JsonFormatter(
+    json_formatter = JsonFormatter(
         "%(asctime)s %(levelname)s %(name)s %(message)s",
         timestamp=True,
     )

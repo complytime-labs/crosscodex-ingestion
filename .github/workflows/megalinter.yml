@@ -35,7 +35,7 @@ jobs:
 
       - name: MegaLinter
         id: ml
-        uses: trevor-vaughan/megalint-config@2da93ca6173ca20edcde4be599de20f5a79197c6 # v0.4.0
+        uses: trevor-vaughan/megalint-config@2b08d482bc0ea3a06f2e89f264232e251370bc6c # v0.7.0
         with:
           validate-all-codebase: ${{ github.event_name == 'schedule' }}
           github-comment: "true"
