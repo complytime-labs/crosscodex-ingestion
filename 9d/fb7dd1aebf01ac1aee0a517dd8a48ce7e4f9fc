@@ -1,0 +1,31 @@
+README.md
+  s_dfee9387af72c4::t_2e8861d9e1a61d 246
+src/crosscodex_ingestion/attestation.py
+  s_dfee9387af72c4::t_2e8861d9e1a61d 47,108
+tests/unit/test_attestation.py
+  s_dfee9387af72c4::t_2e8861d9e1a61d 44,211-213
+tests/unit/test_devpki.py
+  s_dfee9387af72c4::t_7f9d801810e70b 3,19
+  s_dfee9387af72c4::t_663c91a42a3b35 20-21,99,107,116,124,132
+tests/unit/test_tls.py
+  s_dfee9387af72c4::t_7f9d801810e70b 3,36-37,44-45
+tests/integration/test_mtls_e2e.py
+  s_dfee9387af72c4::t_7f9d801810e70b 3,77,79-81
+  s_dfee9387af72c4::t_1a207f3fb17fc7 82-83
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9dfb7dd1aebf01ac1aee0a517dd8a48ce7e4f9fc",
+  "prompts": {},
+  "sessions": {
+    "s_dfee9387af72c4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c0aae798-d1fe-4197-9f8e-0ffff98b5872",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "LLM (riotbox) <llm@riotbox>"
+    }
+  }
+}
