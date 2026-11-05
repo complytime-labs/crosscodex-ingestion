@@ -34,6 +34,17 @@ The Ingestion service receives documents via gRPC, validates them for security, 
 - [uv](https://docs.astral.sh/uv/) (Python package manager)
 - podman or docker (for containerized deployment)
 
+### Run in a container
+
+```bash
+task compose:up
+```
+
+This generates a throwaway dev PKI in `.test-output/certs` (see "Dev and test certificates"), builds the image
+(slow the first time: it downloads torch and the Docling models), and starts the service on `localhost:8080`
+with mutual TLS and attestation on, in the foreground. Stop it with Ctrl-C. Then
+[convert a document](#convert-a-document).
+
 ### Local Development
 
 ```bash
@@ -46,8 +57,15 @@ task proto
 # Download the Docling models once (see "Docling models" below)
 uv run docling-tools models download -o ~/.cache/crosscodex/docling-models
 
-# Run the server (embedded mode, filesystem storage, memory state)
-DOCLING_ARTIFACTS_PATH=~/.cache/crosscodex/docling-models STORAGE_PATH=/tmp/crosscodex-data task run
+# Generate the dev PKI and attestation key pair in .test-output/certs
+task certs
+
+# Run the server (embedded mode, filesystem storage, memory state) with mutual TLS and attestation
+C=.test-output/certs
+GRPC_TLS_CERT=$C/server.pem GRPC_TLS_KEY=$C/server.key GRPC_TLS_CA=$C/ca.pem \
+  GRPC_ALLOWED_CLIENTS=crosscodex-gateway \
+  ATTESTATION_PRIVATE_KEY_PATH=$C/attestation.key ATTESTATION_PUBLIC_KEY_PATH=$C/attestation.pub \
+  DOCLING_ARTIFACTS_PATH=~/.cache/crosscodex/docling-models STORAGE_PATH=/tmp/crosscodex-data task run
 
 # Run tests
 task test
@@ -55,6 +73,35 @@ task test
 # Run integration tests (requires docling and the downloaded models)
 DOCLING_ARTIFACTS_PATH=~/.cache/crosscodex/docling-models task test:integration
 ```
+
+The service refuses to start without the TLS and attestation settings. For a plaintext, unattested
+throwaway run, set `GRPC_TLS_MODE=off ATTESTATION_ENABLED=false` instead; never do that on a shared host.
+
+### Convert a document
+
+Any gRPC client works. These examples use [grpcurl](https://github.com/fullstorydev/grpcurl) with the dev client
+certificate (CN `crosscodex-gateway`, the identity `GRPC_ALLOWED_CLIENTS` admits above and in compose). Run them
+from the repository root, so the dev certificates and `proto/` resolve:
+
+```bash
+C=.test-output/certs
+G="grpcurl -cacert $C/ca.pem -cert $C/client.pem -key $C/client.key -import-path proto -proto crosscodex/v1/ingestion.proto"
+
+# Submit a document (bytes fields are base64 in grpcurl's JSON); prints a documentId
+$G -d "{\"tenant_context\": {\"tenant_id\": \"default\"},
+        \"content\": \"$(base64 -w0 policy.html)\",
+        \"metadata\": {\"mime_type\": \"text/html\"}}" \
+  localhost:8080 crosscodex.v1.IngestionService/ConvertDocument
+
+# Poll until conversionStatus is JOB_STATUS_COMPLETED (or JOB_STATUS_FAILED, with an error)
+$G -d '{"tenant_context": {"tenant_id": "default"}, "document_id": "<documentId>"}' \
+  localhost:8080 crosscodex.v1.IngestionService/GetDocument
+```
+
+Conversion is asynchronous. A completed document's `structuredJsonUri` points to the extracted elements under
+`STORAGE_PATH` (in compose, inside the container's `/data/documents`). Use `"source_uri": "https://…"`
+instead of `content` to have the service fetch a URL. `tenant_id` must be a valid identifier (see
+"Identifiers").
 
 ## Docling models
 
