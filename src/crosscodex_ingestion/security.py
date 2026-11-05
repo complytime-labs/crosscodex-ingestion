@@ -22,11 +22,11 @@ import contextlib
 import hashlib
 import ipaddress
 import logging
-import os
 import socket
 import tempfile
 import urllib.parse
 from collections.abc import Iterator
+from pathlib import Path
 
 import requests
 
@@ -289,11 +289,10 @@ def fetch_url(
         )
         suffix = _TYPE_SUFFIX.get(detected_type, f".{detected_type}")
 
-        tmp = tempfile.NamedTemporaryFile(suffix=suffix, delete=False)
-        tmp_path = tmp.name
         bytes_written = 0
 
-        try:
+        with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
+            tmp_path = tmp.name
             tmp.write(first_bytes)
             bytes_written = len(first_bytes)
 
@@ -302,15 +301,6 @@ def fetch_url(
                 if bytes_written > max_bytes:
                     raise ValueError(f"Download exceeded the {max_bytes // (1024 * 1024)} MB limit.")
                 tmp.write(chunk)
-
-            tmp.close()
-        except Exception:
-            try:
-                tmp.close()
-            except Exception:  # noqa: S110
-                # Cleanup best-effort during error path
-                pass
-            raise
 
         log.info(
             "Downloaded %d KB (%s) from %s",
@@ -321,15 +311,11 @@ def fetch_url(
         yield tmp_path, detected_type
 
     finally:
-        if tmp_path and os.path.exists(tmp_path):
-            try:
-                os.unlink(tmp_path)
-            except Exception:  # noqa: S110
-                # Cleanup best-effort
-                pass
+        if tmp_path:
+            # Cleanup is best-effort
+            with contextlib.suppress(OSError):
+                Path(tmp_path).unlink(missing_ok=True)
         if resp is not None:
-            try:
+            with contextlib.suppress(Exception):
                 resp.close()
-            except Exception:  # noqa: S110
-                pass
         session.close()

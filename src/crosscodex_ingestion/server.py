@@ -98,7 +98,7 @@ async def serve() -> None:
 
     def signal_handler(sig: signal.Signals) -> None:
         """Handle shutdown signals."""
-        logger.info(f"Received signal {sig.value}, initiating graceful shutdown")
+        logger.info("Received signal %s, initiating graceful shutdown", sig.value)
         shutdown_event.set()
 
     # Register through the loop: a plain signal.signal handler runs, but setting the
@@ -111,7 +111,7 @@ async def serve() -> None:
 
     # Start server
     await server.start()
-    logger.info(f"gRPC server listening on {listen_addr}")
+    logger.info("gRPC server listening on %s", listen_addr)
 
     # Wait for shutdown signal
     await shutdown_event.wait()
@@ -161,7 +161,7 @@ def _init_telemetry(settings: IngestionSettings) -> None:
         resource = Resource.create(
             attributes={
                 "service.name": settings.otel_service_name,
-                "service.version": "0.1.0",  # TODO: Extract from package metadata
+                "service.version": "0.1.0",  # static; not read from package metadata
                 "host.name": socket.gethostname(),
             }
         )
@@ -179,7 +179,7 @@ def _init_telemetry(settings: IngestionSettings) -> None:
         # Create OTLP exporter
         otlp_exporter = OTLPSpanExporter(
             endpoint=settings.otel_exporter_otlp_endpoint,
-            insecure=True,  # TODO: Support TLS configuration
+            insecure=True,  # plaintext OTLP; TLS is not configurable yet
         )
 
         # Create and configure TracerProvider
@@ -208,9 +208,9 @@ def _init_telemetry(settings: IngestionSettings) -> None:
     # Step 2: Start Prometheus metrics HTTP server
     try:
         start_http_server(settings.metrics_port)
-        logger.info(f"Prometheus metrics server started on port {settings.metrics_port}")
+        logger.info("Prometheus metrics server started on port %s", settings.metrics_port)
     except OSError as e:
-        logger.warning(f"Failed to start Prometheus metrics server: {e}")
+        logger.warning("Failed to start Prometheus metrics server: %s", e)
 
     # Step 3: Configure structured JSON logging
     level_map = {

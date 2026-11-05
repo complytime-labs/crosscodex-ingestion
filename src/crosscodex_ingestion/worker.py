@@ -187,20 +187,19 @@ async def run_conversion(
             span.set_attribute("document.validated_format", validated_format)
 
         # Step 4: Validate content hash (if provided)
-        if "sha256" in metadata and metadata["sha256"]:
+        if metadata.get("sha256"):
             logger.info("Validating content hash for document %s", document_id)
             validate_content_hash(input_bytes, metadata["sha256"])
 
         # Step 5: Write bytes to temp file
         logger.info("Writing input to temp file for document %s", document_id)
-        temp_file = tempfile.NamedTemporaryFile(
+        with tempfile.NamedTemporaryFile(
             suffix=f".{validated_format}",
             delete=False,
             prefix=f"crosscodex_{document_id}_",
-        )
-        temp_file_path = Path(temp_file.name)
-        temp_file.write(input_bytes)
-        temp_file.close()
+        ) as temp_file:
+            temp_file_path = Path(temp_file.name)
+            temp_file.write(input_bytes)
 
         # Step 6: Convert document
         with tracer.start_as_current_span("ingestion.convert") as span:
@@ -323,7 +322,7 @@ async def run_conversion(
 
     except Exception as exc:
         # Handle all errors by updating state to FAILED
-        logger.exception("Conversion failed for document %s: %s", document_id, exc)
+        logger.exception("Conversion failed for document %s", document_id)
 
         # Determine error code based on exception type
         error_code = ERROR_CODE_INTERNAL

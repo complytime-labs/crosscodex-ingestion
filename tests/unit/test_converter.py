@@ -40,7 +40,7 @@ class TestConvertDocument:
                 "metadata": {"element_count": 1, "detected_format": "pdf", "processing_time_ms": 123.45},
             }
             output_path.parent.mkdir(parents=True, exist_ok=True)
-            with open(output_path, "w") as f:
+            with Path(output_path).open("w") as f:
                 json.dump(output_data, f)
             return Mock(returncode=0)
 
@@ -110,7 +110,7 @@ class TestConvertDocument:
             output_path = Path(cmd[3])
             output_data = {"elements": [], "metadata": {}}
             output_path.parent.mkdir(parents=True, exist_ok=True)
-            with open(output_path, "w") as f:
+            with Path(output_path).open("w") as f:
                 json.dump(output_data, f)
             return Mock(returncode=0)
 
@@ -163,7 +163,7 @@ class TestConvertDocument:
             output_path = Path(cmd[3])
             output_data = {"elements": [], "metadata": {}}
             output_path.parent.mkdir(parents=True, exist_ok=True)
-            with open(output_path, "w") as f:
+            with Path(output_path).open("w") as f:
                 json.dump(output_data, f)
             return Mock(returncode=0)
 
@@ -203,7 +203,7 @@ class TestConvertDocument:
             output_path = Path(cmd[3])
             output_data = {"elements": [], "metadata": {}}
             output_path.parent.mkdir(parents=True, exist_ok=True)
-            with open(output_path, "w") as f:
+            with Path(output_path).open("w") as f:
                 json.dump(output_data, f)
             return Mock(returncode=0)
 
@@ -234,7 +234,7 @@ class TestConvertDocument:
             output_path = Path(cmd[3])
             output_data = {"elements": [], "metadata": {}}
             output_path.parent.mkdir(parents=True, exist_ok=True)
-            with open(output_path, "w") as f:
+            with Path(output_path).open("w") as f:
                 json.dump(output_data, f)
             return Mock(returncode=0)
 
@@ -283,6 +283,7 @@ with open("{output_file}", "w") as f:
                 [sys.executable, str(worker_script), "arg1", "arg2"],
                 capture_output=True,
                 timeout=5,
+                check=False,
                 env={"PATH": os.environ.get("PATH", "")},
             )
 
@@ -291,7 +292,7 @@ with open("{output_file}", "w") as f:
             assert output_file.exists()
 
             # Verify the content
-            with open(output_file) as f:
+            with Path(output_file).open() as f:
                 data = json.load(f)
 
             assert data["test"] == "success"

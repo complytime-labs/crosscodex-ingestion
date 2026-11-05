@@ -146,7 +146,6 @@ def create_state_backend(settings: IngestionSettings) -> StateBackend:
     """Factory: returns MemoryStateBackend or RedisStateBackend."""
     if settings.state_backend == "memory":
         return MemoryStateBackend()
-    elif settings.state_backend == "redis":
+    if settings.state_backend == "redis":
         return RedisStateBackend(settings.redis_url)
-    else:
-        raise ValueError(f"Unknown state backend: {settings.state_backend}")
+    raise ValueError(f"Unknown state backend: {settings.state_backend}")

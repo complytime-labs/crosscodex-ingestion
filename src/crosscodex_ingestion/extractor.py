@@ -86,8 +86,7 @@ class DocumentExtractor:
         # Remove hyphenation across line breaks
         text = re.sub(r"(\w+)-\n(\w+)", r"\1\2", text)
         # Collapse multiple spaces/tabs to single space (preserve newlines)
-        text = re.sub(r"[ \t]+", " ", text)
-        return text
+        return re.sub(r"[ \t]+", " ", text)
 
     def _parse_docling_document(self, doc: Any) -> None:
         """Primary extraction: process DoclingDocument using typed elements.
@@ -310,23 +309,22 @@ class DocumentExtractor:
                         "style": {},
                     }
                 )
+            elif current_heading_id:
+                # Content under current heading
+                element_id = self._next_element_id()
+                self.elements.append(
+                    {
+                        "element_id": element_id,
+                        "type": "paragraph",
+                        "content": stripped,
+                        "page": None,
+                        "level": None,
+                        "parent_id": current_heading_id,
+                        "style": {},
+                    }
+                )
             else:
-                if current_heading_id:
-                    # Content under current heading
-                    element_id = self._next_element_id()
-                    self.elements.append(
-                        {
-                            "element_id": element_id,
-                            "type": "paragraph",
-                            "content": stripped,
-                            "page": None,
-                            "level": None,
-                            "parent_id": current_heading_id,
-                            "style": {},
-                        }
-                    )
-                else:
-                    self.discarded_content.append(f"PREAMBLE: {stripped}")
+                self.discarded_content.append(f"PREAMBLE: {stripped}")
 
     def _detect_section_pattern(self, text: str) -> re.Pattern | None:
         """Auto-detect repeating section numbering pattern.
@@ -352,8 +350,8 @@ class DocumentExtractor:
         current_title = None
         current_text: list[str] = []
 
-        for line in lines:
-            line = line.strip()
+        for raw_line in lines:
+            line = raw_line.strip()
             if not line:
                 continue
 
@@ -392,14 +390,13 @@ class DocumentExtractor:
                 current_text = []
                 # Preserve text after section identifier
                 remainder = line[match.end() :].strip()
-                current_title = remainder if remainder else current_id
+                current_title = remainder or current_id
                 if remainder:
                     current_text.append(remainder)
+            elif current_id:
+                current_text.append(line)
             else:
-                if current_id:
-                    current_text.append(line)
-                else:
-                    self.discarded_content.append(f"PREAMBLE: {line}")
+                self.discarded_content.append(f"PREAMBLE: {line}")
 
         # Save final section
         if current_id:
@@ -436,8 +433,8 @@ class DocumentExtractor:
 
         # Merge list continuations
         merged: list[str] = []
-        for chunk in raw:
-            chunk = chunk.strip()
+        for raw_chunk in raw:
+            chunk = raw_chunk.strip()
             if not chunk:
                 continue
             if merged and re.search(r"[\-:;]\s*$", merged[-1]) and re.match(r"\s*[-*+]|\s*\d+[.)]\s", chunk):
@@ -465,10 +462,10 @@ class DocumentExtractor:
     def _extract_first_lines(text: str) -> list:
         """Split on blank lines and return each paragraph's first line."""
         first_lines = []
-        for p in re.split(r"\n\s*\n", text):
-            p = p.strip()
-            if p:
-                first_lines.append(p.split("\n")[0].strip())
+        for block in re.split(r"\n\s*\n", text):
+            paragraph = block.strip()
+            if paragraph:
+                first_lines.append(paragraph.split("\n")[0].strip())
         return first_lines
 
     @staticmethod

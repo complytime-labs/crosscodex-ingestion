@@ -9,7 +9,7 @@ from crosscodex_ingestion.proto.crosscodex.v1 import common_pb2, ingestion_pb2, 
 @pytest.mark.asyncio
 async def test_grpc_server_is_reachable(grpc_server_and_channel):
     """Verify that the gRPC server starts and accepts connections."""
-    server, channel = grpc_server_and_channel
+    _server, channel = grpc_server_and_channel
     stub = ingestion_pb2_grpc.IngestionServiceStub(channel)
 
     # Verify we can make a simple RPC call

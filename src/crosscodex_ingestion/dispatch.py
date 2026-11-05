@@ -14,10 +14,9 @@ import json
 import logging
 import ssl
 from abc import ABC, abstractmethod
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import nats
-from nats.aio.client import Client as NATS
 
 from crosscodex_ingestion.attestation import AttestationManager
 from crosscodex_ingestion.audit import AuditPublisher
@@ -25,6 +24,9 @@ from crosscodex_ingestion.config import IngestionSettings
 from crosscodex_ingestion.state import StateBackend
 from crosscodex_ingestion.storage import StorageBackend
 from crosscodex_ingestion.worker import run_conversion
+
+if TYPE_CHECKING:
+    from nats.aio.client import Client
 
 logger = logging.getLogger(__name__)
 
@@ -171,7 +173,7 @@ class NatsDispatch(DispatchBackend):
             settings: Configuration settings with NATS connection details.
         """
         self._settings = settings
-        self._nc: NATS | None = None
+        self._nc: Client | None = None
         self._js: Any = None
 
     async def _connect(self) -> None:
@@ -280,8 +282,7 @@ def create_dispatch(
             attestation=attestation,
             audit=audit,
         )
-    elif settings.execution_mode == "distributed":
+    if settings.execution_mode == "distributed":
         logger.info("Creating NATS dispatch backend")
         return NatsDispatch(settings=settings)
-    else:
-        raise ValueError(f"Unknown execution_mode: {settings.execution_mode}")
+    raise ValueError(f"Unknown execution_mode: {settings.execution_mode}")

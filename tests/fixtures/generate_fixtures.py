@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Generate test document fixtures for integration tests."""
 
-import os
+from pathlib import Path
 
 from docx import Document
 from fpdf import FPDF
@@ -39,7 +39,7 @@ def generate_pdf() -> None:
         ),
     )
 
-    output_path = os.path.join(os.path.dirname(__file__), "documents", "sample.pdf")
+    output_path = Path(__file__).parent / "documents" / "sample.pdf"
     pdf.output(output_path)
     print(f"Generated: {output_path}")
 
@@ -61,7 +61,7 @@ def generate_docx() -> None:
         "Logs must be retained for a minimum of 90 days and protected from tampering."
     )
 
-    output_path = os.path.join(os.path.dirname(__file__), "documents", "sample.docx")
+    output_path = Path(__file__).parent / "documents" / "sample.docx"
     doc.save(output_path)
     print(f"Generated: {output_path}")
 

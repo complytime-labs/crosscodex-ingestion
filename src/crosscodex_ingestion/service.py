@@ -101,7 +101,7 @@ class IngestionServiceServicer(ingestion_pb2_grpc.IngestionServiceServicer):
         now = datetime.now(UTC).isoformat()
         audit = {
             "created_at": now,
-            "created_by": "system",  # TODO: Extract from mTLS or auth context
+            "created_by": "system",  # no caller identity until mTLS/auth context exists
         }
 
         # Create DocumentRecord in state backend

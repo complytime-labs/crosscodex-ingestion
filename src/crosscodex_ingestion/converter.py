@@ -21,13 +21,9 @@ from crosscodex_ingestion.config import IngestionSettings
 class ConversionError(Exception):
     """Raised when document conversion fails."""
 
-    pass
-
 
 class ConversionTimeout(Exception):
     """Raised when document conversion exceeds timeout."""
-
-    pass
 
 
 # Worker exit code meaning "Docling rejected the document for exceeding max_pages".
@@ -219,6 +215,7 @@ def convert_document(input_path: str, format_hint: str, settings: IngestionSetti
                 timeout=settings.max_processing_time,
                 env=env,
                 text=True,
+                check=False,
             )
         except subprocess.TimeoutExpired as e:
             raise ConversionTimeout(f"Conversion timed out after {settings.max_processing_time} seconds") from e
@@ -242,7 +239,7 @@ def convert_document(input_path: str, format_hint: str, settings: IngestionSetti
                 f"Extracted output ({output_size} bytes) exceeds the maximum of {settings.max_extraction_length} bytes"
             )
 
-        with open(output_path) as f:
+        with Path(output_path).open() as f:
             output_data: dict[str, Any] = json.load(f)
 
         return output_data

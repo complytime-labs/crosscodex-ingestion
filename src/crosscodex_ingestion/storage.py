@@ -74,7 +74,7 @@ class S3Storage(StorageBackend):
             raise ValueError(f"Invalid S3 URI format: {uri}")
         bucket, key = parts
         response = self.s3_client.get_object(Bucket=bucket, Key=key)
-        return cast(bytes, response["Body"].read())
+        return cast("bytes", response["Body"].read())
 
     def exists(self, uri: str) -> bool:
         """Check if S3 URI exists."""
@@ -86,18 +86,19 @@ class S3Storage(StorageBackend):
         bucket, key = parts
         try:
             self.s3_client.head_object(Bucket=bucket, Key=key)
-            return True
         except ClientError as e:
             if e.response["Error"]["Code"] == "404":
                 return False
             raise
+        else:
+            return True
 
 
 def create_storage(settings: IngestionSettings) -> StorageBackend:
     """Factory: returns FilesystemStorage or S3Storage based on settings."""
     if settings.storage_backend == "filesystem":
         return FilesystemStorage(settings.storage_path)
-    elif settings.storage_backend == "s3":
+    if settings.storage_backend == "s3":
         return S3Storage(
             endpoint=settings.s3_endpoint,
             bucket=settings.s3_bucket,
@@ -105,5 +106,4 @@ def create_storage(settings: IngestionSettings) -> StorageBackend:
             secret_key=settings.s3_secret_key,
             region=settings.s3_region,
         )
-    else:
-        raise ValueError(f"Unsupported storage backend: {settings.storage_backend}")
+    raise ValueError(f"Unsupported storage backend: {settings.storage_backend}")

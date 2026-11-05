@@ -11,7 +11,7 @@ from crosscodex_ingestion.proto.crosscodex.v1 import common_pb2, ingestion_pb2, 
 @pytest.mark.asyncio
 async def test_missing_tenant_id_is_rejected(grpc_server_and_channel):
     """ConvertDocument with an empty tenant_id is refused before anything is stored."""
-    server, channel = grpc_server_and_channel
+    _server, channel = grpc_server_and_channel
     stub = ingestion_pb2_grpc.IngestionServiceStub(channel)
 
     request = ingestion_pb2.ConvertDocumentRequest(
@@ -30,7 +30,7 @@ async def test_missing_tenant_id_is_rejected(grpc_server_and_channel):
 @pytest.mark.asyncio
 async def test_document_larger_than_grpc_default_message_size_is_accepted(grpc_server_and_channel):
     """Real documents exceed gRPC's 4 MB default (NIST SP 800-53r5 is a 6 MB PDF)."""
-    server, channel = grpc_server_and_channel
+    _server, channel = grpc_server_and_channel
     stub = ingestion_pb2_grpc.IngestionServiceStub(channel)
 
     request = ingestion_pb2.ConvertDocumentRequest(
@@ -48,7 +48,7 @@ async def test_document_larger_than_grpc_default_message_size_is_accepted(grpc_s
 @pytest.mark.asyncio
 async def test_oversized_document_returns_resource_exhausted(grpc_server_and_channel):
     """Content over max_document_size reaches the service and gets its actionable error."""
-    server, channel = grpc_server_and_channel
+    _server, channel = grpc_server_and_channel
     stub = ingestion_pb2_grpc.IngestionServiceStub(channel)
     max_size = IngestionSettings().max_document_size
 
@@ -72,7 +72,7 @@ async def test_unsupported_format_results_in_failed_status(grpc_server_and_chann
     Format validation happens in the worker, so the request is accepted
     but the document reaches FAILED status with an error message.
     """
-    server, channel = grpc_server_and_channel
+    _server, channel = grpc_server_and_channel
     stub = ingestion_pb2_grpc.IngestionServiceStub(channel)
 
     request = ingestion_pb2.ConvertDocumentRequest(
@@ -111,7 +111,7 @@ async def test_unsupported_format_results_in_failed_status(grpc_server_and_chann
 @pytest.mark.asyncio
 async def test_missing_content_and_source_uri_is_rejected(grpc_server_and_channel):
     """ConvertDocument with neither content nor source_uri is refused at the RPC."""
-    server, channel = grpc_server_and_channel
+    _server, channel = grpc_server_and_channel
     stub = ingestion_pb2_grpc.IngestionServiceStub(channel)
 
     request = ingestion_pb2.ConvertDocumentRequest(

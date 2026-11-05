@@ -12,12 +12,14 @@ import logging
 import ssl
 from datetime import UTC, datetime
 from hashlib import sha256
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import nats
-from nats.aio.client import Client as NATS
 
 from crosscodex_ingestion.config import IngestionSettings
+
+if TYPE_CHECKING:
+    from nats.aio.client import Client
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +37,7 @@ class AuditPublisher:
             settings: Configuration settings containing NATS connection details.
         """
         self.settings = settings
-        self._nc: NATS | None = None
+        self._nc: Client | None = None
         self._use_nats = bool(settings.nats_url)
 
     async def connect(self) -> None:

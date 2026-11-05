@@ -6,6 +6,7 @@ Mocks DNS resolution to avoid real network requests.
 
 import hashlib
 import socket
+from typing import ClassVar
 from unittest.mock import patch
 
 import pytest
@@ -17,15 +18,15 @@ class TestValidateUrl:
     """URL validation tests: scheme checking and IP blocking."""
 
     def test_rejects_ftp_scheme(self):
-        with pytest.raises(ValueError, match="scheme.*not allowed"):
+        with pytest.raises(ValueError, match=r"scheme.*not allowed"):
             security.validate_url("ftp://example.com/file.pdf")
 
     def test_rejects_file_scheme(self):
-        with pytest.raises(ValueError, match="scheme.*not allowed"):
+        with pytest.raises(ValueError, match=r"scheme.*not allowed"):
             security.validate_url("file:///etc/passwd")
 
     def test_rejects_gopher_scheme(self):
-        with pytest.raises(ValueError, match="scheme.*not allowed"):
+        with pytest.raises(ValueError, match=r"scheme.*not allowed"):
             security.validate_url("gopher://example.com/")
 
     def test_rejects_url_with_no_hostname(self):
@@ -146,7 +147,7 @@ class TestFetchUrlRedirects:
         def getaddrinfo_side_effect(hostname, port):
             if hostname == "evil.com":
                 return [(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("93.184.216.34", 80))]
-            elif hostname == "localhost":
+            if hostname == "localhost":
                 return [(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("127.0.0.1", 80))]
             raise socket.gaierror(f"Unknown host: {hostname}")
 
@@ -155,7 +156,7 @@ class TestFetchUrlRedirects:
         # Mock redirect response: evil.com -> http://localhost/
         class MockRedirectResponse:
             status_code = 302
-            headers = {"Location": "http://localhost/"}
+            headers: ClassVar[dict[str, str]] = {"Location": "http://localhost/"}
 
             def close(self):
                 pass
@@ -163,9 +164,8 @@ class TestFetchUrlRedirects:
         mock_get.return_value = MockRedirectResponse()
 
         # Should raise when re-validating the redirect target
-        with pytest.raises(ValueError, match="blocked address"):
-            with security.fetch_url("http://evil.com/"):
-                pass
+        with pytest.raises(ValueError, match="blocked address"), security.fetch_url("http://evil.com/"):
+            pass
 
 
 class TestValidateContentHash:

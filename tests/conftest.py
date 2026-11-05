@@ -1,6 +1,6 @@
-import os
 import tempfile
 from collections.abc import AsyncGenerator
+from pathlib import Path
 
 import grpc
 import pytest
@@ -15,35 +15,31 @@ from crosscodex_ingestion.service import IngestionServiceServicer
 from crosscodex_ingestion.state import create_state_backend
 from crosscodex_ingestion.storage import create_storage
 
-FIXTURES_DIR = os.path.join(os.path.dirname(__file__), "fixtures", "documents")
+FIXTURES_DIR = Path(__file__).parent / "fixtures" / "documents"
 
 
 @pytest.fixture
 def sample_html() -> bytes:
     """Load sample HTML fixture."""
-    with open(os.path.join(FIXTURES_DIR, "sample.html"), "rb") as f:
-        return f.read()
+    return (FIXTURES_DIR / "sample.html").read_bytes()
 
 
 @pytest.fixture
 def sample_txt() -> bytes:
     """Load sample TXT fixture."""
-    with open(os.path.join(FIXTURES_DIR, "sample.txt"), "rb") as f:
-        return f.read()
+    return (FIXTURES_DIR / "sample.txt").read_bytes()
 
 
 @pytest.fixture
 def sample_pdf() -> bytes:
     """Load sample PDF fixture."""
-    with open(os.path.join(FIXTURES_DIR, "sample.pdf"), "rb") as f:
-        return f.read()
+    return (FIXTURES_DIR / "sample.pdf").read_bytes()
 
 
 @pytest.fixture
 def sample_docx() -> bytes:
     """Load sample DOCX fixture."""
-    with open(os.path.join(FIXTURES_DIR, "sample.docx"), "rb") as f:
-        return f.read()
+    return (FIXTURES_DIR / "sample.docx").read_bytes()
 
 
 @pytest.fixture
