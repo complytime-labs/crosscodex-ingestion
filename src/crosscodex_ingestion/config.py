@@ -19,7 +19,10 @@ class IngestionSettings(BaseSettings):
     max_extraction_length: int = 10_485_760
     allowed_formats: str = "pdf,docx,html,txt"
 
-    rlimit_as_mb: int = 4096
+    # RLIMIT_AS bounds virtual address space only, not resident memory. Importing torch alone
+    # needs more than 4 GB of address space, and a 32-page PDF peaks near 40 GB VmPeak while
+    # using ~2.7 GB RSS. The real memory bound is the container memory limit.
+    rlimit_as_mb: int = 65536
     rlimit_cpu: int = 300
     rlimit_fsize_mb: int = 100
 
