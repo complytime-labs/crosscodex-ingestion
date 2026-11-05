@@ -1,0 +1,26 @@
+Taskfile.yml
+  s_5575c822891a33::t_ea7f601a777c77 47-48
+.ruff.toml
+  s_5575c822891a33::t_cff333c7af6a05 38-40
+scripts/devpki.py
+  s_5575c822891a33::t_d19ba5358988db 18,34-35,70,78,85,112,164,186,238-239,275
+  s_5575c822891a33::t_7f2e17f4ab6e00 61-62,77,157-160,244
+Dockerfile
+  s_5575c822891a33::t_d19ba5358988db 80
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "964665880514e964e5b5be74b8860b4ef0c3e574",
+  "prompts": {},
+  "sessions": {
+    "s_5575c822891a33": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "badda7ea-302d-47ae-a278-4f32628f18fd",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "LLM (riotbox) <llm@riotbox>"
+    }
+  }
+}
