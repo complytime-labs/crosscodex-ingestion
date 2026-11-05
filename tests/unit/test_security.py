@@ -9,7 +9,7 @@ import http.server
 import socket
 from typing import ClassVar
 import threading
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 import pytest
 
@@ -38,38 +38,38 @@ class TestValidateUrl:
     @patch("socket.getaddrinfo")
     def test_rejects_loopback_ipv4(self, mock_getaddrinfo):
         mock_getaddrinfo.return_value = [(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("127.0.0.1", 443))]
-        with pytest.raises(ValueError, match="blocked address"):
+        with pytest.raises(ValueError, match="not a public internet address"):
             security.validate_url("https://localhost/file.pdf")
 
     @patch("socket.getaddrinfo")
     def test_rejects_link_local_ipv4(self, mock_getaddrinfo):
         mock_getaddrinfo.return_value = [(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("169.254.1.1", 443))]
-        with pytest.raises(ValueError, match="blocked address"):
+        with pytest.raises(ValueError, match="not a public internet address"):
             security.validate_url("https://link-local.example/file.pdf")
 
     @patch("socket.getaddrinfo")
     def test_rejects_private_10_network(self, mock_getaddrinfo):
         mock_getaddrinfo.return_value = [(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("10.0.0.1", 443))]
-        with pytest.raises(ValueError, match="blocked address"):
+        with pytest.raises(ValueError, match="not a public internet address"):
             security.validate_url("https://internal.example/file.pdf")
 
     @patch("socket.getaddrinfo")
     def test_rejects_private_192_network(self, mock_getaddrinfo):
         mock_getaddrinfo.return_value = [(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("192.168.1.1", 443))]
-        with pytest.raises(ValueError, match="blocked address"):
+        with pytest.raises(ValueError, match="not a public internet address"):
             security.validate_url("https://router.local/file.pdf")
 
     @patch("socket.getaddrinfo")
     def test_rejects_private_172_network(self, mock_getaddrinfo):
         mock_getaddrinfo.return_value = [(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("172.16.0.1", 443))]
-        with pytest.raises(ValueError, match="blocked address"):
+        with pytest.raises(ValueError, match="not a public internet address"):
             security.validate_url("https://corp.local/file.pdf")
 
     @patch("socket.getaddrinfo")
     def test_rejects_carrier_grade_nat(self, mock_getaddrinfo):
         # RFC 6598: 100.64.0.0/10
         mock_getaddrinfo.return_value = [(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("100.64.1.1", 443))]
-        with pytest.raises(ValueError, match="blocked address"):
+        with pytest.raises(ValueError, match="not a public internet address"):
             security.validate_url("https://cgnat.example/file.pdf")
 
     @patch("socket.getaddrinfo")
@@ -166,7 +166,7 @@ class TestFetchUrlRedirects:
         mock_get.return_value = MockRedirectResponse()
 
         # Should raise when re-validating the redirect target
-        with pytest.raises(ValueError, match="blocked address"), security.fetch_url("http://evil.com/"):
+        with pytest.raises(ValueError, match="not a public internet address"), security.fetch_url("http://evil.com/"):
             pass
 
 
@@ -241,7 +241,7 @@ class TestDnsRebinding:
         url = f"http://rebind.example:{server.server_address[1]}/doc.pdf"
 
         with patch("socket.getaddrinfo", side_effect=_rebinding_resolver("93.184.216.34", "127.0.0.1")):
-            with pytest.raises(ValueError, match="blocked address"):
+            with pytest.raises(ValueError, match="not a public internet address"):
                 with security.fetch_url(url):
                     pytest.fail("fetch_url must not yield for a rebound private address")
 
@@ -272,8 +272,36 @@ class TestDnsRebinding:
         monkeypatch.delenv("no_proxy", raising=False)
 
         with patch("socket.getaddrinfo", side_effect=_rebinding_resolver("93.184.216.34", "127.0.0.1")):
-            with pytest.raises(ValueError, match="blocked address"):
+            with pytest.raises(ValueError, match="not a public internet address"):
                 with security.fetch_url(url):
                     pytest.fail("fetch_url must not yield for a rebound private address")
 
         assert handler.requests_seen == []
+
+
+class TestFetchErrorsDoNotMapTheInternalNetwork:
+    """Error text reaches the client via GetDocument, so it must not reveal internal DNS or addressing (CWE-209)."""
+
+    @patch("socket.getaddrinfo")
+    def test_blocked_and_unresolvable_hosts_get_the_same_message_without_internal_detail(self, mock_getaddrinfo):
+        mock_getaddrinfo.return_value = [(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("10.1.2.3", 443))]
+        with pytest.raises(ValueError) as blocked:
+            security.validate_url("https://db.internal/file.pdf")
+
+        mock_getaddrinfo.side_effect = socket.gaierror(-2, "Name or service not known")
+        with pytest.raises(ValueError) as unresolvable:
+            security.validate_url("https://nonexistent.internal/file.pdf")
+
+        assert str(blocked.value) == str(unresolvable.value)
+        assert "10.1.2.3" not in str(blocked.value)
+        assert "Name or service not known" not in str(unresolvable.value)
+        assert "not a public internet address" in str(blocked.value)
+
+    def test_peer_check_message_does_not_name_the_peer_address(self):
+        sock = Mock(spec=socket.socket)
+        sock.getpeername.return_value = ("10.9.8.7", 80)
+        with pytest.raises(ValueError) as exc:
+            security._check_peer_is_public(sock)
+        sock.close.assert_called_once()
+        assert "10.9.8.7" not in str(exc.value)
+        assert "not a public internet address" in str(exc.value)

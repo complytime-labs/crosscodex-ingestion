@@ -48,6 +48,16 @@ _EXTRA_BLOCKED = [
 ]
 
 _ALLOWED_SCHEMES = {"https", "http"}
+
+# One message for every host refusal. It reaches the client through GetDocument,
+# so it names no address or resolver error, and an unresolvable name reads the same
+# as an internal one: otherwise a caller could map internal DNS one request at a
+# time (CWE-209). The detail is logged server-side instead.
+_NOT_PUBLIC_HOST = (
+    "The URL's host is not a public internet address (it does not resolve, or resolves to a private, "
+    "loopback, link-local or multicast address). Only documents on public hosts can be fetched; "
+    "upload the document's bytes instead."
+)
 _REDIRECT_CODES = {301, 302, 303, 307, 308}
 
 DEFAULT_MAX_BYTES = 100 * 1024 * 1024  # 100 MB
@@ -119,10 +129,12 @@ def validate_url(url: str) -> None:
     try:
         addr_infos = socket.getaddrinfo(hostname, None)
     except socket.gaierror as exc:
-        raise ValueError(f"Cannot resolve hostname {hostname!r}: {exc}") from exc
+        log.warning("Refusing URL host %r: cannot resolve: %s", hostname, exc)
+        raise ValueError(_NOT_PUBLIC_HOST) from exc
 
     if not addr_infos:
-        raise ValueError(f"Hostname {hostname!r} resolved to no addresses.")
+        log.warning("Refusing URL host %r: resolved to no addresses", hostname)
+        raise ValueError(_NOT_PUBLIC_HOST)
 
     for _family, _type, _proto, _canon, sockaddr in addr_infos:
         ip_str = sockaddr[0]
@@ -131,10 +143,8 @@ def validate_url(url: str) -> None:
         except ValueError:
             continue
         if _is_blocked_ip(ip):
-            raise ValueError(
-                f"URL resolves to a blocked address ({ip}). "
-                "Private, loopback, link-local, and multicast hosts are not allowed."
-            )
+            log.warning("Refusing URL host %r: resolves to blocked address %s", hostname, ip)
+            raise ValueError(_NOT_PUBLIC_HOST)
 
 
 def _check_peer_is_public(sock: socket.socket) -> None:
@@ -142,10 +152,8 @@ def _check_peer_is_public(sock: socket.socket) -> None:
     peer_ip = ipaddress.ip_address(sock.getpeername()[0])
     if _is_blocked_ip(peer_ip):
         sock.close()
-        raise ValueError(
-            f"Connection went to a blocked address ({peer_ip}). "
-            "Private, loopback, link-local, and multicast hosts are not allowed."
-        )
+        log.warning("Refusing connection: peer %s is a blocked address", peer_ip)
+        raise ValueError(_NOT_PUBLIC_HOST)
 
 
 class _CheckedHTTPConnection(HTTPConnection):
