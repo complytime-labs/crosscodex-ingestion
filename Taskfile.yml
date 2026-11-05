@@ -59,7 +59,10 @@ tasks:
     desc: Start the compose stack with mutual TLS and attestation (generates certs first)
     deps: [certs]
     cmds:
-      - CERTS_DIR={{.CERTS_DIR}} podman-compose -f docker-compose.yml up --build
+      # --force-recreate: podman-compose recreates only on a compose config change, so
+      # without it a regenerated PKI never reaches the running service (it keeps
+      # trusting the old CA) and a rebuilt image is not picked up.
+      - CERTS_DIR={{.CERTS_DIR}} podman-compose -f docker-compose.yml up --build --force-recreate
 
   build:
     desc: Build Python package

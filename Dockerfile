@@ -2,7 +2,7 @@
 # Multi-stage build for production deployment
 
 # Stage 1: Builder - Install dependencies, generate proto stubs, install the package, fetch models
-FROM python:3.12-slim AS builder
+FROM docker.io/library/python:3.12-slim AS builder
 
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 
@@ -46,7 +46,7 @@ RUN uv pip install --system --no-cache --no-deps . && \
     docling-tools models download -o /opt/docling-models
 
 # Stage 2: Runtime - Minimal production image
-FROM python:3.12-slim
+FROM docker.io/library/python:3.12-slim
 
 # Runtime shared libraries for OpenCV (see builder stage)
 # Debian package versions rotate; pinning would break rebuilds.

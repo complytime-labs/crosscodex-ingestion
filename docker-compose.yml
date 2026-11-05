@@ -1,6 +1,25 @@
 version: "3.8"
 
 services:
+  # One-shot: copy the PKI from `task certs` into a volume the service user can read.
+  # The host keys are 0600 owned by the host user, which the container's uid 1000 cannot
+  # read under rootless podman (or for any other host uid). Copying on every `up` means the
+  # volume always holds the current set, never a stale one from an earlier run.
+  certs-init:
+    image: crosscodex-ingestion:latest
+    user: "0"
+    entrypoint: ["sh", "-c"]
+    command:
+      - >-
+        rm -rf /certs/* &&
+        cp /certs-src/ca.pem /certs-src/server.pem /certs-src/server.key
+        /certs-src/attestation.key /certs-src/attestation.pub /certs/ &&
+        chown 1000:1000 /certs/* && chmod 0444 /certs/*.pem /certs/*.pub && chmod 0400 /certs/*.key
+    volumes:
+      - ${CERTS_DIR:-./.test-output/certs}:/certs-src:ro
+      - ingestion-certs:/certs
+    restart: "no"
+
   # CrossCodex Ingestion Service
   ingestion:
     build:
@@ -45,12 +64,15 @@ services:
       MAX_DOCUMENT_SIZE: "104857600"
     volumes:
       - ingestion-data:/data/documents
-      # Key files are mode 0600 owned by the host user; the container user (uid 1000) must be
-      # that user (rootless podman: add --userns=keep-id). See README "Dev and test certificates".
-      - ${CERTS_DIR:-./.test-output/certs}:/certs:ro
+      # Filled by certs-init; the CA key and client key are deliberately not copied.
+      - ingestion-certs:/certs:ro
     depends_on:
-      - nats
-      - jaeger
+      certs-init:
+        condition: service_completed_successfully
+      nats:
+        condition: service_started
+      jaeger:
+        condition: service_started
     restart: unless-stopped
     # RLIMIT_AS only bounds virtual address space; this is the real memory bound.
     # Allow >= 6 GB per concurrent conversion (MAX_CONCURRENT_CONVERSIONS, default 4).
@@ -70,7 +92,7 @@ services:
 
   # NATS JetStream for async messaging
   nats:
-    image: nats:latest
+    image: docker.io/library/nats:latest
     container_name: crosscodex-nats
     ports:
       - "4222:4222" # Client connections
@@ -94,7 +116,7 @@ services:
 
   # Jaeger all-in-one for distributed tracing
   jaeger:
-    image: jaegertracing/all-in-one:latest
+    image: docker.io/jaegertracing/all-in-one:latest
     container_name: crosscodex-jaeger
     ports:
       - "16686:16686" # Jaeger UI
@@ -120,4 +142,6 @@ services:
 
 volumes:
   ingestion-data:
+    driver: local
+  ingestion-certs:
     driver: local

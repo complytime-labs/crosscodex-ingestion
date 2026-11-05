@@ -178,9 +178,12 @@ need a client certificate.
   client certificate and any verifier holding the old `attestation.pub` must be re-issued or updated.
 - Concurrent runs are safe: generation holds a file lock next to the output directory, re-checks inside it, and
   swaps the finished set in with a rename. pytest generates its own PKI in a temporary directory per run.
-- `task compose:up` generates the certs and starts `docker-compose.yml` with mutual TLS and attestation on,
-  mounting the directory read-only at `/certs`. The container user (uid 1000) must be able to read the 0600
-  keys: use host uid 1000 or, with rootless podman, `--userns=keep-id`. Verifiers use
+- `task compose:up` generates the certs and starts `docker-compose.yml` with mutual TLS and attestation on.
+  A one-shot `certs-init` container copies the server certificate, server key and attestation keys into the
+  `ingestion-certs` volume, owned by the service user (keys 0400), on every start, so it works for any host
+  uid under rootless podman or docker and never serves a stale set. The CA key and client key are not copied.
+  `compose:up` passes `--force-recreate`: podman-compose otherwise keeps containers whose compose config is
+  unchanged, so after regenerating the PKI the service would keep trusting the old CA. Verifiers use
   `.test-output/certs/attestation.pub`; callers use `client.pem`, `client.key` and `ca.pem`.
 
 ### Attestation keys
