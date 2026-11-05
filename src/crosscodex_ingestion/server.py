@@ -4,7 +4,6 @@ import asyncio
 import logging
 import signal
 import socket
-from typing import Any
 
 import grpc
 from opentelemetry import trace
@@ -94,21 +93,25 @@ async def serve() -> None:
     listen_addr = f"[::]:{settings.grpc_port}"
     server.add_insecure_port(listen_addr)
 
-    # Start server
-    await server.start()
-    logger.info(f"gRPC server listening on {listen_addr}")
-
     # Set up graceful shutdown
     shutdown_event = asyncio.Event()
 
-    def signal_handler(sig: int, frame: Any) -> None:
+    def signal_handler(sig: signal.Signals) -> None:
         """Handle shutdown signals."""
-        logger.info(f"Received signal {sig}, initiating graceful shutdown")
+        logger.info(f"Received signal {sig.value}, initiating graceful shutdown")
         shutdown_event.set()
 
-    # Register signal handlers
-    signal.signal(signal.SIGTERM, signal_handler)
-    signal.signal(signal.SIGINT, signal_handler)
+    # Register through the loop: a plain signal.signal handler runs, but setting the
+    # event from it does not wake a loop blocked in gRPC's poller, so SIGTERM never
+    # ended the process (the runtime had to SIGKILL it). Registered before the
+    # server starts so a signal at any point after "listening" is handled.
+    loop = asyncio.get_running_loop()
+    for sig in (signal.SIGTERM, signal.SIGINT):
+        loop.add_signal_handler(sig, signal_handler, sig)
+
+    # Start server
+    await server.start()
+    logger.info(f"gRPC server listening on {listen_addr}")
 
     # Wait for shutdown signal
     await shutdown_event.wait()
