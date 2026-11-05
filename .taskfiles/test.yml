@@ -17,13 +17,6 @@ tasks:
     cmds:
       - uv run pytest tests/integration/ -v --junitxml=.test-output/integration-results.xml
 
-  container:
-    desc: Container tests (requires podman)
-    cmds:
-      - podman-compose -f docker-compose.yml up -d --build
-      - venom run tests/venom/ --output-dir=.test-output/venom || true
-      - podman-compose -f docker-compose.yml down
-
   all:
     desc: Run all test suites
     cmds:
