@@ -2,9 +2,9 @@ syntax = "proto3";
 
 package crosscodex.v1;
 
-option go_package = "github.com/complytime-labs/crosscodex/api/gen/go/crosscodex/v1;crosscodexv1";
-
 import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/complytime-labs/crosscodex/api/gen/go/crosscodex/v1;crosscodexv1";  // protolint:disable:this MAX_LINE_LENGTH
 
 // TenantContext provides multi-tenant isolation.
 // Included in every data-touching RPC request.
@@ -25,7 +25,8 @@ message AuditMetadata {
 
 // ResourceRef references entities across services.
 message ResourceRef {
-  string resource_type = 1;  // "catalog", "control", "document", "job", "node", "edge"
+  // One of "catalog", "control", "document", "job", "node", "edge".
+  string resource_type = 1;
   string resource_id = 2;    // UUID or qualified ID
   string resource_uri = 3;   // Optional canonical URI
 }
@@ -85,6 +86,8 @@ message SortOrder {
 message ListOptions {
   Pagination pagination = 1;
   repeated FieldFilter filters = 2;
+  // Field name is part of the published API; renaming it would break clients.
+  // protolint:disable:next REPEATED_FIELD_NAMES_PLURALIZED
   repeated SortOrder sort = 3;
 }
 

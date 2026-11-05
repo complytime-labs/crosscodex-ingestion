@@ -2,7 +2,7 @@
 # Multi-stage build using Red Hat Universal Base Image (UBI9) with FIPS mode enabled
 
 # Stage 1: Builder - Install dependencies, generate proto stubs, install the package, fetch models
-FROM registry.access.redhat.com/ubi9/python-312:latest AS builder
+FROM registry.access.redhat.com/ubi9/python-312:1-1793738546 AS builder
 
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 
@@ -51,7 +51,7 @@ RUN uv pip install --no-cache --no-deps .
 RUN docling-tools models download -o /opt/app-root/docling-models
 
 # Stage 2: Runtime - Minimal FIPS-compliant production image
-FROM registry.access.redhat.com/ubi9-minimal:latest
+FROM registry.access.redhat.com/ubi9-minimal:9.8
 
 # Enable FIPS mode
 ENV FIPS_MODE=true

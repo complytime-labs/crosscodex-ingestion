@@ -1,4 +1,4 @@
-version: '3.8'
+version: "3.8"
 
 services:
   # CrossCodex Ingestion Service
@@ -9,8 +9,8 @@ services:
     image: crosscodex-ingestion:latest
     container_name: crosscodex-ingestion
     ports:
-      - "8080:8080"   # gRPC service
-      - "9090:9090"   # Prometheus metrics
+      - "8080:8080" # gRPC service
+      - "9090:9090" # Prometheus metrics
     environment:
       # Service configuration
       GRPC_PORT: "8080"
@@ -40,7 +40,13 @@ services:
     # Allow >= 6 GB per concurrent conversion (MAX_CONCURRENT_CONVERSIONS, default 4).
     mem_limit: 24g
     healthcheck:
-      test: ["CMD", "python", "-c", "import grpc; ch=grpc.insecure_channel('localhost:8080'); grpc.channel_ready_future(ch).result(timeout=5)"]
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import grpc; ch=grpc.insecure_channel('localhost:8080'); grpc.channel_ready_future(ch).result(timeout=5)",
+        ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -51,12 +57,20 @@ services:
     image: nats:latest
     container_name: crosscodex-nats
     ports:
-      - "4222:4222"   # Client connections
-      - "8222:8222"   # HTTP monitoring
+      - "4222:4222" # Client connections
+      - "8222:8222" # HTTP monitoring
     command: ["--jetstream", "--http_port", "8222"]
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8222/healthz"]
+      test:
+        [
+          "CMD",
+          "wget",
+          "--no-verbose",
+          "--tries=1",
+          "--spider",
+          "http://localhost:8222/healthz",
+        ]
       interval: 10s
       timeout: 5s
       retries: 3
@@ -67,14 +81,22 @@ services:
     image: jaegertracing/all-in-one:latest
     container_name: crosscodex-jaeger
     ports:
-      - "16686:16686"   # Jaeger UI
-      - "4317:4317"     # OTLP gRPC receiver
-      - "4318:4318"     # OTLP HTTP receiver
+      - "16686:16686" # Jaeger UI
+      - "4317:4317" # OTLP gRPC receiver
+      - "4318:4318" # OTLP HTTP receiver
     environment:
       COLLECTOR_OTLP_ENABLED: "true"
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:14269/"]
+      test:
+        [
+          "CMD",
+          "wget",
+          "--no-verbose",
+          "--tries=1",
+          "--spider",
+          "http://localhost:14269/",
+        ]
       interval: 10s
       timeout: 5s
       retries: 3

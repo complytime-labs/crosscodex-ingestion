@@ -72,33 +72,33 @@ images download the models at build time (`/opt/docling-models` in the standard 
 
 ## Environment Variables
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `DOCLING_ARTIFACTS_PATH` | (required) | Directory with pre-downloaded Docling models; server refuses to start without it |
-| `GRPC_PORT` | `8080` | gRPC server port |
-| `METRICS_PORT` | `9090` | Prometheus metrics port |
-| `EXECUTION_MODE` | `embedded` | `embedded` or `distributed` (NATS) |
-| `MAX_CONCURRENT_CONVERSIONS` | `4` | Conversions running at once (each is a separate subprocess) |
-| `STATE_BACKEND` | `memory` | `memory` or `redis` |
-| `STORAGE_BACKEND` | `filesystem` | `filesystem` or `s3` |
-| `STORAGE_PATH` | `/data/documents` | Filesystem storage root |
-| `ALLOWED_FORMATS` | `pdf,docx,html,txt` | Comma-separated list of allowed formats |
-| `MAX_DOCUMENT_SIZE` | `52428800` | Maximum uploaded document size in bytes (50 MB) |
-| `MAX_URL_BYTES` | `104857600` | Maximum bytes to fetch from URLs (100 MB) |
-| `URL_TIMEOUT` | `30` | URL fetch timeout in seconds |
-| `MAX_REDIRECTS` | `5` | Maximum redirects followed when fetching a URL |
-| `MAX_PAGES` | `1000` | Documents with more pages fail (never silently truncated) |
-| `MAX_EXTRACTION_LENGTH` | `10485760` | Maximum serialized output size in bytes (10 MB); larger output fails |
-| `MAX_PROCESSING_TIME` | `3600` | Wall-clock limit per conversion in seconds |
-| `RLIMIT_CPU` | `21600` | CPU-seconds limit for the conversion subprocess |
-| `RLIMIT_AS_MB` | `65536` | Virtual address space limit for the conversion subprocess (MB) |
-| `RLIMIT_FSIZE_MB` | `100` | Maximum size of any file the conversion subprocess writes (MB) |
-| `ATTESTATION_ENABLED` | `true` | Enable in-toto attestation generation |
-| `ATTESTATION_PRIVATE_KEY_PATH` | (empty) | Path to private key for attestation signing (empty: ephemeral key per process) |
-| `ATTESTATION_PUBLIC_KEY_PATH` | (empty) | Path to public key for attestation verification |
-| `NATS_URL` | (empty) | NATS server URL (e.g., `nats://localhost:4222`) |
-| `REDIS_URL` | (empty) | Redis URL for state backend |
-| `S3_ENDPOINT`, `S3_BUCKET`, `S3_ACCESS_KEY`, `S3_SECRET_KEY`, `S3_REGION` | (see `config.py`) | S3 storage backend settings |
+| Variable                                                                  | Default             | Description                                                                      |
+|---------------------------------------------------------------------------|---------------------|----------------------------------------------------------------------------------|
+| `DOCLING_ARTIFACTS_PATH`                                                  | (required)          | Directory with pre-downloaded Docling models; server refuses to start without it |
+| `GRPC_PORT`                                                               | `8080`              | gRPC server port                                                                 |
+| `METRICS_PORT`                                                            | `9090`              | Prometheus metrics port                                                          |
+| `EXECUTION_MODE`                                                          | `embedded`          | `embedded` or `distributed` (NATS)                                               |
+| `MAX_CONCURRENT_CONVERSIONS`                                              | `4`                 | Conversions running at once (each is a separate subprocess)                      |
+| `STATE_BACKEND`                                                           | `memory`            | `memory` or `redis`                                                              |
+| `STORAGE_BACKEND`                                                         | `filesystem`        | `filesystem` or `s3`                                                             |
+| `STORAGE_PATH`                                                            | `/data/documents`   | Filesystem storage root                                                          |
+| `ALLOWED_FORMATS`                                                         | `pdf,docx,html,txt` | Comma-separated list of allowed formats                                          |
+| `MAX_DOCUMENT_SIZE`                                                       | `52428800`          | Maximum uploaded document size in bytes (50 MB)                                  |
+| `MAX_URL_BYTES`                                                           | `104857600`         | Maximum bytes to fetch from URLs (100 MB)                                        |
+| `URL_TIMEOUT`                                                             | `30`                | URL fetch timeout in seconds                                                     |
+| `MAX_REDIRECTS`                                                           | `5`                 | Maximum redirects followed when fetching a URL                                   |
+| `MAX_PAGES`                                                               | `1000`              | Documents with more pages fail (never silently truncated)                        |
+| `MAX_EXTRACTION_LENGTH`                                                   | `10485760`          | Maximum serialized output size in bytes (10 MB); larger output fails             |
+| `MAX_PROCESSING_TIME`                                                     | `3600`              | Wall-clock limit per conversion in seconds                                       |
+| `RLIMIT_CPU`                                                              | `21600`             | CPU-seconds limit for the conversion subprocess                                  |
+| `RLIMIT_AS_MB`                                                            | `65536`             | Virtual address space limit for the conversion subprocess (MB)                   |
+| `RLIMIT_FSIZE_MB`                                                         | `100`               | Maximum size of any file the conversion subprocess writes (MB)                   |
+| `ATTESTATION_ENABLED`                                                     | `true`              | Enable in-toto attestation generation                                            |
+| `ATTESTATION_PRIVATE_KEY_PATH`                                            | (empty)             | Path to private key for attestation signing (empty: ephemeral key per process)   |
+| `ATTESTATION_PUBLIC_KEY_PATH`                                             | (empty)             | Path to public key for attestation verification                                  |
+| `NATS_URL`                                                                | (empty)             | NATS server URL (e.g., `nats://localhost:4222`)                                  |
+| `REDIS_URL`                                                               | (empty)             | Redis URL for state backend                                                      |
+| `S3_ENDPOINT`, `S3_BUCKET`, `S3_ACCESS_KEY`, `S3_SECRET_KEY`, `S3_REGION` | (see `config.py`)   | S3 storage backend settings                                                      |
 
 See `src/crosscodex_ingestion/config.py` for the full list.
 
@@ -106,10 +106,10 @@ See `src/crosscodex_ingestion/config.py` for the full list.
 
 The defaults are sized from measurements of real documents (Docling offline, models pre-downloaded):
 
-| Document | Pages | Wall time | CPU time | VmPeak | RSS peak |
-|----------|-------|-----------|----------|--------|----------|
-| NIST CSF 2.0 | 32 | 44 s | 186 s | ~40 GB | 2.7 GB |
-| NIST SP 800-53r5 | 492 | 807 s | 3221 s | 43.2 GB | 4.3 GB |
+| Document         | Pages | Wall time | CPU time | VmPeak  | RSS peak |
+|------------------|-------|-----------|----------|---------|----------|
+| NIST CSF 2.0     | 32    | 44 s      | 186 s    | ~40 GB  | 2.7 GB   |
+| NIST SP 800-53r5 | 492   | 807 s     | 3221 s   | 43.2 GB | 4.3 GB   |
 
 - **Time**: Docling uses several threads, and `RLIMIT_CPU` counts CPU time across all threads (CPU is
   roughly 4-6x wall time). `MAX_PROCESSING_TIME=3600` and `RLIMIT_CPU=21600` leave headroom for documents
