@@ -204,6 +204,10 @@ def convert_document(input_path: str, format_hint: str, settings: IngestionSetti
 
         # Minimal environment: HF_HUB_OFFLINE keeps the sandboxed worker off the network.
         env = {"PATH": os.environ.get("PATH", ""), "HF_HUB_OFFLINE": "1"}
+        # The worker must import the same packages as this process; the FIPS image finds them
+        # only via PYTHONPATH.
+        if "PYTHONPATH" in os.environ:
+            env["PYTHONPATH"] = os.environ["PYTHONPATH"]
 
         # Run subprocess
         try:

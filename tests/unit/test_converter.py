@@ -347,7 +347,30 @@ class TestOfflineModels:
 
         env = mock_subprocess_run.call_args.kwargs["env"]
         assert env["HF_HUB_OFFLINE"] == "1"
-        assert set(env) <= {"PATH", "HOME", "HF_HUB_OFFLINE"}
+        assert set(env) <= {"PATH", "HF_HUB_OFFLINE", "PYTHONPATH"}
+
+    @patch("crosscodex_ingestion.converter.subprocess.run")
+    @patch("crosscodex_ingestion.converter.shutil.copy2")
+    def test_worker_inherits_pythonpath_so_it_can_import_the_package(
+        self, mock_copy2, mock_subprocess_run, monkeypatch
+    ):
+        """The FIPS image locates the package and Docling only through PYTHONPATH."""
+        monkeypatch.setenv("PYTHONPATH", "/opt/app-root/lib/python3.12/site-packages")
+        _capture_cmd_and_env(mock_subprocess_run)
+
+        convert_document("/path/to/doc.pdf", "pdf", IngestionSettings(docling_artifacts_path="/m"))
+
+        assert mock_subprocess_run.call_args.kwargs["env"]["PYTHONPATH"] == "/opt/app-root/lib/python3.12/site-packages"
+
+    @patch("crosscodex_ingestion.converter.subprocess.run")
+    @patch("crosscodex_ingestion.converter.shutil.copy2")
+    def test_worker_env_has_no_pythonpath_when_parent_has_none(self, mock_copy2, mock_subprocess_run, monkeypatch):
+        monkeypatch.delenv("PYTHONPATH", raising=False)
+        _capture_cmd_and_env(mock_subprocess_run)
+
+        convert_document("/path/to/doc.pdf", "pdf", IngestionSettings(docling_artifacts_path="/m"))
+
+        assert "PYTHONPATH" not in mock_subprocess_run.call_args.kwargs["env"]
 
 
 class TestValidateArtifactsPath:
