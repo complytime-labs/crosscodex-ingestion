@@ -1,6 +1,6 @@
 from typing import Literal
 
-from pydantic import field_validator
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings
 
 
@@ -12,6 +12,9 @@ class IngestionSettings(BaseSettings):
     log_level: str = "info"
     execution_mode: Literal["embedded", "distributed"] = "embedded"
     max_concurrent_conversions: int = 4
+    # Seconds SIGTERM gives in-flight conversions to finish before they are killed and failed as
+    # retryable. Keep below the runtime's stop timeout (Kubernetes 30 s, podman/docker 10 s).
+    shutdown_grace_seconds: float = Field(default=25, ge=0)
 
     max_document_size: int = 52_428_800
     # Wall-clock limit per conversion. A 492-page PDF (NIST SP 800-53r5) takes ~13.5 minutes (807 s).

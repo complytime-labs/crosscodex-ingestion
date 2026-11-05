@@ -112,7 +112,7 @@ class IngestionServiceServicer(ingestion_pb2_grpc.IngestionServiceServicer):
             created_at=now,
             updated_at=now,
         )
-        self._state.create(record)
+        await self._state.create(record)
 
         # Dispatch to worker
         await self._dispatch.dispatch(
@@ -165,7 +165,7 @@ class IngestionServiceServicer(ingestion_pb2_grpc.IngestionServiceServicer):
             await context.abort(grpc.StatusCode.INVALID_ARGUMENT, str(exc))
 
         # Look up document in state backend
-        record = self._state.get(request.tenant_context.tenant_id, request.document_id)
+        record = await self._state.get(request.tenant_context.tenant_id, request.document_id)
 
         if record is None:
             await context.abort(
@@ -208,7 +208,7 @@ class IngestionServiceServicer(ingestion_pb2_grpc.IngestionServiceServicer):
                 page_token = request.options.pagination.page_token
 
         # Query state backend
-        records, next_token = self._state.list_documents(
+        records, next_token = await self._state.list_documents(
             tenant_id=request.tenant_context.tenant_id,
             page_size=page_size,
             page_token=page_token,

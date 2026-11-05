@@ -14,6 +14,7 @@ import json
 import logging
 import ssl
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
 import nats
@@ -23,12 +24,25 @@ from crosscodex_ingestion.audit import AuditPublisher
 from crosscodex_ingestion.config import IngestionSettings
 from crosscodex_ingestion.state import StateBackend
 from crosscodex_ingestion.storage import StorageBackend
-from crosscodex_ingestion.worker import run_conversion
+from crosscodex_ingestion.worker import SHUTDOWN_ERROR, record_failure, run_conversion
 
 if TYPE_CHECKING:
     from nats.aio.client import Client
 
 logger = logging.getLogger(__name__)
+
+# After cancelling over-grace conversions, how long to wait for them to kill their Docling
+# subprocess and record FAILED. Kept small so shutdown stays near the configured grace period.
+CANCEL_CLEANUP_SECONDS = 2.0
+
+
+@dataclass(frozen=True)
+class _QueuedJob:
+    """What is needed to fail a job that is still waiting for a concurrency slot."""
+
+    document_id: str
+    tenant_id: str
+    metadata: dict
 
 
 class DispatchBackend(ABC):
@@ -46,8 +60,12 @@ class DispatchBackend(ABC):
         """Submit a conversion job."""
 
     @abstractmethod
-    async def shutdown(self) -> None:
-        """Wait for in-flight jobs and clean up resources."""
+    async def shutdown(self, grace_seconds: float) -> None:
+        """Stop work and clean up resources, taking about *grace_seconds* at most.
+
+        Implementations give in-flight work up to *grace_seconds* to finish, then abandon
+        it so that another attempt can be made.
+        """
 
 
 class EmbeddedDispatch(DispatchBackend):
@@ -85,6 +103,9 @@ class EmbeddedDispatch(DispatchBackend):
 
         # Track in-flight tasks for shutdown
         self._tasks: set[asyncio.Task] = set()
+        # Jobs still waiting on the semaphore. An entry is removed in the same event-loop step
+        # in which the job acquires its slot, so membership means "has not started converting".
+        self._queued: dict[asyncio.Task, _QueuedJob] = {}
 
     async def dispatch(
         self,
@@ -114,8 +135,9 @@ class EmbeddedDispatch(DispatchBackend):
             )
         )
 
-        # Track task
+        # Track task; it counts as queued until it acquires a concurrency slot
         self._tasks.add(task)
+        self._queued[task] = _QueuedJob(document_id, tenant_id, metadata)
 
         # Remove from tracking when done
         task.add_done_callback(self._tasks.discard)
@@ -138,6 +160,7 @@ class EmbeddedDispatch(DispatchBackend):
             metadata: Document metadata.
         """
         async with self._semaphore:
+            del self._queued[asyncio.current_task()]  # type: ignore[arg-type]
             await run_conversion(
                 document_id=document_id,
                 tenant_id=tenant_id,
@@ -151,12 +174,62 @@ class EmbeddedDispatch(DispatchBackend):
                 audit=self._audit,
             )
 
-    async def shutdown(self) -> None:
-        """Wait for all in-flight tasks to complete."""
-        if self._tasks:
-            logger.info("Waiting for %d in-flight conversion tasks", len(self._tasks))
-            await asyncio.gather(*self._tasks, return_exceptions=True)
+    async def shutdown(self, grace_seconds: float) -> None:
+        """Bounded shutdown: fail queued jobs, let running ones finish, then cancel the rest.
+
+        1. Jobs waiting for a slot are failed at once (retryable); starting minutes-long
+           conversions that would be cut off is wasted work.
+        2. Running conversions get *grace_seconds* to finish.
+        3. Any still running are cancelled. run_conversion kills the Docling subprocess and
+           marks the document FAILED (retryable), then cancellation completes, bounded by
+           CANCEL_CLEANUP_SECONDS.
+        """
+        if not self._tasks:
+            return
+
+        queued = dict(self._queued)
+        for task in queued:
+            task.cancel()
+        results = await asyncio.gather(
+            *(
+                record_failure(
+                    self._state,
+                    self._audit,
+                    job.tenant_id,
+                    job.document_id,
+                    job.metadata,
+                    SHUTDOWN_ERROR,
+                    "shutdown",
+                    "unknown",
+                )
+                for job in queued.values()
+            ),
+            return_exceptions=True,
+        )
+        for job, result in zip(queued.values(), results, strict=True):
+            if isinstance(result, BaseException):
+                logger.error("Could not record shutdown failure for queued document %s: %r", job.document_id, result)
+        if queued:
+            logger.info("Failed %d queued conversions (retryable)", len(queued))
+
+        running = self._tasks - queued.keys()
+        if not running:
+            return
+        logger.info("Waiting up to %.1fs for %d in-flight conversions", grace_seconds, len(running))
+        _, unfinished = await asyncio.wait(running, timeout=grace_seconds)
+        if not unfinished:
             logger.info("All conversion tasks completed")
+            return
+
+        logger.warning("Grace period expired; cancelling %d conversions", len(unfinished))
+        for task in unfinished:
+            task.cancel()
+        await asyncio.wait(unfinished, timeout=CANCEL_CLEANUP_SECONDS)
+        for task in unfinished:
+            if not task.done():
+                logger.error("Conversion task did not stop within %.1fs of cancellation", CANCEL_CLEANUP_SECONDS)
+            elif not task.cancelled() and task.exception() is not None:
+                logger.error("Conversion task failed while cancelling: %r", task.exception())
 
 
 class NatsDispatch(DispatchBackend):
@@ -241,8 +314,13 @@ class NatsDispatch(DispatchBackend):
             payload=payload,
         )
 
-    async def shutdown(self) -> None:
-        """Close the NATS connection."""
+    async def shutdown(self, grace_seconds: float) -> None:
+        """Flush pending publishes and close the NATS connection.
+
+        This backend only publishes jobs; consuming them is done by a separate worker that
+        is not part of this repository, so there are no in-flight messages to negatively
+        acknowledge here. *grace_seconds* is unused: drain() is bounded by the NATS client.
+        """
         if self._nc:
             logger.info("Closing NATS connection")
             await self._nc.drain()

@@ -29,16 +29,16 @@ def _make_pdf(path: Path, pages: int) -> str:
     return str(path)
 
 
-def test_pdf_over_max_pages_fails_instead_of_truncating(tmp_path):
+async def test_pdf_over_max_pages_fails_instead_of_truncating(tmp_path):
     pdf_path = _make_pdf(tmp_path / "three.pdf", pages=3)
 
     with pytest.raises(DocumentLimitError, match="2 pages"):
-        convert_document(pdf_path, "pdf", IngestionSettings(max_pages=2, docling_artifacts_path=ARTIFACTS))
+        await convert_document(pdf_path, "pdf", IngestionSettings(max_pages=2, docling_artifacts_path=ARTIFACTS))
 
 
-def test_pdf_at_max_pages_converts(tmp_path):
+async def test_pdf_at_max_pages_converts(tmp_path):
     pdf_path = _make_pdf(tmp_path / "three.pdf", pages=3)
 
-    result = convert_document(pdf_path, "pdf", IngestionSettings(max_pages=3, docling_artifacts_path=ARTIFACTS))
+    result = await convert_document(pdf_path, "pdf", IngestionSettings(max_pages=3, docling_artifacts_path=ARTIFACTS))
 
     assert result["elements"]

@@ -119,11 +119,15 @@ async def serve() -> None:
     # Graceful shutdown
     logger.info("Shutting down server...")
 
-    # Stop accepting new requests
-    await server.stop(grace=30)
+    # One grace budget covers stopping the RPCs and draining conversions, so the total stays
+    # under the runtime's stop timeout.
+    shutdown_deadline = loop.time() + settings.shutdown_grace_seconds
 
-    # Shutdown dispatch backend (wait for in-flight jobs)
-    await dispatch_backend.shutdown()
+    # Stop accepting new requests
+    await server.stop(grace=settings.shutdown_grace_seconds)
+
+    # Shutdown dispatch backend: let in-flight jobs finish, then cancel them (retryable FAILED)
+    await dispatch_backend.shutdown(max(0.0, shutdown_deadline - loop.time()))
 
     # Close audit publisher connection
     await audit_publisher.close()

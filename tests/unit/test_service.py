@@ -92,7 +92,7 @@ class TestConvertDocument:
         assert call_args["source_uri"] is None
 
         # Verify record was created in state
-        record = state_backend.get("tenant-a", response.document_id)
+        record = await state_backend.get("tenant-a", response.document_id)
         assert record is not None
         assert record.status == common_pb2.JOB_STATUS_PENDING
 
@@ -187,7 +187,7 @@ class TestGetDocument:
             created_at=now,
             updated_at=now,
         )
-        state_backend.create(record)
+        await state_backend.create(record)
 
         request = ingestion_pb2.GetDocumentRequest(
             tenant_context=common_pb2.TenantContext(tenant_id="tenant-a"),
@@ -232,7 +232,7 @@ class TestGetDocument:
             created_at=now,
             updated_at=now,
         )
-        state_backend.create(record)
+        await state_backend.create(record)
 
         # Try to access with different tenant
         request = ingestion_pb2.GetDocumentRequest(
@@ -273,7 +273,7 @@ class TestListDocuments:
 
         # Create docs for tenant-a
         for i in range(3):
-            state_backend.create(
+            await state_backend.create(
                 DocumentRecord(
                     document_id=f"doc-a-{i}",
                     tenant_id="tenant-a",
@@ -287,7 +287,7 @@ class TestListDocuments:
 
         # Create docs for tenant-b
         for i in range(2):
-            state_backend.create(
+            await state_backend.create(
                 DocumentRecord(
                     document_id=f"doc-b-{i}",
                     tenant_id="tenant-b",
@@ -318,7 +318,7 @@ class TestListDocuments:
 
         # Create 5 documents
         for i in range(5):
-            state_backend.create(
+            await state_backend.create(
                 DocumentRecord(
                     document_id=f"doc-{i:02d}",
                     tenant_id="tenant-a",
@@ -392,7 +392,7 @@ class TestAbortStopsProcessing:
             await servicer.ConvertDocument(request, MockServicerContext())
 
         mock_dispatch.dispatch.assert_not_called()
-        records, _ = state_backend.list_documents(tenant_id="", page_size=10, page_token="")
+        records, _ = await state_backend.list_documents(tenant_id="", page_size=10, page_token="")
         assert records == []
 
     @pytest.mark.asyncio

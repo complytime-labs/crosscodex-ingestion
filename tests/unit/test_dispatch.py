@@ -166,7 +166,7 @@ class TestEmbeddedDispatch:
                 )
 
             # Wait for all tasks to complete
-            await dispatcher.shutdown()
+            await asyncio.gather(*dispatcher._tasks)
 
         # Verify that max concurrent was limited to 2
         assert max_concurrent == 2
@@ -208,7 +208,7 @@ class TestEmbeddedDispatch:
             assert task_started
 
             # Shutdown should wait for task completion
-            await dispatcher.shutdown()
+            await dispatcher.shutdown(grace_seconds=5)
             assert task_completed
 
     @pytest.mark.asyncio
@@ -318,7 +318,7 @@ class TestNatsDispatch:
             await dispatcher._connect()
 
             # Shutdown
-            await dispatcher.shutdown()
+            await dispatcher.shutdown(grace_seconds=5)
 
             # Verify drain and close were called
             mock_nc.drain.assert_called_once()

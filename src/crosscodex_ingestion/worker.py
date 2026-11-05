@@ -52,6 +52,13 @@ JOB_STATUS_FAILED = 4
 ERROR_CODE_INVALID_ARGUMENT = 1
 ERROR_CODE_RESOURCE_EXHAUSTED = 5
 ERROR_CODE_INTERNAL = 6
+ERROR_CODE_UNAVAILABLE = 7
+
+# Retryable failure recorded for documents interrupted by service shutdown.
+SHUTDOWN_ERROR = {
+    "code": ERROR_CODE_UNAVAILABLE,
+    "message": "The service shut down during conversion; resubmit the document.",
+}
 
 
 def _fetch_source(source_uri: str, settings: IngestionSettings) -> tuple[bytes, str]:
@@ -67,6 +74,40 @@ def _fetch_source(source_uri: str, settings: IngestionSettings) -> tuple[bytes, 
         max_redirects=settings.max_redirects,
     ) as (file_path, file_format):
         return Path(file_path).read_bytes(), file_format
+
+
+async def record_failure(
+    state: StateBackend,
+    audit: AuditPublisher,
+    tenant_id: str,
+    document_id: str,
+    metadata: dict,
+    error: dict,
+    error_type: str,
+    document_format: str,
+) -> None:
+    """Mark a document FAILED with *error*, count it, and publish the audit event."""
+    ERRORS_TOTAL.labels(error_type=error_type).inc()
+    REQUESTS_TOTAL.labels(format=document_format, status="failed").inc()
+
+    await state.update(
+        tenant_id,
+        document_id,
+        status=JOB_STATUS_FAILED,
+        error=error,
+    )
+
+    await audit.publish(
+        tenant_id=tenant_id,
+        event={
+            "document_id": document_id,
+            "tenant_id": tenant_id,
+            "status": "failed",
+            "error": error,
+        },
+        trace_id=metadata.get("correlation_id", ""),
+        span_id="",
+    )
 
 
 async def run_conversion(
@@ -136,7 +177,7 @@ async def run_conversion(
     try:
         # Step 1: Update state to RUNNING
         logger.info("Starting conversion for document %s (tenant %s)", document_id, tenant_id)
-        state.update(tenant_id, document_id, status=JOB_STATUS_RUNNING)
+        await state.update(tenant_id, document_id, status=JOB_STATUS_RUNNING)
 
         # Step 2: Resolve input
         input_bytes: bytes
@@ -209,9 +250,8 @@ async def run_conversion(
             span.set_attribute("document.size_bytes", len(input_bytes))
 
             logger.info("Converting document %s (format: %s)", document_id, validated_format)
-            # The subprocess call blocks for up to max_processing_time; keep the event loop free.
-            conversion_result: dict[str, Any] = await asyncio.to_thread(
-                convert_document,
+            # Awaits the Docling subprocess; cancelling this task kills the subprocess.
+            conversion_result: dict[str, Any] = await convert_document(
                 str(temp_file_path),
                 validated_format,
                 settings,
@@ -308,7 +348,7 @@ async def run_conversion(
 
         # Step 10: Update state to COMPLETED
         logger.info("Marking document %s as completed", document_id)
-        state.update(
+        await state.update(
             tenant_id,
             document_id,
             status=JOB_STATUS_COMPLETED,
@@ -354,30 +394,15 @@ async def run_conversion(
             "message": error_message,
         }
 
-        # Record error metrics
-        ERRORS_TOTAL.labels(error_type=error_type).inc()
-        REQUESTS_TOTAL.labels(format=validated_format, status="failed").inc()
+        await record_failure(state, audit, tenant_id, document_id, metadata, error_dict, error_type, validated_format)
 
-        # Update state to FAILED
-        state.update(
-            tenant_id,
-            document_id,
-            status=JOB_STATUS_FAILED,
-            error=error_dict,
+    except asyncio.CancelledError:
+        # Only dispatch shutdown cancels conversions (after its grace period expires).
+        logger.warning("Conversion of document %s cancelled by shutdown", document_id)
+        await record_failure(
+            state, audit, tenant_id, document_id, metadata, SHUTDOWN_ERROR, "shutdown", validated_format
         )
-
-        # Publish audit event for failure
-        await audit.publish(
-            tenant_id=tenant_id,
-            event={
-                "document_id": document_id,
-                "tenant_id": tenant_id,
-                "status": "failed",
-                "error": error_dict,
-            },
-            trace_id=metadata.get("correlation_id", ""),
-            span_id="",
-        )
+        raise
 
     finally:
         # Decrement active conversions
