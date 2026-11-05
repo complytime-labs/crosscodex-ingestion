@@ -16,6 +16,16 @@ class IngestionSettings(BaseSettings):
     # retryable. Keep below the runtime's stop timeout (Kubernetes 30 s, podman/docker 10 s).
     shutdown_grace_seconds: float = Field(default=25, ge=0)
 
+    # Transport security for the gRPC port. `mutual` requires every caller to present a client
+    # certificate signed by grpc_tls_ca; `off` is for development and tests only.
+    grpc_tls_mode: Literal["mutual", "off"] = "mutual"
+    grpc_tls_cert: str = ""
+    grpc_tls_key: str = ""
+    grpc_tls_ca: str = ""
+    # Comma-separated client certificate identities (subject CN or DNS SAN) allowed to call the
+    # service. Empty means any certificate signed by grpc_tls_ca.
+    grpc_allowed_clients: str = ""
+
     max_document_size: int = 52_428_800
     # Wall-clock limit per conversion. A 492-page PDF (NIST SP 800-53r5) takes ~13.5 minutes (807 s).
     max_processing_time: int = 3600
@@ -71,6 +81,10 @@ class IngestionSettings(BaseSettings):
     @property
     def allowed_formats_set(self) -> set[str]:
         return {f.strip().lower() for f in self.allowed_formats.split(",") if f.strip()}
+
+    @property
+    def grpc_allowed_clients_set(self) -> set[str]:
+        return {c.strip() for c in self.grpc_allowed_clients.split(",") if c.strip()}
 
     @field_validator("log_level")
     @classmethod

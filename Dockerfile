@@ -74,9 +74,10 @@ USER 1000:1000
 # Expose gRPC and metrics ports
 EXPOSE 8080 9090
 
-# Health check via gRPC channel ready check
+# Health check: TCP connect to the gRPC port. A gRPC channel check would need a client
+# certificate under GRPC_TLS_MODE=mutual; the TLS handshake is not completed here.
 HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
-  CMD ["python", "-c", "import grpc; ch=grpc.insecure_channel('localhost:8080'); grpc.channel_ready_future(ch).result(timeout=5)"]
+  CMD python -c "import os, socket; socket.create_connection(('localhost', int(os.environ.get('GRPC_PORT', '8080'))), timeout=5).close()" || exit 1
 
 # Run the service
 ENTRYPOINT ["python", "-m", "crosscodex_ingestion"]

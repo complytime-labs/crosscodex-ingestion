@@ -72,34 +72,40 @@ images download the models at build time (`/opt/docling-models` in the standard 
 
 ## Environment Variables
 
-| Variable                                                                  | Default             | Description                                                                      |
-|---------------------------------------------------------------------------|---------------------|----------------------------------------------------------------------------------|
-| `DOCLING_ARTIFACTS_PATH`                                                  | (required)          | Directory with pre-downloaded Docling models; server refuses to start without it |
-| `GRPC_PORT`                                                               | `8080`              | gRPC server port                                                                 |
-| `METRICS_PORT`                                                            | `9090`              | Prometheus metrics port                                                          |
-| `EXECUTION_MODE`                                                          | `embedded`          | `embedded` or `distributed` (NATS)                                               |
-| `MAX_CONCURRENT_CONVERSIONS`                                              | `4`                 | Conversions running at once (each is a separate subprocess)                      |
-| `SHUTDOWN_GRACE_SECONDS`                                                  | `25`                | SIGTERM grace for in-flight conversions (`>= 0`); see "Graceful shutdown"        |
-| `STATE_BACKEND`                                                           | `memory`            | `memory` or `redis`                                                              |
-| `STORAGE_BACKEND`                                                         | `filesystem`        | `filesystem` or `s3`                                                             |
-| `STORAGE_PATH`                                                            | `/data/documents`   | Filesystem storage root                                                          |
-| `ALLOWED_FORMATS`                                                         | `pdf,docx,html,txt` | Comma-separated list of allowed formats                                          |
-| `MAX_DOCUMENT_SIZE`                                                       | `52428800`          | Maximum uploaded document size in bytes (50 MB)                                  |
-| `MAX_URL_BYTES`                                                           | `104857600`         | Maximum bytes to fetch from URLs (100 MB)                                        |
-| `URL_TIMEOUT`                                                             | `30`                | URL fetch timeout in seconds                                                     |
-| `MAX_REDIRECTS`                                                           | `5`                 | Maximum redirects followed when fetching a URL                                   |
-| `MAX_PAGES`                                                               | `1000`              | Documents with more pages fail (never silently truncated)                        |
-| `MAX_EXTRACTION_LENGTH`                                                   | `10485760`          | Maximum serialized output size in bytes (10 MB); larger output fails             |
-| `MAX_PROCESSING_TIME`                                                     | `3600`              | Wall-clock limit per conversion in seconds                                       |
-| `RLIMIT_CPU`                                                              | `21600`             | CPU-seconds limit for the conversion subprocess                                  |
-| `RLIMIT_AS_MB`                                                            | `65536`             | Virtual address space limit for the conversion subprocess (MB)                   |
-| `RLIMIT_FSIZE_MB`                                                         | `100`               | Maximum size of any file the conversion subprocess writes (MB)                   |
-| `ATTESTATION_ENABLED`                                                     | `true`              | Enable in-toto attestation generation                                            |
-| `ATTESTATION_PRIVATE_KEY_PATH`                                            | (empty)             | Path to private key for attestation signing (empty: ephemeral key per process)   |
-| `ATTESTATION_PUBLIC_KEY_PATH`                                             | (empty)             | Path to public key for attestation verification                                  |
-| `NATS_URL`                                                                | (empty)             | NATS server URL (e.g., `nats://localhost:4222`)                                  |
-| `REDIS_URL`                                                               | (empty)             | Redis URL for state backend                                                      |
-| `S3_ENDPOINT`, `S3_BUCKET`, `S3_ACCESS_KEY`, `S3_SECRET_KEY`, `S3_REGION` | (see `config.py`)   | S3 storage backend settings                                                      |
+| Variable                                                                  | Default             | Description                                                                                                                                                                                                                      |
+|---------------------------------------------------------------------------|---------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `DOCLING_ARTIFACTS_PATH`                                                  | (required)          | Directory with pre-downloaded Docling models; server refuses to start without it                                                                                                                                                 |
+| `GRPC_PORT`                                                               | `8080`              | gRPC server port                                                                                                                                                                                                                 |
+| `METRICS_PORT`                                                            | `9090`              | Prometheus metrics port                                                                                                                                                                                                          |
+| `EXECUTION_MODE`                                                          | `embedded`          | `embedded` or `distributed` (NATS)                                                                                                                                                                                               |
+| `MAX_CONCURRENT_CONVERSIONS`                                              | `4`                 | Conversions running at once (each is a separate subprocess)                                                                                                                                                                      |
+| `SHUTDOWN_GRACE_SECONDS`                                                  | `25`                | Seconds SIGTERM gives in-flight conversions to finish (`>= 0`); see "Graceful shutdown"                                                                                                                                          |
+| `STATE_BACKEND`                                                           | `memory`            | `memory` or `redis`                                                                                                                                                                                                              |
+| `STORAGE_BACKEND`                                                         | `filesystem`        | `filesystem` or `s3`                                                                                                                                                                                                             |
+| `STORAGE_PATH`                                                            | `/data/documents`   | Filesystem storage root                                                                                                                                                                                                          |
+| `ALLOWED_FORMATS`                                                         | `pdf,docx,html,txt` | Comma-separated list of allowed formats                                                                                                                                                                                          |
+| `MAX_DOCUMENT_SIZE`                                                       | `52428800`          | Maximum uploaded document size in bytes (50 MB)                                                                                                                                                                                  |
+| `MAX_URL_BYTES`                                                           | `104857600`         | Maximum bytes to fetch from URLs (100 MB)                                                                                                                                                                                        |
+| `URL_TIMEOUT`                                                             | `30`                | URL fetch timeout in seconds                                                                                                                                                                                                     |
+| `MAX_REDIRECTS`                                                           | `5`                 | Maximum redirects followed when fetching a URL                                                                                                                                                                                   |
+| `MAX_PAGES`                                                               | `1000`              | Documents with more pages fail (never silently truncated)                                                                                                                                                                        |
+| `MAX_EXTRACTION_LENGTH`                                                   | `10485760`          | Maximum serialized output size in bytes (10 MB); larger output fails                                                                                                                                                             |
+| `MAX_PROCESSING_TIME`                                                     | `3600`              | Wall-clock limit per conversion in seconds                                                                                                                                                                                       |
+| `RLIMIT_CPU`                                                              | `21600`             | CPU-seconds limit for the conversion subprocess                                                                                                                                                                                  |
+| `RLIMIT_AS_MB`                                                            | `65536`             | Virtual address space limit for the conversion subprocess (MB)                                                                                                                                                                   |
+| `RLIMIT_FSIZE_MB`                                                         | `100`               | Maximum size of any file the conversion subprocess writes (MB)                                                                                                                                                                   |
+| `ATTESTATION_ENABLED`                                                     | `true`              | Enable in-toto attestation generation. When `true`, both key paths below are required or the service refuses to start. `false` is for development only (conversions are unattested; a warning is logged)                         |
+| `ATTESTATION_PRIVATE_KEY_PATH`                                            | (empty)             | PEM private key for attestation signing (ECDSA P-256)                                                                                                                                                                            |
+| `ATTESTATION_PUBLIC_KEY_PATH`                                             | (empty)             | PEM public key matching the private key; startup fails if they are not a pair                                                                                                                                                    |
+| `FIPS_MODE`                                                               | `false`             | Require the attestation key to be ECDSA on an approved curve                                                                                                                                                                     |
+| `GRPC_TLS_MODE`                                                           | `mutual`            | `mutual` (require a client certificate) or `off` (plaintext, unauthenticated; development and tests only, logs a warning)                                                                                                        |
+| `GRPC_TLS_CERT`                                                           | (empty)             | Server certificate (PEM); required for `mutual`                                                                                                                                                                                  |
+| `GRPC_TLS_KEY`                                                            | (empty)             | Server private key (PEM); required for `mutual`                                                                                                                                                                                  |
+| `GRPC_TLS_CA`                                                             | (empty)             | CA (PEM) that signs client certificates; required for `mutual`                                                                                                                                                                   |
+| `GRPC_ALLOWED_CLIENTS`                                                    | (empty)             | Comma-separated client certificate identities (subject CN or DNS SAN) allowed to call the service; empty accepts any certificate signed by `GRPC_TLS_CA`. Rejected with `PERMISSION_DENIED`; not usable with `GRPC_TLS_MODE=off` |
+| `NATS_URL`                                                                | (empty)             | NATS server URL (e.g., `nats://localhost:4222`)                                                                                                                                                                                  |
+| `REDIS_URL`                                                               | (empty)             | Redis URL for state backend                                                                                                                                                                                                      |
+| `S3_ENDPOINT`, `S3_BUCKET`, `S3_ACCESS_KEY`, `S3_SECRET_KEY`, `S3_REGION` | (see `config.py`)   | S3 storage backend settings                                                                                                                                                                                                      |
 
 See `src/crosscodex_ingestion/config.py` for the full list.
 
@@ -144,6 +150,31 @@ period and must be resubmitted after a restart.
 In `distributed` mode this service only publishes jobs to NATS JetStream; the consumer is not part of this
 repository, so redelivery of in-flight messages on shutdown (negative acknowledgement) is up to that worker.
 
+### gRPC authentication
+
+The gRPC port uses mutual TLS by default and the service refuses to start without `GRPC_TLS_CERT`,
+`GRPC_TLS_KEY` and `GRPC_TLS_CA` (or an explicit `GRPC_TLS_MODE=off`). A client certificate identifies the
+calling *service* (for example the CrossCodex gateway), not a tenant: the service still trusts `tenant_id` in
+the request, so only issue client certificates to services that enforce tenant isolation themselves, and list
+them in `GRPC_ALLOWED_CLIENTS`. TLS settings use the gRPC/OpenSSL defaults; no cryptographic algorithms are
+chosen by this service, so the FIPS image inherits whatever its OpenSSL FIPS provider permits.
+
+The container health check only opens a TCP connection to the gRPC port, because a gRPC channel check would
+need a client certificate.
+
+### Attestation keys
+
+Attestations are signed with the key at `ATTESTATION_PRIVATE_KEY_PATH` and are verifiable with the key at
+`ATTESTATION_PUBLIC_KEY_PATH`. There is no ephemeral-key fallback. Generate a pair with, for example:
+
+```bash
+openssl ecparam -name prime256v1 -genkey -noout | openssl pkcs8 -topk8 -nocrypt -out attestation.key
+openssl pkey -in attestation.key -pubout -out attestation.pub
+```
+
+The signer (securesystemslib) supports ECDSA P-256 only for ECDSA keys, so P-384 and P-521 keys are
+rejected at startup even though FIPS mode would allow them.
+
 ### Identifiers
 
 `tenant_id` must match `^[a-z][a-z0-9-]{1,50}[a-z0-9]$` (3-52 characters: lowercase letters, digits, hyphens;
@@ -166,8 +197,9 @@ podman run --memory 8g -p 8080:8080 \
 ```
 
 Without a volume, converted output is stored inside the container (`/data/documents`) and lost when it is
-removed. Mount a volume at `/data/documents` to keep it. Without `ATTESTATION_PRIVATE_KEY_PATH`, attestation
-uses an ephemeral signing key generated at startup.
+removed. Mount a volume at `/data/documents` to keep it. The container needs the TLS and attestation key
+files mounted (see "gRPC authentication" and "Attestation keys"); for a throwaway local run add
+`-e GRPC_TLS_MODE=off -e ATTESTATION_ENABLED=false`.
 
 ## Architecture
 

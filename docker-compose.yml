@@ -17,6 +17,14 @@ services:
       METRICS_PORT: "9090"
       LOG_LEVEL: "debug"
 
+      # DEVELOPMENT ONLY: plaintext, unauthenticated gRPC. Production must use the default
+      # GRPC_TLS_MODE=mutual with GRPC_TLS_CERT, GRPC_TLS_KEY and GRPC_TLS_CA (see README).
+      GRPC_TLS_MODE: "off"
+
+      # DEVELOPMENT ONLY: conversions are unattested. Production must set
+      # ATTESTATION_PRIVATE_KEY_PATH and ATTESTATION_PUBLIC_KEY_PATH (see README).
+      ATTESTATION_ENABLED: "false"
+
       # Storage configuration (filesystem mode for local development)
       STORAGE_BACKEND: "filesystem"
       STORAGE_PATH: "/data/documents"
@@ -45,7 +53,7 @@ services:
           "CMD",
           "python",
           "-c",
-          "import grpc; ch=grpc.insecure_channel('localhost:8080'); grpc.channel_ready_future(ch).result(timeout=5)",
+          "import os, socket; socket.create_connection(('localhost', int(os.environ.get('GRPC_PORT', '8080'))), timeout=5).close()",
         ]
       interval: 30s
       timeout: 10s

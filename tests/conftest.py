@@ -65,6 +65,7 @@ async def grpc_server_and_channel() -> AsyncGenerator[tuple[grpc.aio.Server, grp
             attestation_enabled=False,
             max_concurrent_conversions=2,
             grpc_port=0,  # Will bind to ephemeral port
+            grpc_tls_mode="off",  # in-process test server; TLS is covered in tests/unit/test_tls.py
             rlimit_as_mb=0,  # Unlimited for integration tests
             rlimit_cpu=0,
             rlimit_fsize_mb=0,
@@ -96,11 +97,8 @@ async def grpc_server_and_channel() -> AsyncGenerator[tuple[grpc.aio.Server, grp
         )
 
         # Create gRPC server
-        server = create_grpc_server(settings)
+        server, port = create_grpc_server(settings, "[::]:0")  # port 0: ephemeral
         ingestion_pb2_grpc.add_IngestionServiceServicer_to_server(servicer, server)
-
-        # Bind to ephemeral port
-        port = server.add_insecure_port("[::]:0")
         await server.start()
 
         # Create client channel

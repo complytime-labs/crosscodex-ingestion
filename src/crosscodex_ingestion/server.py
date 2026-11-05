@@ -23,6 +23,7 @@ from crosscodex_ingestion.proto.crosscodex.v1 import ingestion_pb2_grpc
 from crosscodex_ingestion.service import IngestionServiceServicer
 from crosscodex_ingestion.state import create_state_backend
 from crosscodex_ingestion.storage import create_storage
+from crosscodex_ingestion.tls import ClientAllowlistInterceptor, build_server_credentials
 
 logger = logging.getLogger(__name__)
 
@@ -47,6 +48,14 @@ async def serve() -> None:
     except ValueError as exc:
         raise SystemExit(f"Configuration error: {exc}") from exc
 
+    # Fail closed on unverifiable attestations and unauthenticated callers before opening anything
+    listen_addr = f"[::]:{settings.grpc_port}"
+    try:
+        attestation_manager = create_attestation_manager(settings)
+        server, _ = create_grpc_server(settings, listen_addr)
+    except (ValueError, OSError) as exc:
+        raise SystemExit(f"Configuration error: {exc}") from exc
+
     # Initialize telemetry (OTel + metrics + structured logging)
     _init_telemetry(settings)
 
@@ -63,7 +72,6 @@ async def serve() -> None:
     # Create backends
     state_backend = create_state_backend(settings)
     storage_backend = create_storage(settings)
-    attestation_manager = create_attestation_manager(settings)
 
     # Create audit publisher
     audit_publisher = AuditPublisher(settings)
@@ -85,13 +93,7 @@ async def serve() -> None:
         dispatch_backend=dispatch_backend,
     )
 
-    # Create gRPC server
-    server = create_grpc_server(settings)
     ingestion_pb2_grpc.add_IngestionServiceServicer_to_server(servicer, server)
-
-    # Bind to port
-    listen_addr = f"[::]:{settings.grpc_port}"
-    server.add_insecure_port(listen_addr)
 
     # Set up graceful shutdown
     shutdown_event = asyncio.Event()
@@ -140,23 +142,37 @@ async def serve() -> None:
 _GRPC_REQUEST_OVERHEAD = 1024 * 1024
 
 
-def create_grpc_server(settings: IngestionSettings) -> grpc.aio.Server:
-    """Create the gRPC server with a receive limit that fits max_document_size.
+def create_grpc_server(settings: IngestionSettings, listen_addr: str) -> tuple[grpc.aio.Server, int]:
+    """Create the gRPC server, bound to listen_addr, with transport security per settings.
 
-    gRPC's default 4 MB receive limit rejected real documents long before
-    max_document_size (the 6 MB NIST SP 800-53r5 PDF failed with "Received
-    message larger than max"). Allowing max_document_size plus request overhead
+    Returns the (not yet started) server and the bound port.
+
+    The receive limit fits max_document_size: gRPC's default 4 MB limit rejected real
+    documents long before max_document_size (the 6 MB NIST SP 800-53r5 PDF failed with
+    "Received message larger than max"). Allowing max_document_size plus request overhead
     lets the servicer enforce max_document_size with its own actionable error.
 
     SO_REUSEPORT is off: gRPC enables it by default, so a second process could
     bind the same port without error and receive a share of the connections.
+
+    With GRPC_TLS_MODE=mutual the port requires a CA-signed client certificate, and
+    GRPC_ALLOWED_CLIENTS (if set) is enforced per RPC.
+
+    Raises:
+        ValueError: If the TLS configuration is incomplete or unreadable.
     """
-    return grpc.aio.server(
+    credentials = build_server_credentials(settings)
+    allowed_clients = settings.grpc_allowed_clients_set
+    server = grpc.aio.server(
+        interceptors=[ClientAllowlistInterceptor(allowed_clients)] if allowed_clients else None,
         options=[
             ("grpc.max_receive_message_length", settings.max_document_size + _GRPC_REQUEST_OVERHEAD),
             ("grpc.so_reuseport", 0),
-        ]
+        ],
     )
+    if credentials is None:
+        return server, server.add_insecure_port(listen_addr)
+    return server, server.add_secure_port(listen_addr, credentials)
 
 
 def _init_telemetry(settings: IngestionSettings) -> None:
