@@ -629,3 +629,22 @@ async def test_max_redirects_setting_is_passed_to_fetch_url(state_backend, stora
         )
 
     mock_fetch.assert_called_once_with("https://example.com/a.pdf", max_bytes=1234, timeout=7, max_redirects=2)
+
+
+@pytest.mark.asyncio
+async def test_slow_storage_upload_does_not_block_event_loop(settings, state_backend, storage_backend, audit_publisher):
+    """S3 uploads of structured output and attestation are network I/O; they run in a thread."""
+    real_upload = storage_backend.upload
+
+    def slow_upload(*args, **kwargs):
+        time.sleep(0.25)
+        return real_upload(*args, **kwargs)
+
+    with (
+        patch.object(storage_backend, "upload", side_effect=slow_upload),
+        patch("crosscodex_ingestion.worker.convert_document", return_value={"elements": [], "metadata": {}}),
+    ):
+        ticks = await _count_ticks_while(_run_pdf_conversion(settings, state_backend, storage_backend, audit_publisher))
+
+    assert ticks >= 10
+    assert state_backend.get("tenant-t", "doc-t").status == 3

@@ -228,7 +228,9 @@ async def run_conversion(
             structured_json_bytes = structured_json.encode("utf-8")
             span.set_attribute("output.size_bytes", len(structured_json_bytes))
 
-            structured_json_uri = storage.upload(
+            # Network I/O for S3; keep it off the event loop.
+            structured_json_uri = await asyncio.to_thread(
+                storage.upload,
                 tenant_id,
                 document_id,
                 "structured.json",
@@ -275,7 +277,8 @@ async def run_conversion(
                 # Upload attestation link to storage
                 logger.info("Uploading attestation link for document %s", document_id)
                 link_bytes = json.dumps(link, separators=(",", ":")).encode("utf-8")
-                attestation_uri = storage.upload(
+                attestation_uri = await asyncio.to_thread(
+                    storage.upload,
                     tenant_id,
                     document_id,
                     "attestation.link",
