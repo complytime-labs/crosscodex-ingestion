@@ -2,6 +2,7 @@
 
 import grpc
 import pytest
+
 from crosscodex_ingestion.proto.crosscodex.v1 import common_pb2, ingestion_pb2, ingestion_pb2_grpc
 
 

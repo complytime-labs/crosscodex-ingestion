@@ -4,12 +4,12 @@ from collections.abc import AsyncGenerator
 
 import grpc
 import pytest
-from crosscodex_ingestion.proto.crosscodex.v1 import ingestion_pb2_grpc
 
 from crosscodex_ingestion.attestation import create_attestation_manager
 from crosscodex_ingestion.audit import AuditPublisher
 from crosscodex_ingestion.config import IngestionSettings
 from crosscodex_ingestion.dispatch import create_dispatch
+from crosscodex_ingestion.proto.crosscodex.v1 import ingestion_pb2_grpc
 from crosscodex_ingestion.service import IngestionServiceServicer
 from crosscodex_ingestion.state import create_state_backend
 from crosscodex_ingestion.storage import create_storage

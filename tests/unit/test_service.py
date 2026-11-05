@@ -5,9 +5,9 @@ from unittest.mock import AsyncMock, MagicMock
 
 import grpc
 import pytest
-from crosscodex_ingestion.proto.crosscodex.v1 import common_pb2, ingestion_pb2
 
 from crosscodex_ingestion.config import IngestionSettings
+from crosscodex_ingestion.proto.crosscodex.v1 import common_pb2, ingestion_pb2
 from crosscodex_ingestion.service import IngestionServiceServicer
 from crosscodex_ingestion.state import DocumentRecord, MemoryStateBackend
 

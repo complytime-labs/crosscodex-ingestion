@@ -8,6 +8,7 @@ import asyncio
 import sys
 
 import pytest
+
 from crosscodex_ingestion.proto.crosscodex.v1 import common_pb2, ingestion_pb2, ingestion_pb2_grpc
 
 # Check if Docling can actually run (import + subprocess viability)
