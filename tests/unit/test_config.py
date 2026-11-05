@@ -66,3 +66,32 @@ def test_time_defaults_allow_large_documents():
     settings = IngestionSettings()
     assert settings.max_processing_time == 3600
     assert settings.rlimit_cpu == 21600
+
+
+def test_shutdown_grace_seconds_defaults_below_kubernetes_default():
+    from crosscodex_ingestion.config import IngestionSettings
+
+    assert IngestionSettings().shutdown_grace_seconds == 25
+
+
+def test_shutdown_grace_seconds_from_env(monkeypatch):
+    from crosscodex_ingestion.config import IngestionSettings
+
+    monkeypatch.setenv("SHUTDOWN_GRACE_SECONDS", "8.5")
+    assert IngestionSettings().shutdown_grace_seconds == 8.5
+
+
+@pytest.mark.parametrize("value", ["-1", "abc"])
+def test_shutdown_grace_seconds_rejects_invalid(monkeypatch, value):
+    from crosscodex_ingestion.config import IngestionSettings
+
+    monkeypatch.setenv("SHUTDOWN_GRACE_SECONDS", value)
+    with pytest.raises(ValidationError):
+        IngestionSettings()
+
+
+def test_shutdown_grace_seconds_zero_is_allowed(monkeypatch):
+    from crosscodex_ingestion.config import IngestionSettings
+
+    monkeypatch.setenv("SHUTDOWN_GRACE_SECONDS", "0")
+    assert IngestionSettings().shutdown_grace_seconds == 0

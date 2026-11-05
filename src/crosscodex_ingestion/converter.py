@@ -6,10 +6,12 @@ Runs Docling conversion in an isolated subprocess with configurable resource lim
 directory, which the parent reads and cleans up.
 """
 
+import asyncio
+import contextlib
 import json
 import os
 import shutil
-import subprocess
+import signal
 import sys
 import tempfile
 from pathlib import Path
@@ -130,8 +132,18 @@ def validate_artifacts_path(artifacts_path: str) -> None:
         )
 
 
-def convert_document(input_path: str, format_hint: str, settings: IngestionSettings) -> dict[str, Any]:
+def _kill_process_group(pid: int) -> None:
+    """SIGKILL the process group led by *pid* (the worker started its own session)."""
+    with contextlib.suppress(ProcessLookupError):  # group already gone
+        os.killpg(pid, signal.SIGKILL)
+
+
+async def convert_document(input_path: str, format_hint: str, settings: IngestionSettings) -> dict[str, Any]:
     """Convert a document using Docling in an isolated subprocess.
+
+    The subprocess runs in its own session so that on timeout or cancellation the whole
+    process group (Docling may spawn helpers) is SIGKILLed and reaped before this coroutine
+    exits; the temp directory is removed either way.
 
     The subprocess:
     1. Sets resource limits (RLIMIT_AS, RLIMIT_CPU, RLIMIT_FSIZE)
@@ -172,7 +184,7 @@ def convert_document(input_path: str, format_hint: str, settings: IngestionSetti
         # Copy input file to temp dir
         input_filename = Path(input_path).name
         temp_input_path = Path(temp_dir) / input_filename
-        shutil.copy2(input_path, temp_input_path)
+        await asyncio.to_thread(shutil.copy2, input_path, temp_input_path)
 
         # Output path for JSON result
         output_path = Path(temp_dir) / "output.json"
@@ -207,26 +219,32 @@ def convert_document(input_path: str, format_hint: str, settings: IngestionSetti
         if "PYTHONPATH" in os.environ:
             env["PYTHONPATH"] = os.environ["PYTHONPATH"]
 
-        # Run subprocess
+        # Run subprocess in its own session/process group so the whole tree can be killed.
+        proc = await asyncio.create_subprocess_exec(
+            *cmd,
+            stdout=asyncio.subprocess.DEVNULL,
+            stderr=asyncio.subprocess.PIPE,
+            env=env,
+            start_new_session=True,
+        )
         try:
-            result = subprocess.run(
-                cmd,
-                capture_output=True,
-                timeout=settings.max_processing_time,
-                env=env,
-                text=True,
-                check=False,
-            )
-        except subprocess.TimeoutExpired as e:
+            async with asyncio.timeout(settings.max_processing_time):
+                _, stderr_bytes = await proc.communicate()
+        except TimeoutError as e:
             raise ConversionTimeout(f"Conversion timed out after {settings.max_processing_time} seconds") from e
+        finally:
+            # Runs on success, timeout, error and cancellation: never leave the worker running.
+            if proc.returncode is None:
+                _kill_process_group(proc.pid)
+                await proc.wait()
+        returncode = proc.returncode
+        stderr = stderr_bytes.decode(errors="replace")
 
-        if result.returncode == PAGE_LIMIT_EXIT_CODE:
+        if returncode == PAGE_LIMIT_EXIT_CODE:
             raise DocumentLimitError(f"Document exceeds the maximum of {settings.max_pages} pages")
 
-        if result.returncode != 0:
-            raise ConversionError(
-                f"Conversion subprocess failed with exit code {result.returncode}. stderr: {result.stderr}"
-            )
+        if returncode != 0:
+            raise ConversionError(f"Conversion subprocess failed with exit code {returncode}. stderr: {stderr}")
 
         # Read output JSON
         if not output_path.exists():

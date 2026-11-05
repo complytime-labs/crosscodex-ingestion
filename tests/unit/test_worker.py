@@ -10,7 +10,12 @@ from crosscodex_ingestion.config import IngestionSettings
 from crosscodex_ingestion.converter import ConversionError, ConversionTimeout, DocumentLimitError
 from crosscodex_ingestion.state import DocumentRecord, MemoryStateBackend
 from crosscodex_ingestion.storage import FilesystemStorage
-from crosscodex_ingestion.worker import run_conversion
+from crosscodex_ingestion.worker import (
+    ERROR_CODE_UNAVAILABLE,
+    JOB_STATUS_FAILED,
+    SHUTDOWN_ERROR,
+    run_conversion,
+)
 
 
 @pytest.fixture
@@ -575,10 +580,10 @@ async def _count_ticks_while(coro):
 
 @pytest.mark.asyncio
 async def test_slow_conversion_does_not_block_event_loop(settings, state_backend, storage_backend, audit_publisher):
-    """The blocking subprocess call runs in a thread, so other coroutines (e.g. GetDocument) keep running."""
+    """convert_document awaits the subprocess, so other coroutines (e.g. GetDocument) keep running."""
 
-    def slow_convert(*args, **kwargs):
-        time.sleep(0.5)
+    async def slow_convert(*args, **kwargs):
+        await asyncio.sleep(0.5)
         return {"elements": [], "metadata": {}}
 
     with patch("crosscodex_ingestion.worker.convert_document", side_effect=slow_convert):
@@ -730,3 +735,31 @@ async def test_slow_storage_upload_does_not_block_event_loop(settings, state_bac
 
     assert ticks >= 10
     assert (await state_backend.get("tenant-t", "doc-t")).status == 3
+
+
+@pytest.mark.asyncio
+async def test_cancelled_conversion_is_failed_with_retryable_error_and_audited(
+    settings, state_backend, storage_backend, audit_publisher
+):
+    """Shutdown cancels the task: the document must end FAILED/UNAVAILABLE, be audited, and cancellation propagates."""
+    started = asyncio.Event()
+
+    async def hang(*args, **kwargs):
+        started.set()
+        await asyncio.Event().wait()
+
+    with patch("crosscodex_ingestion.worker.convert_document", side_effect=hang):
+        task = asyncio.create_task(_run_pdf_conversion(settings, state_backend, storage_backend, audit_publisher))
+        await started.wait()
+        task.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await task
+
+    record = await state_backend.get("tenant-t", "doc-t")
+    assert record.status == JOB_STATUS_FAILED
+    assert record.error == SHUTDOWN_ERROR
+    assert record.error["code"] == ERROR_CODE_UNAVAILABLE
+    assert "resubmit" in record.error["message"]
+    event = audit_publisher.publish.call_args.kwargs["event"]
+    assert event["status"] == "failed"
+    assert event["error"] == SHUTDOWN_ERROR

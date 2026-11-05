@@ -79,6 +79,7 @@ images download the models at build time (`/opt/docling-models` in the standard 
 | `METRICS_PORT`                                                            | `9090`              | Prometheus metrics port                                                          |
 | `EXECUTION_MODE`                                                          | `embedded`          | `embedded` or `distributed` (NATS)                                               |
 | `MAX_CONCURRENT_CONVERSIONS`                                              | `4`                 | Conversions running at once (each is a separate subprocess)                      |
+| `SHUTDOWN_GRACE_SECONDS`                                                  | `25`                | SIGTERM grace for in-flight conversions (`>= 0`); see "Graceful shutdown"        |
 | `STATE_BACKEND`                                                           | `memory`            | `memory` or `redis`                                                              |
 | `STORAGE_BACKEND`                                                         | `filesystem`        | `filesystem` or `s3`                                                             |
 | `STORAGE_PATH`                                                            | `/data/documents`   | Filesystem storage root                                                          |
@@ -121,6 +122,28 @@ The defaults are sized from measurements of real documents (Docling offline, mod
 - **Pages and output size**: `MAX_PAGES` and `MAX_EXTRACTION_LENGTH` fail the conversion with a clear
   message instead of truncating.
 
+### Graceful shutdown
+
+On SIGTERM or SIGINT the service stops accepting RPCs and then drains conversions within a single budget of
+`SHUTDOWN_GRACE_SECONDS` (default 25):
+
+1. Documents still waiting for a conversion slot are marked `FAILED` immediately.
+2. Running conversions may finish within the grace period and complete normally.
+3. Conversions still running when it expires are cancelled: the Docling subprocess (and anything it spawned) is
+   SIGKILLed, and the document ends `FAILED` with error code `UNAVAILABLE` ("The service shut down during
+   conversion; resubmit the document."). An audit event is published for each. Resubmitting is safe: conversion
+   uses local open-weight models, so a retry costs only CPU time.
+
+Shutdown takes at most `SHUTDOWN_GRACE_SECONDS` plus about 2 s of cleanup. Keep the container runtime's stop timeout
+above that, or the runtime SIGKILLs the process mid-cleanup and documents stay `RUNNING`: Kubernetes defaults to 30 s
+(`terminationGracePeriodSeconds`), while `podman stop` and `docker stop` default to 10 s. Under podman/docker either
+raise the timeout (`--stop-timeout 30`, or `stop_grace_period: 30s` in compose) or lower `SHUTDOWN_GRACE_SECONDS` to
+about 7. A 492-page PDF takes about 13.5 minutes, so documents that large are cancelled by any realistic grace
+period and must be resubmitted after a restart.
+
+In `distributed` mode this service only publishes jobs to NATS JetStream; the consumer is not part of this
+repository, so redelivery of in-flight messages on shutdown (negative acknowledgement) is up to that worker.
+
 ### Identifiers
 
 `tenant_id` must match `^[a-z][a-z0-9-]{1,50}[a-z0-9]$` (3-52 characters: lowercase letters, digits, hyphens;
@@ -160,11 +183,11 @@ gRPC Request → Dispatch → Worker → [Converter → Extractor] → Storage �
 
 **Security Modules:**
 - `security.py`: SSRF prevention, URL validation, content type detection, resource limit enforcement. URL fetches connect directly and ignore `HTTP_PROXY`/`HTTPS_PROXY`/`ALL_PROXY`: the address actually connected to is checked against the blocked ranges, and through a proxy that check would only see the proxy.
-- `converter.py`: Subprocess-based Docling execution with rlimits and timeout
+- `converter.py`: Async subprocess-based Docling execution with rlimits and timeout; the subprocess's process group is killed on timeout or cancellation
 - `extractor.py`: Structured element extraction from Docling output
 
 **Supporting Modules:**
-- `state.py`: Document record state management (memory or Redis)
+- `state.py`: Document record state management (async interface; memory, or Redis via `redis.asyncio`)
 - `storage.py`: Blob storage (filesystem or S3)
 - `attestation.py`: In-toto link metadata generation
 - `audit.py`: NATS JetStream audit event publisher

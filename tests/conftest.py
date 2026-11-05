@@ -111,6 +111,6 @@ async def grpc_server_and_channel() -> AsyncGenerator[tuple[grpc.aio.Server, grp
         finally:
             # Cleanup
             await channel.close()
-            await dispatch_backend.shutdown()
+            await dispatch_backend.shutdown(grace_seconds=5)
             await audit_publisher.close()
             await server.stop(grace=1.0)
