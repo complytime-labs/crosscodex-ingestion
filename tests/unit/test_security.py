@@ -7,8 +7,9 @@ Mocks DNS resolution to avoid real network requests.
 import hashlib
 import http.server
 import socket
-from typing import ClassVar
 import threading
+from pathlib import Path
+from typing import ClassVar
 from unittest.mock import Mock, patch
 
 import pytest
@@ -196,7 +197,7 @@ class _CountingHandler(http.server.BaseHTTPRequestHandler):
 
     requests_seen: list[str] = []  # noqa: RUF012
 
-    def do_GET(self):  # noqa: N802
+    def do_GET(self):
         type(self).requests_seen.append(self.path)
         body = b"%PDF-1.4 rebinding test"
         self.send_response(200)
@@ -240,10 +241,12 @@ class TestDnsRebinding:
         server, handler = local_server
         url = f"http://rebind.example:{server.server_address[1]}/doc.pdf"
 
-        with patch("socket.getaddrinfo", side_effect=_rebinding_resolver("93.184.216.34", "127.0.0.1")):
-            with pytest.raises(ValueError, match="not a public internet address"):
-                with security.fetch_url(url):
-                    pytest.fail("fetch_url must not yield for a rebound private address")
+        with (
+            patch("socket.getaddrinfo", side_effect=_rebinding_resolver("93.184.216.34", "127.0.0.1")),
+            pytest.raises(ValueError, match="not a public internet address"),
+            security.fetch_url(url),
+        ):
+            pytest.fail("fetch_url must not yield for a rebound private address")
 
         assert handler.requests_seen == []  # no HTTP request reached the private server
 
@@ -258,7 +261,7 @@ class TestDnsRebinding:
             security.fetch_url(url) as (path, fmt),
         ):
             assert fmt == "pdf"
-            assert open(path, "rb").read().startswith(b"%PDF-")
+            assert Path(path).read_bytes().startswith(b"%PDF-")
 
         assert handler.requests_seen == ["/doc.pdf"]
 
@@ -271,10 +274,12 @@ class TestDnsRebinding:
         monkeypatch.delenv("NO_PROXY", raising=False)
         monkeypatch.delenv("no_proxy", raising=False)
 
-        with patch("socket.getaddrinfo", side_effect=_rebinding_resolver("93.184.216.34", "127.0.0.1")):
-            with pytest.raises(ValueError, match="not a public internet address"):
-                with security.fetch_url(url):
-                    pytest.fail("fetch_url must not yield for a rebound private address")
+        with (
+            patch("socket.getaddrinfo", side_effect=_rebinding_resolver("93.184.216.34", "127.0.0.1")),
+            pytest.raises(ValueError, match="not a public internet address"),
+            security.fetch_url(url),
+        ):
+            pytest.fail("fetch_url must not yield for a rebound private address")
 
         assert handler.requests_seen == []
 
@@ -285,11 +290,11 @@ class TestFetchErrorsDoNotMapTheInternalNetwork:
     @patch("socket.getaddrinfo")
     def test_blocked_and_unresolvable_hosts_get_the_same_message_without_internal_detail(self, mock_getaddrinfo):
         mock_getaddrinfo.return_value = [(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("10.1.2.3", 443))]
-        with pytest.raises(ValueError) as blocked:
+        with pytest.raises(ValueError, match="not a public") as blocked:
             security.validate_url("https://db.internal/file.pdf")
 
         mock_getaddrinfo.side_effect = socket.gaierror(-2, "Name or service not known")
-        with pytest.raises(ValueError) as unresolvable:
+        with pytest.raises(ValueError, match="not a public") as unresolvable:
             security.validate_url("https://nonexistent.internal/file.pdf")
 
         assert str(blocked.value) == str(unresolvable.value)
@@ -300,7 +305,7 @@ class TestFetchErrorsDoNotMapTheInternalNetwork:
     def test_peer_check_message_does_not_name_the_peer_address(self):
         sock = Mock(spec=socket.socket)
         sock.getpeername.return_value = ("10.9.8.7", 80)
-        with pytest.raises(ValueError) as exc:
+        with pytest.raises(ValueError, match="not a public") as exc:
             security._check_peer_is_public(sock)
         sock.close.assert_called_once()
         assert "10.9.8.7" not in str(exc.value)
