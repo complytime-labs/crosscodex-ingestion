@@ -1,0 +1,19 @@
+tests/integration/test_limits_e2e.py
+  s_394086649215f8::t_c5c1633f28409d 16-18
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e2f38bcd8d6d3c98646ab99c5f2e30decd3be559",
+  "prompts": {},
+  "sessions": {
+    "s_394086649215f8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "afc150f2-f0fb-4098-862d-b6f04e262dc6",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "LLM (riotbox) <llm@riotbox>"
+    }
+  }
+}
