@@ -61,7 +61,7 @@ async def test_run_conversion_with_bytes_successful(
         status=1,  # JOB_STATUS_PENDING
         metadata=metadata,
     )
-    state_backend.create(record)
+    await state_backend.create(record)
 
     # Mock convert_document to return structured data
     mock_result = {
@@ -84,7 +84,7 @@ async def test_run_conversion_with_bytes_successful(
         )
 
     # Verify state transitions
-    final_record = state_backend.get(tenant_id, document_id)
+    final_record = await state_backend.get(tenant_id, document_id)
     assert final_record is not None
     assert final_record.status == 3  # JOB_STATUS_COMPLETED
     assert final_record.structured_json_uri.startswith("file://")
@@ -114,7 +114,7 @@ async def test_run_conversion_with_url_successful(settings, state_backend, stora
         status=1,  # JOB_STATUS_PENDING
         metadata=metadata,
     )
-    state_backend.create(record)
+    await state_backend.create(record)
 
     # Mock fetch_url and convert_document
     mock_result = {
@@ -149,7 +149,7 @@ async def test_run_conversion_with_url_successful(settings, state_backend, stora
 
     # Verify validate_url was called
     # Verify state is completed
-    final_record = state_backend.get(tenant_id, document_id)
+    final_record = await state_backend.get(tenant_id, document_id)
     assert final_record is not None
     assert final_record.status == 3  # JOB_STATUS_COMPLETED
 
@@ -169,7 +169,7 @@ async def test_run_conversion_format_validation_failure(settings, state_backend,
         status=1,
         metadata=metadata,
     )
-    state_backend.create(record)
+    await state_backend.create(record)
 
     # Mock sniff_format to raise ValueError
     with patch("crosscodex_ingestion.worker.sniff_format", side_effect=ValueError("Unknown format")):
@@ -187,7 +187,7 @@ async def test_run_conversion_format_validation_failure(settings, state_backend,
         )
 
     # Verify state is FAILED with error code 1 (INVALID_ARGUMENT)
-    final_record = state_backend.get(tenant_id, document_id)
+    final_record = await state_backend.get(tenant_id, document_id)
     assert final_record is not None
     assert final_record.status == 4  # JOB_STATUS_FAILED
     assert final_record.error is not None
@@ -210,7 +210,7 @@ async def test_run_conversion_timeout(settings, state_backend, storage_backend, 
         status=1,
         metadata=metadata,
     )
-    state_backend.create(record)
+    await state_backend.create(record)
 
     # Mock convert_document to raise ConversionTimeout
     with patch(
@@ -231,7 +231,7 @@ async def test_run_conversion_timeout(settings, state_backend, storage_backend, 
         )
 
     # Verify state is FAILED with RESOURCE_EXHAUSTED error
-    final_record = state_backend.get(tenant_id, document_id)
+    final_record = await state_backend.get(tenant_id, document_id)
     assert final_record is not None
     assert final_record.status == 4
     assert final_record.error is not None
@@ -253,7 +253,7 @@ async def test_run_conversion_storage_failure(settings, state_backend, storage_b
         status=1,
         metadata=metadata,
     )
-    state_backend.create(record)
+    await state_backend.create(record)
 
     # Mock convert_document to succeed
     mock_result = {
@@ -280,7 +280,7 @@ async def test_run_conversion_storage_failure(settings, state_backend, storage_b
         )
 
     # Verify state is FAILED with INTERNAL error
-    final_record = state_backend.get(tenant_id, document_id)
+    final_record = await state_backend.get(tenant_id, document_id)
     assert final_record is not None
     assert final_record.status == 4
     assert final_record.error is not None
@@ -302,7 +302,7 @@ async def test_run_conversion_with_attestation(settings, state_backend, storage_
         status=1,
         metadata=metadata,
     )
-    state_backend.create(record)
+    await state_backend.create(record)
 
     # Mock attestation manager
     mock_attestation = Mock()
@@ -347,7 +347,7 @@ async def test_run_conversion_with_attestation(settings, state_backend, storage_
     assert "sha256" in products["structured_json"]
 
     # Verify state is completed
-    final_record = state_backend.get(tenant_id, document_id)
+    final_record = await state_backend.get(tenant_id, document_id)
     assert final_record is not None
     assert final_record.status == 3
 
@@ -367,7 +367,7 @@ async def test_run_conversion_audit_event_published(settings, state_backend, sto
         status=1,
         metadata=metadata,
     )
-    state_backend.create(record)
+    await state_backend.create(record)
 
     mock_result = {
         "elements": [{"type": "text", "content": "Sample text"}],
@@ -411,7 +411,7 @@ async def test_run_conversion_temp_files_cleaned_on_success(settings, state_back
         status=1,
         metadata=metadata,
     )
-    state_backend.create(record)
+    await state_backend.create(record)
 
     mock_result = {
         "elements": [{"type": "text", "content": "Sample text"}],
@@ -441,7 +441,7 @@ async def test_run_conversion_temp_files_cleaned_on_success(settings, state_back
         )
 
     # Verify conversion succeeded
-    final_record = state_backend.get(tenant_id, document_id)
+    final_record = await state_backend.get(tenant_id, document_id)
     assert final_record.status == 3
 
 
@@ -459,7 +459,7 @@ async def test_run_conversion_temp_files_cleaned_on_failure(settings, state_back
         status=1,
         metadata=metadata,
     )
-    state_backend.create(record)
+    await state_backend.create(record)
 
     # Mock convert_document to raise exception
     with patch(
@@ -480,7 +480,7 @@ async def test_run_conversion_temp_files_cleaned_on_failure(settings, state_back
         )
 
     # Verify state is FAILED
-    final_record = state_backend.get(tenant_id, document_id)
+    final_record = await state_backend.get(tenant_id, document_id)
     assert final_record.status == 4
     assert final_record.error is not None
 
@@ -508,7 +508,7 @@ async def test_run_conversion_hash_validation(settings, state_backend, storage_b
         status=1,
         metadata=metadata,
     )
-    state_backend.create(record)
+    await state_backend.create(record)
 
     mock_result = {
         "elements": [{"type": "text", "content": "Sample text"}],
@@ -540,7 +540,7 @@ async def test_run_conversion_hash_validation(settings, state_backend, storage_b
 
 async def _run_pdf_conversion(settings, state_backend, storage_backend, audit_publisher, source_uri=None):
     """Submit a PENDING record and run the pipeline for a PDF given as bytes (or by URL)."""
-    state_backend.create(DocumentRecord(document_id="doc-t", tenant_id="tenant-t", status=1, metadata={}))
+    await state_backend.create(DocumentRecord(document_id="doc-t", tenant_id="tenant-t", status=1, metadata={}))
     await run_conversion(
         document_id="doc-t",
         tenant_id="tenant-t",
@@ -585,7 +585,7 @@ async def test_slow_conversion_does_not_block_event_loop(settings, state_backend
         ticks = await _count_ticks_while(_run_pdf_conversion(settings, state_backend, storage_backend, audit_publisher))
 
     assert ticks >= 20  # ~50 expected; a blocked loop yields ~0
-    assert state_backend.get("tenant-t", "doc-t").status == 3
+    assert (await state_backend.get("tenant-t", "doc-t")).status == 3
 
 
 @pytest.mark.asyncio
@@ -635,7 +635,7 @@ async def _failed_error_with(convert_side_effect, settings, state_backend, stora
     """Run a conversion whose convert_document raises; return (client error dict, audit event)."""
     with patch("crosscodex_ingestion.worker.convert_document", side_effect=convert_side_effect):
         await _run_pdf_conversion(settings, state_backend, storage_backend, audit_publisher)
-    record = state_backend.get("tenant-t", "doc-t")
+    record = await state_backend.get("tenant-t", "doc-t")
     assert record.status == 4
     return record.error, audit_publisher.publish.call_args.kwargs["event"]
 
@@ -729,4 +729,4 @@ async def test_slow_storage_upload_does_not_block_event_loop(settings, state_bac
         ticks = await _count_ticks_while(_run_pdf_conversion(settings, state_backend, storage_backend, audit_publisher))
 
     assert ticks >= 10
-    assert state_backend.get("tenant-t", "doc-t").status == 3
+    assert (await state_backend.get("tenant-t", "doc-t")).status == 3

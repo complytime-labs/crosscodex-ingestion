@@ -136,7 +136,7 @@ async def run_conversion(
     try:
         # Step 1: Update state to RUNNING
         logger.info("Starting conversion for document %s (tenant %s)", document_id, tenant_id)
-        state.update(tenant_id, document_id, status=JOB_STATUS_RUNNING)
+        await state.update(tenant_id, document_id, status=JOB_STATUS_RUNNING)
 
         # Step 2: Resolve input
         input_bytes: bytes
@@ -308,7 +308,7 @@ async def run_conversion(
 
         # Step 10: Update state to COMPLETED
         logger.info("Marking document %s as completed", document_id)
-        state.update(
+        await state.update(
             tenant_id,
             document_id,
             status=JOB_STATUS_COMPLETED,
@@ -359,7 +359,7 @@ async def run_conversion(
         REQUESTS_TOTAL.labels(format=validated_format, status="failed").inc()
 
         # Update state to FAILED
-        state.update(
+        await state.update(
             tenant_id,
             document_id,
             status=JOB_STATUS_FAILED,
