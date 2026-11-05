@@ -30,6 +30,35 @@ async def test_serve_refuses_to_start_when_models_path_is_not_a_directory(monkey
         await serve()
 
 
+@pytest.fixture
+def startable_env(monkeypatch, tmp_path):
+    """Environment that passes the model check, so a startup refusal comes from what a test unsets."""
+    models = tmp_path / "models"
+    models.mkdir()
+    monkeypatch.setenv("DOCLING_ARTIFACTS_PATH", str(models))
+    monkeypatch.setenv("STORAGE_PATH", str(tmp_path / "data"))
+    monkeypatch.setenv("GRPC_PORT", "0")
+    monkeypatch.setenv("METRICS_PORT", str(_free_port()))
+
+
+@pytest.mark.asyncio
+async def test_serve_refuses_to_start_with_attestation_enabled_and_no_keys(monkeypatch, startable_env):
+    monkeypatch.setenv("GRPC_TLS_MODE", "off")
+    monkeypatch.delenv("ATTESTATION_ENABLED", raising=False)
+
+    with pytest.raises(SystemExit, match="ATTESTATION_PRIVATE_KEY_PATH"):
+        await serve()
+
+
+@pytest.mark.asyncio
+async def test_serve_refuses_to_start_with_mutual_tls_and_no_certs(monkeypatch, startable_env):
+    monkeypatch.setenv("ATTESTATION_ENABLED", "false")
+    monkeypatch.delenv("GRPC_TLS_MODE", raising=False)
+
+    with pytest.raises(SystemExit, match="GRPC_TLS_CERT"):
+        await serve()
+
+
 @pytest.mark.parametrize("sig", [signal.SIGTERM, signal.SIGINT])
 def test_server_shuts_down_gracefully_on_signal(tmp_path, sig):
     """Container runtimes stop services with SIGTERM; it must end the process, not wait for SIGKILL."""
@@ -39,6 +68,7 @@ def test_server_shuts_down_gracefully_on_signal(tmp_path, sig):
         **os.environ,
         "STORAGE_PATH": str(tmp_path / "data"),
         "ATTESTATION_ENABLED": "false",
+        "GRPC_TLS_MODE": "off",
         "GRPC_PORT": str(_free_port()),
         "METRICS_PORT": str(_free_port()),
         "DOCLING_ARTIFACTS_PATH": str(models),
@@ -76,13 +106,11 @@ def _free_port() -> int:
 async def test_server_refuses_a_port_another_server_holds():
     """gRPC sets SO_REUSEPORT by default, so a second instance on the same port started
     without error and the kernel split connections between the two."""
-    settings = IngestionSettings()
-    first = create_grpc_server(settings)
-    port = first.add_insecure_port("[::]:0")
+    settings = IngestionSettings(grpc_tls_mode="off")
+    first, port = create_grpc_server(settings, "[::]:0")
     await first.start()
     try:
-        second = create_grpc_server(settings)
         with pytest.raises(RuntimeError, match="Failed to bind"):
-            second.add_insecure_port(f"[::]:{port}")
+            create_grpc_server(settings, f"[::]:{port}")
     finally:
         await first.stop(None)

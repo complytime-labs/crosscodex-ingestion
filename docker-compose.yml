@@ -1,6 +1,25 @@
 version: "3.8"
 
 services:
+  # One-shot: copy the PKI from `task certs` into a volume the service user can read.
+  # The host keys are 0600 owned by the host user, which the container's uid 1000 cannot
+  # read under rootless podman (or for any other host uid). Copying on every `up` means the
+  # volume always holds the current set, never a stale one from an earlier run.
+  certs-init:
+    image: crosscodex-ingestion:latest
+    user: "0"
+    entrypoint: ["sh", "-c"]
+    command:
+      - >-
+        rm -rf /certs/* &&
+        cp /certs-src/ca.pem /certs-src/server.pem /certs-src/server.key
+        /certs-src/attestation.key /certs-src/attestation.pub /certs/ &&
+        chown 1000:1000 /certs/* && chmod 0444 /certs/*.pem /certs/*.pub && chmod 0400 /certs/*.key
+    volumes:
+      - ${CERTS_DIR:-./.test-output/certs}:/certs-src:ro
+      - ingestion-certs:/certs
+    restart: "no"
+
   # CrossCodex Ingestion Service
   ingestion:
     build:
@@ -17,6 +36,19 @@ services:
       METRICS_PORT: "9090"
       LOG_LEVEL: "debug"
 
+      # Mutual TLS with the throwaway PKI from `task certs` (mounted at /certs). Compose
+      # starts only after `task compose:up` has generated it. Never use this CA in production.
+      GRPC_TLS_MODE: "mutual"
+      GRPC_TLS_CERT: "/certs/server.pem"
+      GRPC_TLS_KEY: "/certs/server.key"
+      GRPC_TLS_CA: "/certs/ca.pem"
+      GRPC_ALLOWED_CLIENTS: "crosscodex-gateway"
+
+      # Attestation signed with the generated key pair; verify with /certs/attestation.pub
+      ATTESTATION_ENABLED: "true"
+      ATTESTATION_PRIVATE_KEY_PATH: "/certs/attestation.key"
+      ATTESTATION_PUBLIC_KEY_PATH: "/certs/attestation.pub"
+
       # Storage configuration (filesystem mode for local development)
       STORAGE_BACKEND: "filesystem"
       STORAGE_PATH: "/data/documents"
@@ -32,9 +64,15 @@ services:
       MAX_DOCUMENT_SIZE: "104857600"
     volumes:
       - ingestion-data:/data/documents
+      # Filled by certs-init; the CA key and client key are deliberately not copied.
+      - ingestion-certs:/certs:ro
     depends_on:
-      - nats
-      - jaeger
+      certs-init:
+        condition: service_completed_successfully
+      nats:
+        condition: service_started
+      jaeger:
+        condition: service_started
     restart: unless-stopped
     # RLIMIT_AS only bounds virtual address space; this is the real memory bound.
     # Allow >= 6 GB per concurrent conversion (MAX_CONCURRENT_CONVERSIONS, default 4).
@@ -45,7 +83,7 @@ services:
           "CMD",
           "python",
           "-c",
-          "import grpc; ch=grpc.insecure_channel('localhost:8080'); grpc.channel_ready_future(ch).result(timeout=5)",
+          "import os, socket; socket.create_connection(('localhost', int(os.environ.get('GRPC_PORT', '8080'))), timeout=5).close()",
         ]
       interval: 30s
       timeout: 10s
@@ -54,7 +92,7 @@ services:
 
   # NATS JetStream for async messaging
   nats:
-    image: nats:latest
+    image: docker.io/library/nats:latest
     container_name: crosscodex-nats
     ports:
       - "4222:4222" # Client connections
@@ -78,7 +116,7 @@ services:
 
   # Jaeger all-in-one for distributed tracing
   jaeger:
-    image: jaegertracing/all-in-one:latest
+    image: docker.io/jaegertracing/all-in-one:latest
     container_name: crosscodex-jaeger
     ports:
       - "16686:16686" # Jaeger UI
@@ -104,4 +142,6 @@ services:
 
 volumes:
   ingestion-data:
+    driver: local
+  ingestion-certs:
     driver: local

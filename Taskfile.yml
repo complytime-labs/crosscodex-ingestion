@@ -7,6 +7,7 @@ includes:
 vars:
   PROTO_DIR: proto
   PROTO_OUT: src/crosscodex_ingestion/proto
+  CERTS_DIR: .test-output/certs
 
 tasks:
   setup:
@@ -43,9 +44,25 @@ tasks:
   lint:
     desc: Run ruff + mypy
     cmds:
-      - uv run ruff check src/ tests/
-      - uv run ruff format --check src/ tests/
+      - uv run ruff check src/ tests/ scripts/
+      - uv run ruff format --check src/ tests/ scripts/
       - uv run mypy src/crosscodex_ingestion/ --ignore-missing-imports
+
+  certs:
+    desc: Generate (or regenerate if stale) the dev/test CA, server/client certs and attestation keys
+    cmds:
+      - uv run python scripts/devpki.py --out {{.CERTS_DIR}}
+    status:
+      - uv run python scripts/devpki.py --verify --out {{.CERTS_DIR}}
+
+  compose:up:
+    desc: Start the compose stack with mutual TLS and attestation (generates certs first)
+    deps: [certs]
+    cmds:
+      # --force-recreate: podman-compose recreates only on a compose config change, so
+      # without it a regenerated PKI never reaches the running service (it keeps
+      # trusting the old CA) and a rebuilt image is not picked up.
+      - CERTS_DIR={{.CERTS_DIR}} podman-compose -f docker-compose.yml up --build --force-recreate
 
   build:
     desc: Build Python package
