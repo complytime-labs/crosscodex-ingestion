@@ -1,0 +1,32 @@
+.ruff.toml
+  s_112bf114bd2fc4::t_554a324a13f08a 1-2
+  s_112bf114bd2fc4::t_1cba6db9f19967 38-40
+  s_112bf114bd2fc4::t_8455da78d58788 5,22
+  s_112bf114bd2fc4::t_86f1e473b1ec3c 52-56
+  s_112bf114bd2fc4::t_46dd7389639435 28,41-44
+  s_112bf114bd2fc4::t_9cd6aa98aed339 3-4,6-21,23-27,29-37,45-51
+.mega-linter.local.yml
+  s_112bf114bd2fc4::t_554a324a13f08a 1-7
+.lycheeignore
+  s_112bf114bd2fc4::t_d0bd5963f2a68b 1-38
+.github/workflows/megalinter.yml
+  s_112bf114bd2fc4::t_db97cbea58e9e4 38
+.isort.cfg
+  s_112bf114bd2fc4::t_8455da78d58788 1-5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "777c82164aca4f9ef7b1a34b0128329785f72b96",
+  "prompts": {},
+  "sessions": {
+    "s_112bf114bd2fc4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "25a8825b-12de-494b-85b2-f4d715bea308",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "LLM (riotbox) <llm@riotbox>"
+    }
+  }
+}
