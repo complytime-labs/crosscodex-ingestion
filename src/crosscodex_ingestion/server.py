@@ -18,6 +18,7 @@ from pythonjsonlogger import jsonlogger
 from crosscodex_ingestion.attestation import create_attestation_manager
 from crosscodex_ingestion.audit import AuditPublisher
 from crosscodex_ingestion.config import IngestionSettings
+from crosscodex_ingestion.converter import validate_artifacts_path
 from crosscodex_ingestion.dispatch import create_dispatch
 from crosscodex_ingestion.proto.crosscodex.v1 import ingestion_pb2_grpc
 from crosscodex_ingestion.service import IngestionServiceServicer
@@ -41,6 +42,11 @@ async def serve() -> None:
     """
     # Load settings from environment
     settings = IngestionSettings()
+
+    try:
+        validate_artifacts_path(settings.docling_artifacts_path)
+    except ValueError as exc:
+        raise SystemExit(f"Configuration error: {exc}") from exc
 
     # Initialize telemetry (OTel + metrics + structured logging)
     _init_telemetry(settings)

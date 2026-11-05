@@ -20,6 +20,11 @@ class IngestionSettings(BaseSettings):
     max_extraction_length: int = 10_485_760
     allowed_formats: str = "pdf,docx,html,txt"
 
+    # Directory holding pre-downloaded Docling models (layout, table, OCR). The sandboxed
+    # worker runs offline, so the server refuses to start if this is unset or not a directory.
+    # Fetch models with: docling-tools models download -o <dir>
+    docling_artifacts_path: str = ""
+
     # RLIMIT_AS bounds virtual address space only, not resident memory. Importing torch alone
     # needs more than 4 GB of address space, and a 32-page PDF peaks near 40 GB VmPeak while
     # using ~2.7 GB RSS. The real memory bound is the container memory limit.

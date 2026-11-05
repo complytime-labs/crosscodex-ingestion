@@ -38,10 +38,10 @@ import sys
 
 
 def main():
-    if len(sys.argv) < 7:
+    if len(sys.argv) < 8:
         print(
             "Usage: worker.py <input_path> <output_path> <format_hint> "
-            "<rlimit_as> <rlimit_cpu> <rlimit_fsize>",
+            "<rlimit_as> <rlimit_cpu> <rlimit_fsize> <artifacts_path>",
             file=sys.stderr,
         )
         sys.exit(1)
@@ -52,6 +52,7 @@ def main():
     rlimit_as = int(sys.argv[4])
     rlimit_cpu = int(sys.argv[5])
     rlimit_fsize = int(sys.argv[6])
+    artifacts_path = sys.argv[7]
 
     # Set resource limits before importing Docling
     if rlimit_as > 0:
@@ -63,10 +64,14 @@ def main():
 
     # Import after setting rlimits
     from crosscodex_ingestion.extractor import extract_elements
-    from docling.document_converter import DocumentConverter
+    from docling.datamodel.base_models import InputFormat
+    from docling.datamodel.pipeline_options import PdfPipelineOptions
+    from docling.document_converter import DocumentConverter, PdfFormatOption
 
-    # Run Docling conversion
-    converter = DocumentConverter()
+    # Models come from the pre-downloaded artifacts directory; HF_HUB_OFFLINE=1 in the
+    # environment guarantees nothing is fetched from the network.
+    pdf_options = PdfPipelineOptions(artifacts_path=artifacts_path)
+    converter = DocumentConverter(format_options={InputFormat.PDF: PdfFormatOption(pipeline_options=pdf_options)})
     result = converter.convert(input_path)
     doc = result.document
     markdown = doc.export_to_markdown()
@@ -87,6 +92,24 @@ def main():
 if __name__ == "__main__":
     main()
 """
+
+
+def validate_artifacts_path(artifacts_path: str) -> None:
+    """Raise ValueError unless *artifacts_path* is an existing directory.
+
+    Called at server startup so a missing models directory fails closed with instructions
+    instead of failing every conversion at request time.
+    """
+    if not artifacts_path:
+        raise ValueError(
+            "DOCLING_ARTIFACTS_PATH is not set. Download the Docling models with "
+            "`docling-tools models download -o <dir>` and set DOCLING_ARTIFACTS_PATH=<dir>."
+        )
+    if not Path(artifacts_path).is_dir():
+        raise ValueError(
+            f"DOCLING_ARTIFACTS_PATH {artifacts_path!r} is not a directory. Download the Docling models with "
+            "`docling-tools models download -o <dir>` and point DOCLING_ARTIFACTS_PATH at <dir>."
+        )
 
 
 def convert_document(input_path: str, format_hint: str, settings: IngestionSettings) -> dict[str, Any]:
@@ -153,10 +176,11 @@ def convert_document(input_path: str, format_hint: str, settings: IngestionSetti
             str(rlimit_as_bytes),
             str(rlimit_cpu_seconds),
             str(rlimit_fsize_bytes),
+            settings.docling_artifacts_path,
         ]
 
-        # Minimal environment (PATH only)
-        env = {"PATH": os.environ.get("PATH", "")}
+        # Minimal environment: HF_HUB_OFFLINE keeps the sandboxed worker off the network.
+        env = {"PATH": os.environ.get("PATH", ""), "HF_HUB_OFFLINE": "1"}
 
         # Run subprocess
         try:

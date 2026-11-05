@@ -15,6 +15,7 @@ from crosscodex_ingestion.converter import (
     ConversionError,
     ConversionTimeout,
     convert_document,
+    validate_artifacts_path,
 )
 
 
@@ -218,8 +219,8 @@ class TestConvertDocument:
 
         # Should have three "0" values for the rlimits
         # The args are: script_path, input_path, output_path, format_hint, rlimit_as, rlimit_cpu, rlimit_fsize
-        # Last three should be "0"
-        assert cmd[-3:] == ["0", "0", "0"]
+        # The three rlimits precede the artifacts path and should be "0"
+        assert cmd[-4:-1] == ["0", "0", "0"]
 
     @patch("crosscodex_ingestion.converter.subprocess.run")
     @patch("crosscodex_ingestion.converter.shutil.copy2")
@@ -309,3 +310,58 @@ class TestExceptionClasses:
         exc = ConversionTimeout("test timeout")
         assert isinstance(exc, Exception)
         assert str(exc) == "test timeout"
+
+
+def _capture_cmd_and_env(mock_subprocess_run):
+    """Make the mocked subprocess write a valid output file; return the recorded call kwargs."""
+
+    def write_output_file(cmd, *args, **kwargs):
+        Path(cmd[3]).write_text(json.dumps({"elements": [], "metadata": {}}))
+        return Mock(returncode=0)
+
+    mock_subprocess_run.side_effect = write_output_file
+
+
+class TestOfflineModels:
+    """The sandboxed worker must use pre-downloaded models and never reach the network."""
+
+    @patch("crosscodex_ingestion.converter.subprocess.run")
+    @patch("crosscodex_ingestion.converter.shutil.copy2")
+    def test_artifacts_path_passed_to_worker(self, mock_copy2, mock_subprocess_run):
+        _capture_cmd_and_env(mock_subprocess_run)
+        settings = IngestionSettings(docling_artifacts_path="/opt/docling-models")
+
+        convert_document("/path/to/doc.pdf", "pdf", settings)
+
+        assert "/opt/docling-models" in mock_subprocess_run.call_args[0][0]
+
+    @patch("crosscodex_ingestion.converter.subprocess.run")
+    @patch("crosscodex_ingestion.converter.shutil.copy2")
+    def test_worker_env_forces_hf_offline_and_leaks_nothing_else(self, mock_copy2, mock_subprocess_run, monkeypatch):
+        monkeypatch.setenv("AWS_SECRET_ACCESS_KEY", "should-not-leak")
+        _capture_cmd_and_env(mock_subprocess_run)
+
+        convert_document("/path/to/doc.pdf", "pdf", IngestionSettings(docling_artifacts_path="/m"))
+
+        env = mock_subprocess_run.call_args.kwargs["env"]
+        assert env["HF_HUB_OFFLINE"] == "1"
+        assert set(env) <= {"PATH", "HOME", "HF_HUB_OFFLINE"}
+
+
+class TestValidateArtifactsPath:
+    def test_unset_path_is_refused_with_download_instructions(self):
+        with pytest.raises(ValueError, match=r"DOCLING_ARTIFACTS_PATH.*docling-tools models download -o"):
+            validate_artifacts_path("")
+
+    def test_missing_directory_is_refused(self, tmp_path):
+        with pytest.raises(ValueError, match="not a directory"):
+            validate_artifacts_path(str(tmp_path / "absent"))
+
+    def test_regular_file_is_refused(self, tmp_path):
+        file_path = tmp_path / "f"
+        file_path.write_text("x")
+        with pytest.raises(ValueError, match="not a directory"):
+            validate_artifacts_path(str(file_path))
+
+    def test_existing_directory_is_accepted(self, tmp_path):
+        validate_artifacts_path(str(tmp_path))
