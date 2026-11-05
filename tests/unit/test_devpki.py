@@ -1,6 +1,6 @@
 """Dev/test PKI generator: idempotence, race safety and stale-set repair."""
 
-import datetime
+import datetime as dt
 import subprocess
 import sys
 from pathlib import Path
@@ -16,7 +16,9 @@ SCRIPT = Path(devpki.__file__)
 
 
 def _run(out: Path, *args: str) -> subprocess.CompletedProcess[str]:
-    return subprocess.run([sys.executable, str(SCRIPT), "--out", str(out), *args], capture_output=True, text=True)
+    return subprocess.run(
+        [sys.executable, str(SCRIPT), "--out", str(out), *args], capture_output=True, text=True, check=False
+    )
 
 
 @pytest.fixture
@@ -94,7 +96,7 @@ def test_missing_san_is_repaired(out):
     ca = x509.load_pem_x509_certificate((out / "ca.pem").read_bytes())
     ca_key = serialization.load_pem_private_key((out / "ca.key").read_bytes(), password=None)
     server = x509.load_pem_x509_certificate((out / "server.pem").read_bytes())
-    now = datetime.datetime.now(datetime.UTC)
+    now = dt.datetime.now(dt.UTC)
     builder = (
         x509.CertificateBuilder()
         .subject_name(server.subject)
@@ -102,7 +104,7 @@ def test_missing_san_is_repaired(out):
         .public_key(server.public_key())
         .serial_number(x509.random_serial_number())
         .not_valid_before(now)
-        .not_valid_after(now + datetime.timedelta(days=30))
+        .not_valid_after(now + dt.timedelta(days=30))
         .add_extension(x509.SubjectAlternativeName([x509.DNSName("localhost")]), critical=False)
         .add_extension(x509.ExtendedKeyUsage([x509.oid.ExtendedKeyUsageOID.SERVER_AUTH]), critical=False)
     )
@@ -111,7 +113,7 @@ def test_missing_san_is_repaired(out):
 
 
 def test_near_expiry_is_repaired(out):
-    devpki.ensure(out, validity=datetime.timedelta(hours=2))
+    devpki.ensure(out, validity=dt.timedelta(hours=2))
     _assert_repaired(out, "expires")
 
 
@@ -119,7 +121,7 @@ def test_wrong_ca_is_repaired(out):
     devpki.ensure(out)
     key = ec.generate_private_key(ec.SECP256R1())
     name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "impostor")])
-    now = datetime.datetime.now(datetime.UTC)
+    now = dt.datetime.now(dt.UTC)
     fake = (
         x509.CertificateBuilder()
         .subject_name(name)
@@ -127,7 +129,7 @@ def test_wrong_ca_is_repaired(out):
         .public_key(key.public_key())
         .serial_number(1)
         .not_valid_before(now)
-        .not_valid_after(now + datetime.timedelta(days=30))
+        .not_valid_after(now + dt.timedelta(days=30))
         .add_extension(x509.BasicConstraints(ca=True, path_length=None), critical=True)
         .sign(key, hashes.SHA256())
     )

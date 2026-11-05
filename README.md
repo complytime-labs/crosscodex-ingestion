@@ -243,8 +243,7 @@ openssl ecparam -name prime256v1 -genkey -noout | openssl pkcs8 -topk8 -nocrypt 
 openssl pkey -in attestation.key -pubout -out attestation.pub
 ```
 
-The signer (securesystemslib) supports ECDSA P-256 only for ECDSA keys, so P-384 and P-521 keys are
-rejected at startup even though FIPS mode would allow them.
+Keys on curves the signer (securesystemslib) does not support, such as secp256k1, are rejected at startup.
 
 ### Identifiers
 

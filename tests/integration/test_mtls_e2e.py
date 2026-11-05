@@ -1,6 +1,6 @@
 """Integration tests: the real server construction path with mutual TLS and attestation enabled."""
 
-import datetime
+import datetime as dt
 import subprocess
 import sys
 from pathlib import Path
@@ -74,9 +74,12 @@ async def test_plaintext_client_is_rejected(running_grpc_server):
 def test_regeneration_after_expiry_mints_a_new_ca(tmp_path):
     """Stale CAs across runs: an expiring set is replaced wholesale, so the old CA stops being trusted."""
     out = tmp_path / "certs"
-    devpki.ensure(out, validity=datetime.timedelta(hours=1))
+    devpki.ensure(out, validity=dt.timedelta(hours=1))
     old_ca = (out / "ca.pem").read_bytes()
-    result = subprocess.run([sys.executable, devpki.__file__, "--out", str(out)], capture_output=True, text=True)
-    assert result.returncode == 0 and "generated" in result.stdout
+    result = subprocess.run(
+        [sys.executable, devpki.__file__, "--out", str(out)], capture_output=True, text=True, check=False
+    )
+    assert result.returncode == 0
+    assert "generated" in result.stdout
     assert (out / "ca.pem").read_bytes() != old_ca
     assert devpki.verify(out) == []

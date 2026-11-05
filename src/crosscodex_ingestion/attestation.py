@@ -44,8 +44,7 @@ class AttestationManager:
     the materials (inputs), products (outputs), and byproducts (metadata)
     of each conversion step.
 
-    In FIPS mode, only ECDSA P-256/P-384/P-521 keys are permitted. (securesystemslib currently
-    signs ECDSA with P-256 only, so P-384/P-521 keys are rejected at load time.)
+    In FIPS mode, only ECDSA P-256/P-384/P-521 keys are permitted.
     """
 
     def __init__(self, settings: IngestionSettings):
@@ -106,7 +105,7 @@ class AttestationManager:
         try:
             return CryptoSigner(private_key)
         except ValueError as exc:
-            # securesystemslib signs ECDSA with P-256 only; surface that instead of its terse message.
+            # securesystemslib rejects some curves (e.g. secp256k1); surface which key and why.
             raise ValueError(f"Attestation key {private_path} is not usable by the signer: {exc}") from exc
 
     def create_link(

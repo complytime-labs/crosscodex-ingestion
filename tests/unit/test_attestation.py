@@ -41,7 +41,7 @@ def key_settings(tmp_path) -> IngestionSettings:
 def test_enabled_without_any_key_paths_refuses_to_start():
     """Fail closed: an ephemeral key would sign attestations nobody can verify."""
     with pytest.raises(
-        ValueError, match="ATTESTATION_PRIVATE_KEY_PATH.*ATTESTATION_PUBLIC_KEY_PATH.*ATTESTATION_ENABLED=false"
+        ValueError, match=r"ATTESTATION_PRIVATE_KEY_PATH.*ATTESTATION_PUBLIC_KEY_PATH.*ATTESTATION_ENABLED=false"
     ):
         AttestationManager(IngestionSettings())
 
@@ -208,9 +208,9 @@ def test_fips_mode_accepts_p256(tmp_path):
     assert AttestationManager(settings).public_key_id()
 
 
-def test_p384_key_rejected_with_actionable_error(tmp_path):
-    """Approved by FIPS but unsupported by securesystemslib's signer: fail at startup, not per conversion."""
-    private_path, public_path = _write_key_pair(tmp_path, ec.generate_private_key(ec.SECP384R1()))
+def test_curve_unsupported_by_signer_rejected_with_actionable_error(tmp_path):
+    """Unsupported by securesystemslib's signer: fail at startup, not per conversion."""
+    private_path, public_path = _write_key_pair(tmp_path, ec.generate_private_key(ec.SECP256K1()))
     settings = IngestionSettings(
         attestation_private_key_path=str(private_path), attestation_public_key_path=str(public_path)
     )

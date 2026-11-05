@@ -1,6 +1,6 @@
 """Mutual TLS on the gRPC port: credentials, client authentication and the client allowlist."""
 
-import datetime
+import datetime as dt
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -33,16 +33,16 @@ def _issue(
 ) -> tuple[Pem, x509.Name, ec.EllipticCurvePrivateKey]:
     key = ec.generate_private_key(ec.SECP256R1())
     subject = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, name)])
-    issuer_name, issuer_key = issuer if issuer else (subject, key)
-    now = datetime.datetime.now(datetime.UTC)
+    issuer_name, issuer_key = issuer or (subject, key)
+    now = dt.datetime.now(dt.UTC)
     builder = (
         x509.CertificateBuilder()
         .subject_name(subject)
         .issuer_name(issuer_name)
         .public_key(key.public_key())
         .serial_number(x509.random_serial_number())
-        .not_valid_before(now - datetime.timedelta(minutes=5))
-        .not_valid_after(now + datetime.timedelta(hours=1))
+        .not_valid_before(now - dt.timedelta(minutes=5))
+        .not_valid_after(now + dt.timedelta(hours=1))
         .add_extension(x509.BasicConstraints(ca=ca, path_length=None), critical=True)
     )
     if san:
