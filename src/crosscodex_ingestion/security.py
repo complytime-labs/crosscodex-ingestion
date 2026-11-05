@@ -9,6 +9,8 @@ Security measures:
   - The hostname is resolved to all its IP addresses before connecting; any address
     in a loopback, link-local, multicast, private, or other non-routable range is
     rejected (SSRF prevention).
+  - The address actually connected to is checked again (sock.getpeername()) before any bytes
+    are sent, closing the DNS-rebinding window between validate_url and the connection.
   - Redirects are followed manually so each hop is re-validated before connecting.
   - Download size is capped.
   - A per-request timeout is enforced.
@@ -32,6 +34,9 @@ from collections.abc import Iterator
 from pathlib import Path
 
 import requests
+from requests.adapters import HTTPAdapter
+from urllib3.connection import HTTPConnection, HTTPSConnection
+from urllib3.connectionpool import HTTPConnectionPool, HTTPSConnectionPool
 
 log = logging.getLogger(__name__)
 
@@ -130,6 +135,54 @@ def validate_url(url: str) -> None:
                 f"URL resolves to a blocked address ({ip}). "
                 "Private, loopback, link-local, and multicast hosts are not allowed."
             )
+
+
+def _check_peer_is_public(sock: socket.socket) -> None:
+    """Close *sock* and raise ValueError if it is connected to a blocked address."""
+    peer_ip = ipaddress.ip_address(sock.getpeername()[0])
+    if _is_blocked_ip(peer_ip):
+        sock.close()
+        raise ValueError(
+            f"Connection went to a blocked address ({peer_ip}). "
+            "Private, loopback, link-local, and multicast hosts are not allowed."
+        )
+
+
+class _CheckedHTTPConnection(HTTPConnection):
+    """Checks the TCP peer right after connect, before any request bytes or TLS handshake."""
+
+    def _new_conn(self) -> socket.socket:
+        sock = super()._new_conn()
+        _check_peer_is_public(sock)
+        return sock
+
+
+class _CheckedHTTPSConnection(HTTPSConnection):
+    """As _CheckedHTTPConnection; TLS (SNI, certificate hostname) still uses the original hostname."""
+
+    def _new_conn(self) -> socket.socket:
+        sock = super()._new_conn()
+        _check_peer_is_public(sock)
+        return sock
+
+
+class _CheckedHTTPConnectionPool(HTTPConnectionPool):
+    ConnectionCls = _CheckedHTTPConnection
+
+
+class _CheckedHTTPSConnectionPool(HTTPSConnectionPool):
+    ConnectionCls = _CheckedHTTPSConnection
+
+
+class _PublicOnlyAdapter(HTTPAdapter):
+    """HTTPAdapter whose connections refuse blocked peer addresses (DNS-rebinding defence)."""
+
+    def init_poolmanager(self, *args, **kwargs) -> None:  # type: ignore[no-untyped-def]
+        super().init_poolmanager(*args, **kwargs)
+        self.poolmanager.pool_classes_by_scheme = {
+            "http": _CheckedHTTPConnectionPool,
+            "https": _CheckedHTTPSConnectionPool,
+        }
 
 
 _TYPE_SUFFIX = {
@@ -260,6 +313,8 @@ def fetch_url(
     validate_url(url)
 
     session = requests.Session()
+    session.mount("http://", _PublicOnlyAdapter())
+    session.mount("https://", _PublicOnlyAdapter())
     resp = None
     tmp_path = None
 

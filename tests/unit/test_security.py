@@ -5,8 +5,10 @@ Mocks DNS resolution to avoid real network requests.
 """
 
 import hashlib
+import http.server
 import socket
 from typing import ClassVar
+import threading
 from unittest.mock import patch
 
 import pytest
@@ -187,3 +189,75 @@ class TestValidateContentHash:
         content = b"hello world"
         # Should not raise
         security.validate_content_hash(content, "")
+
+
+class _CountingHandler(http.server.BaseHTTPRequestHandler):
+    """Serves a tiny PDF and records every request so tests can prove none arrived."""
+
+    requests_seen: list[str] = []  # noqa: RUF012
+
+    def do_GET(self):  # noqa: N802
+        type(self).requests_seen.append(self.path)
+        body = b"%PDF-1.4 rebinding test"
+        self.send_response(200)
+        self.send_header("Content-Type", "application/pdf")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+    def log_message(self, *args):
+        pass
+
+
+@pytest.fixture
+def local_server():
+    """An HTTP server on 127.0.0.1 (a blocked address) with a fresh request log."""
+    handler = type("Handler", (_CountingHandler,), {"requests_seen": []})
+    server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), handler)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    yield server, handler
+    server.shutdown()
+    server.server_close()
+
+
+def _rebinding_resolver(first_ip: str, later_ip: str):
+    """getaddrinfo stand-in: the first lookup (validation) answers first_ip, later lookups (connect) later_ip."""
+    calls = {"n": 0}
+
+    def resolver(host, port, *args, **kwargs):
+        ip = first_ip if calls["n"] == 0 else later_ip
+        calls["n"] += 1
+        return [(socket.AF_INET, socket.SOCK_STREAM, 6, "", (ip, port or 0))]
+
+    return resolver
+
+
+class TestDnsRebinding:
+    """validate_url and the actual connection must not be able to disagree about the address."""
+
+    def test_connection_to_private_ip_after_public_validation_is_blocked(self, local_server):
+        server, handler = local_server
+        url = f"http://rebind.example:{server.server_address[1]}/doc.pdf"
+
+        with patch("socket.getaddrinfo", side_effect=_rebinding_resolver("93.184.216.34", "127.0.0.1")):
+            with pytest.raises(ValueError, match="blocked address"):
+                with security.fetch_url(url):
+                    pytest.fail("fetch_url must not yield for a rebound private address")
+
+        assert handler.requests_seen == []  # no HTTP request reached the private server
+
+    def test_connection_to_validated_address_still_works(self, local_server):
+        """The pinning adapter must not break normal fetches (here the block list is disabled for loopback)."""
+        server, handler = local_server
+        url = f"http://ok.example:{server.server_address[1]}/doc.pdf"
+
+        with (
+            patch("socket.getaddrinfo", side_effect=_rebinding_resolver("127.0.0.1", "127.0.0.1")),
+            patch.object(security, "_is_blocked_ip", return_value=False),
+            security.fetch_url(url) as (path, fmt),
+        ):
+            assert fmt == "pdf"
+            assert open(path, "rb").read().startswith(b"%PDF-")
+
+        assert handler.requests_seen == ["/doc.pdf"]
