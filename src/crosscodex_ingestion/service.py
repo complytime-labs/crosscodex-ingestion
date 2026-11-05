@@ -10,6 +10,7 @@ from crosscodex_ingestion.config import IngestionSettings
 from crosscodex_ingestion.dispatch import DispatchBackend
 from crosscodex_ingestion.metrics import DOC_SIZE, ERRORS_TOTAL, REQUESTS_TOTAL
 from crosscodex_ingestion.proto.crosscodex.v1 import common_pb2, ingestion_pb2, ingestion_pb2_grpc
+from crosscodex_ingestion.security import validate_document_id, validate_tenant_id
 from crosscodex_ingestion.state import DocumentRecord, StateBackend
 
 logger = logging.getLogger(__name__)
@@ -53,12 +54,7 @@ class IngestionServiceServicer(ingestion_pb2_grpc.IngestionServiceServicer):
         Raises:
             grpc.RpcError: On validation failures (INVALID_ARGUMENT, RESOURCE_EXHAUSTED).
         """
-        # Validate tenant_id
-        if not request.tenant_context.tenant_id:
-            await context.abort(
-                grpc.StatusCode.INVALID_ARGUMENT,
-                "tenant_id is required in tenant_context",
-            )
+        await self._require_valid_tenant(request.tenant_context.tenant_id, context)
 
         # Validate that either content or source_uri is provided
         has_content = request.WhichOneof("source") == "content"
@@ -161,12 +157,12 @@ class IngestionServiceServicer(ingestion_pb2_grpc.IngestionServiceServicer):
         Raises:
             grpc.RpcError: On validation failures or if document not found.
         """
-        # Validate tenant_id
-        if not request.tenant_context.tenant_id:
-            await context.abort(
-                grpc.StatusCode.INVALID_ARGUMENT,
-                "tenant_id is required in tenant_context",
-            )
+        await self._require_valid_tenant(request.tenant_context.tenant_id, context)
+
+        try:
+            validate_document_id(request.document_id)
+        except ValueError as exc:
+            await context.abort(grpc.StatusCode.INVALID_ARGUMENT, str(exc))
 
         # Look up document in state backend
         record = self._state.get(request.tenant_context.tenant_id, request.document_id)
@@ -199,12 +195,7 @@ class IngestionServiceServicer(ingestion_pb2_grpc.IngestionServiceServicer):
         Raises:
             grpc.RpcError: On validation failures.
         """
-        # Validate tenant_id
-        if not request.tenant_context.tenant_id:
-            await context.abort(
-                grpc.StatusCode.INVALID_ARGUMENT,
-                "tenant_id is required in tenant_context",
-            )
+        await self._require_valid_tenant(request.tenant_context.tenant_id, context)
 
         # Extract pagination parameters
         page_size = 50  # Default
@@ -233,6 +224,14 @@ class IngestionServiceServicer(ingestion_pb2_grpc.IngestionServiceServicer):
             documents=documents,
             page_info=page_info,
         )
+
+    @staticmethod
+    async def _require_valid_tenant(tenant_id: str, context: grpc.aio.ServicerContext) -> None:
+        """Abort with INVALID_ARGUMENT unless tenant_id passes the platform rule."""
+        try:
+            validate_tenant_id(tenant_id)
+        except ValueError as exc:
+            await context.abort(grpc.StatusCode.INVALID_ARGUMENT, str(exc))
 
     def _record_to_proto(self, record: DocumentRecord) -> ingestion_pb2.Document:
         """Convert DocumentRecord to Document proto message.

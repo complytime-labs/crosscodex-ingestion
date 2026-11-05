@@ -28,7 +28,9 @@ class FilesystemStorage(StorageBackend):
 
     def upload(self, tenant_id: str, document_id: str, filename: str, data: bytes) -> str:
         """Upload data to tenant-isolated filesystem path."""
-        file_path = self.base_path / tenant_id / "documents" / document_id / filename
+        file_path = (self.base_path / tenant_id / "documents" / document_id / filename).resolve()
+        if not file_path.is_relative_to(self.base_path.resolve()):
+            raise ValueError("Refusing to write outside storage root: tenant_id, document_id or filename escapes it")
         file_path.parent.mkdir(parents=True, exist_ok=True)
         file_path.write_bytes(data)
         return f"file://{file_path}"

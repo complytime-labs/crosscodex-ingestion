@@ -16,15 +16,18 @@ Security measures:
     Content-Type header, then the URL path extension.
   - The temp file is always deleted when the context manager exits.
   - Content hash verification (SHA-256) is provided for integrity checking.
+  - tenant_id and document_id are validated before use in storage paths and NATS subjects.
 """
 
 import contextlib
 import hashlib
 import ipaddress
 import logging
+import re
 import socket
 import tempfile
 import urllib.parse
+import uuid
 from collections.abc import Iterator
 from pathlib import Path
 
@@ -45,6 +48,38 @@ _REDIRECT_CODES = {301, 302, 303, 307, 308}
 DEFAULT_MAX_BYTES = 100 * 1024 * 1024  # 100 MB
 DEFAULT_TIMEOUT = 30  # seconds per request
 DEFAULT_MAX_REDIRECTS = 5
+
+
+# Platform-wide tenant identifier rule (shared with the Go services): 3-52 chars,
+# lowercase letters, digits and hyphens; starts with a letter, does not end with a hyphen.
+TENANT_ID_PATTERN = r"^[a-z][a-z0-9-]{1,50}[a-z0-9]$"
+_TENANT_ID_RE = re.compile(TENANT_ID_PATTERN)
+
+
+def validate_tenant_id(tenant_id: str) -> None:
+    """Raise ValueError unless *tenant_id* satisfies the platform tenant rule.
+
+    tenant_id is interpolated into filesystem paths and NATS subjects, so characters such as
+    '/', '.', '*' and '>' must never pass. fullmatch is used so a trailing newline is rejected.
+    """
+    if not _TENANT_ID_RE.fullmatch(tenant_id):
+        raise ValueError(
+            f"tenant_id {tenant_id[:64]!r} is invalid: it must be 3-52 characters of lowercase letters, "
+            f"digits and hyphens, start with a letter and not end with a hyphen (pattern {TENANT_ID_PATTERN})."
+        )
+
+
+def validate_document_id(document_id: str) -> None:
+    """Raise ValueError unless *document_id* is a canonical lowercase UUID (server-assigned uuid4)."""
+    try:
+        canonical: str | None = str(uuid.UUID(document_id))
+    except ValueError:
+        canonical = None
+    if canonical != document_id:
+        raise ValueError(
+            f"document_id {document_id[:64]!r} is invalid: it must be a UUID as returned by ConvertDocument "
+            "(for example 123e4567-e89b-42d3-a456-426614174000)."
+        )
 
 
 def _is_blocked_ip(ip: ipaddress.IPv4Address | ipaddress.IPv6Address) -> bool:

@@ -183,3 +183,31 @@ def test_create_storage_returns_s3():
         storage = create_storage(settings)
 
     assert isinstance(storage, S3Storage)
+
+
+def test_filesystem_upload_rejects_tenant_path_traversal(tmp_path):
+    import pytest
+
+    from crosscodex_ingestion.storage import FilesystemStorage
+
+    base = tmp_path / "root"
+    base.mkdir()
+    storage = FilesystemStorage(str(base))
+
+    with pytest.raises(ValueError, match="outside storage root"):
+        storage.upload("../../x", "doc123", "output.json", b"evil")
+
+    assert not any(p.name == "output.json" for p in tmp_path.rglob("*"))
+
+
+def test_filesystem_upload_rejects_document_id_and_filename_traversal(tmp_path):
+    import pytest
+
+    from crosscodex_ingestion.storage import FilesystemStorage
+
+    storage = FilesystemStorage(str(tmp_path))
+
+    with pytest.raises(ValueError, match="outside storage root"):
+        storage.upload("tenant1", "../../..", "output.json", b"evil")
+    with pytest.raises(ValueError, match="outside storage root"):
+        storage.upload("tenant1", "doc123", "../../../../output.json", b"evil")
