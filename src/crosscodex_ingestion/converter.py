@@ -76,7 +76,7 @@ def main():
 
     # Import after setting rlimits
     from crosscodex_ingestion.extractor import extract_elements
-    from docling.datamodel.base_models import ConversionStatus, FailureCategory, InputFormat
+    from docling.datamodel.base_models import ConversionStatus, InputFormat
     from docling.datamodel.pipeline_options import PdfPipelineOptions
     from docling.document_converter import DocumentConverter, PdfFormatOption
 
@@ -90,7 +90,9 @@ def main():
     if result.status != ConversionStatus.SUCCESS:
         for error in result.errors:
             print(error.error_message, file=sys.stderr)
-        if any(error.category == FailureCategory.POLICY for error in result.errors):
+        # Docling's POLICY category also covers "file format not allowed", so check the
+        # page count itself rather than reporting every policy failure as the page limit.
+        if result.input.page_count > max_pages:
             sys.exit(@PAGE_LIMIT_EXIT_CODE@)
         sys.exit(1)
     doc = result.document
