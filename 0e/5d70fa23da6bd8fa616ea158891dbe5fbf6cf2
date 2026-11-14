@@ -1,0 +1,19 @@
+tests/integration/test_security_e2e.py
+  s_bb84c6e4c4ce39::t_4357866b1e0b85 54-55,80
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "0e5d70fa23da6bd8fa616ea158891dbe5fbf6cf2",
+  "prompts": {},
+  "sessions": {
+    "s_bb84c6e4c4ce39": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1c679fed-791c-4482-b165-7d4148695927",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "LLM (riotbox) <llm@riotbox>"
+    }
+  }
+}
