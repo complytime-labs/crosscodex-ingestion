@@ -1,0 +1,40 @@
+scripts/download_models.py
+  s_bb84c6e4c4ce39::t_294e942e619e40 2-61
+  s_bb84c6e4c4ce39::t_d83ef9964cde16 1
+README.md
+  s_bb84c6e4c4ce39::t_29f02376341398 120-124
+  s_bb84c6e4c4ce39::t_41c3b88ff1e31e 279-284
+  s_bb84c6e4c4ce39::t_9e58dd60bd377e 318-320
+.dockerignore
+  s_bb84c6e4c4ce39::t_cdb1056c296f00 1-10
+Dockerfile.fips
+  s_bb84c6e4c4ce39::t_03c471e805aca9 50-53
+tests/container/offline_convert.py
+  s_bb84c6e4c4ce39::t_acadd5e54fa259 1-52,54-57
+  s_bb84c6e4c4ce39::t_227b46212a4ca9 53
+Dockerfile
+  s_bb84c6e4c4ce39::t_90c54ab357b59e 42-43,46,48
+.taskfiles/test.yml
+  s_bb84c6e4c4ce39::t_cb52e869b72f9c 20-30
+.github/workflows/ci.yml
+  s_bb84c6e4c4ce39::t_048300aff88241 63-86
+scripts/test_container.sh
+  s_bb84c6e4c4ce39::t_b17b6cb1f5b87c 1-28,30-75
+  s_bb84c6e4c4ce39::t_57158c98d21419 29
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "87141dd4414eabe40a4a7d326d0dae36a56c207c",
+  "prompts": {},
+  "sessions": {
+    "s_bb84c6e4c4ce39": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1c679fed-791c-4482-b165-7d4148695927",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "LLM (riotbox) <llm@riotbox>"
+    }
+  }
+}
