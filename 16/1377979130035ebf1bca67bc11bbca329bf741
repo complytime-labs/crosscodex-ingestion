@@ -1,0 +1,22 @@
+src/crosscodex_ingestion/converter.py
+  s_bb84c6e4c4ce39::t_53a6e59db91648 266
+tests/unit/test_converter.py
+  s_bb84c6e4c4ce39::t_72190367824e84 455-463
+  s_bb84c6e4c4ce39::t_91c459f99aecbc 453-454
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "161377979130035ebf1bca67bc11bbca329bf741",
+  "prompts": {},
+  "sessions": {
+    "s_bb84c6e4c4ce39": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1c679fed-791c-4482-b165-7d4148695927",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "LLM (riotbox) <llm@riotbox>"
+    }
+  }
+}
