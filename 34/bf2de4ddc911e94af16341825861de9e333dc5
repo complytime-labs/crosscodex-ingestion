@@ -1,0 +1,30 @@
+tests/integration/test_limits_e2e.py
+  s_bb84c6e4c4ce39::t_9afa3c22b6e15a 1,13,46-69
+  s_bb84c6e4c4ce39::t_01f6cc3d00a6b9 70-71
+src/crosscodex_ingestion/converter.py
+  s_bb84c6e4c4ce39::t_9abaf35a8d9695 18,246
+  s_bb84c6e4c4ce39::t_be0748742b3d4c 247
+  s_bb84c6e4c4ce39::t_cac376b839a617 34-37,75,118-120,253-270
+  s_bb84c6e4c4ce39::t_75f5cdb7f5d9aa 271
+README.md
+  s_bb84c6e4c4ce39::t_b2f19a3f758d8e 170-171,175-177
+tests/unit/test_converter.py
+  s_bb84c6e4c4ce39::t_25863c2a35aac1 6
+  s_bb84c6e4c4ce39::t_79b3a8e912b7fd 417-452
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "34bf2de4ddc911e94af16341825861de9e333dc5",
+  "prompts": {},
+  "sessions": {
+    "s_bb84c6e4c4ce39": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1c679fed-791c-4482-b165-7d4148695927",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "LLM (riotbox) <llm@riotbox>"
+    }
+  }
+}
