@@ -1,0 +1,25 @@
+README.md
+  s_bb84c6e4c4ce39::t_d100e173fda5fc 73-75,125,317
+Dockerfile
+  s_bb84c6e4c4ce39::t_4d981a3fbe4ca0 19-24
+.taskfiles/test.yml
+  s_bb84c6e4c4ce39::t_db6dfae0a3b3f3 15-27,29-33
+Dockerfile.fips
+  s_bb84c6e4c4ce39::t_4d981a3fbe4ca0 23-28
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "719a0ada01147d659b38b7f23b032b24dd321016",
+  "prompts": {},
+  "sessions": {
+    "s_bb84c6e4c4ce39": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1c679fed-791c-4482-b165-7d4148695927",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "LLM (riotbox) <llm@riotbox>"
+    }
+  }
+}
