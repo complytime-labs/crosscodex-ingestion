@@ -1,0 +1,21 @@
+.taskfiles/test.yml
+  s_877b5cbbea4fa4::t_f0f093338aa526 18,33
+scripts/test_container.sh
+  s_877b5cbbea4fa4::t_9ae0e867626fc7 19-32,40,51-60,65-76,83-87
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "dd3f998983c4aaa6c8753942c3580f36d0a5d6a3",
+  "prompts": {},
+  "sessions": {
+    "s_877b5cbbea4fa4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a0b33a96-97c7-4f9c-94fc-e9efbbf207d7",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "LLM (riotbox) <llm@riotbox>"
+    }
+  }
+}
