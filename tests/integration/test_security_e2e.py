@@ -9,7 +9,7 @@ from crosscodex_ingestion.proto.crosscodex.v1 import common_pb2, ingestion_pb2, 
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_missing_tenant_id_is_rejected(grpc_server_and_channel):
+async def test_missing_tenant_id_is_rejected(grpc_server_and_channel, server_state):
     """ConvertDocument with an empty tenant_id is refused before anything is stored."""
     _server, channel = grpc_server_and_channel
     stub = ingestion_pb2_grpc.IngestionServiceStub(channel)
@@ -24,6 +24,73 @@ async def test_missing_tenant_id_is_rejected(grpc_server_and_channel):
         await stub.ConvertDocument(request)
     assert exc.value.code() == grpc.StatusCode.INVALID_ARGUMENT
     assert "tenant_id" in exc.value.details()
+    stored, _ = await server_state.list_documents("")
+    assert stored == []
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_get_document_of_another_tenant_is_not_found(grpc_server_and_channel):
+    """A tenant cannot read another tenant's document, nor learn that it exists."""
+    _server, channel = grpc_server_and_channel
+    stub = ingestion_pb2_grpc.IngestionServiceStub(channel)
+    submitted = await stub.ConvertDocument(
+        ingestion_pb2.ConvertDocumentRequest(
+            tenant_context=common_pb2.TenantContext(tenant_id="tenant-a"),
+            # A type the worker rejects at once, so teardown does not wait on a real conversion.
+            content=b"tenant-a only",
+            metadata=common_pb2.ContentMetadata(mime_type="application/octet-stream"),
+        )
+    )
+
+    with pytest.raises(grpc.aio.AioRpcError) as exc:
+        await stub.GetDocument(
+            ingestion_pb2.GetDocumentRequest(
+                tenant_context=common_pb2.TenantContext(tenant_id="tenant-b"),
+                document_id=submitted.document_id,
+            )
+        )
+    assert exc.value.code() == grpc.StatusCode.NOT_FOUND
+    # Same text as for an ID that was never issued, so the reply does not reveal the document exists.
+    assert exc.value.details() == f"Document {submitted.document_id} not found"
+
+    own = await stub.GetDocument(
+        ingestion_pb2.GetDocumentRequest(
+            tenant_context=common_pb2.TenantContext(tenant_id="tenant-a"),
+            document_id=submitted.document_id,
+        )
+    )
+    assert own.document.document_id == submitted.document_id
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_get_unknown_document_is_not_found(grpc_server_and_channel):
+    _server, channel = grpc_server_and_channel
+    stub = ingestion_pb2_grpc.IngestionServiceStub(channel)
+
+    with pytest.raises(grpc.aio.AioRpcError) as exc:
+        await stub.GetDocument(
+            ingestion_pb2.GetDocumentRequest(
+                tenant_context=common_pb2.TenantContext(tenant_id="tenant-a"),
+                document_id="00000000-0000-4000-8000-000000000000",
+            )
+        )
+    assert exc.value.code() == grpc.StatusCode.NOT_FOUND
+    assert exc.value.details() == "Document 00000000-0000-4000-8000-000000000000 not found"
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_list_documents_without_tenant_is_rejected(grpc_server_and_channel):
+    _server, channel = grpc_server_and_channel
+    stub = ingestion_pb2_grpc.IngestionServiceStub(channel)
+
+    with pytest.raises(grpc.aio.AioRpcError) as exc:
+        await stub.ListDocuments(
+            ingestion_pb2.ListDocumentsRequest(tenant_context=common_pb2.TenantContext(tenant_id=""))
+        )
+    assert exc.value.code() == grpc.StatusCode.INVALID_ARGUMENT
 
 
 @pytest.mark.integration
