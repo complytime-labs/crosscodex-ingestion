@@ -174,11 +174,14 @@ The defaults are sized from measurements of real documents (Docling offline, mod
 
 - **Time**: Docling uses several threads, and `RLIMIT_CPU` counts CPU time across all threads (CPU is
   roughly 4-6x wall time). `MAX_PROCESSING_TIME=3600` and `RLIMIT_CPU=21600` leave headroom for documents
-  several times larger than SP 800-53r5.
+  several times larger than SP 800-53r5. A conversion that hits `RLIMIT_CPU` fails with a message naming
+  the limit and its value.
 - **Memory**: `RLIMIT_AS` bounds *virtual address space only*. Importing torch alone needs more than 4 GB of
   address space and conversions peak at ~40 GB `VmPeak` while using only a few GB resident, so the default is
   64 GB. It is not a memory cap. **The real memory bound is the container memory limit**: allow at least
-  6 GB per concurrent conversion (`MAX_CONCURRENT_CONVERSIONS`).
+  6 GB per concurrent conversion (`MAX_CONCURRENT_CONVERSIONS`). A worker killed by `SIGKILL` (most likely
+  the OOM killer) or `SIGSEGV` (most likely `RLIMIT_AS_MB` set too low) is logged with that signal and
+  its likely cause.
 - **Pages and output size**: `MAX_PAGES` and `MAX_EXTRACTION_LENGTH` fail the conversion with a clear
   message instead of truncating.
 

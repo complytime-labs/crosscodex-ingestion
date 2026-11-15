@@ -3,6 +3,7 @@
 import asyncio
 import json
 import os
+import signal
 import subprocess
 import sys
 import tempfile
@@ -412,6 +413,53 @@ class TestDocumentLimits:
         assert "10 pages" in str(exc_info.value)
         assert "/srv/secret" not in str(exc_info.value)
         assert isinstance(exc_info.value, ValueError)
+
+    @patch("crosscodex_ingestion.converter.asyncio.create_subprocess_exec", new_callable=AsyncMock)
+    @patch("crosscodex_ingestion.converter.shutil.copy2")
+    async def test_sigxcpu_death_is_reported_as_cpu_limit_with_the_setting(self, mock_copy2, mock_subprocess_run):
+        mock_subprocess_run.return_value = _proc(returncode=-signal.SIGXCPU)
+
+        with pytest.raises(DocumentLimitError) as exc_info:
+            await convert_document("/path/to/doc.pdf", "pdf", IngestionSettings(rlimit_cpu=600))
+
+        assert "CPU limit" in str(exc_info.value)
+        assert "RLIMIT_CPU" in str(exc_info.value)
+        assert "600" in str(exc_info.value)
+
+    @patch("crosscodex_ingestion.converter.asyncio.create_subprocess_exec", new_callable=AsyncMock)
+    @patch("crosscodex_ingestion.converter.shutil.copy2")
+    async def test_sigkill_death_names_memory_as_the_likely_limit(self, mock_copy2, mock_subprocess_run):
+        """CPU deaths arrive as SIGXCPU, so an unexplained SIGKILL is most likely the OOM killer."""
+        mock_subprocess_run.return_value = _proc(returncode=-signal.SIGKILL)
+
+        with pytest.raises(ConversionError) as exc_info:
+            await convert_document("/path/to/doc.pdf", "pdf", IngestionSettings())
+
+        assert not isinstance(exc_info.value, DocumentLimitError)
+        assert "SIGKILL" in str(exc_info.value)
+        assert "memory" in str(exc_info.value)
+
+    @patch("crosscodex_ingestion.converter.asyncio.create_subprocess_exec", new_callable=AsyncMock)
+    @patch("crosscodex_ingestion.converter.shutil.copy2")
+    async def test_sigsegv_death_names_the_address_space_limit(self, mock_copy2, mock_subprocess_run):
+        mock_subprocess_run.return_value = _proc(returncode=-signal.SIGSEGV)
+
+        with pytest.raises(ConversionError) as exc_info:
+            await convert_document("/path/to/doc.pdf", "pdf", IngestionSettings())
+
+        assert "SIGSEGV" in str(exc_info.value)
+        assert "RLIMIT_AS_MB" in str(exc_info.value)
+
+    @patch("crosscodex_ingestion.converter.asyncio.create_subprocess_exec", new_callable=AsyncMock)
+    @patch("crosscodex_ingestion.converter.shutil.copy2")
+    async def test_sigsegv_without_address_space_limit_does_not_blame_it(self, mock_copy2, mock_subprocess_run):
+        mock_subprocess_run.return_value = _proc(returncode=-signal.SIGSEGV)
+
+        with pytest.raises(ConversionError) as exc_info:
+            await convert_document("/path/to/doc.pdf", "pdf", IngestionSettings(rlimit_as_mb=0))
+
+        assert "SIGSEGV" in str(exc_info.value)
+        assert "RLIMIT_AS_MB" not in str(exc_info.value)
 
     @patch("crosscodex_ingestion.converter.asyncio.create_subprocess_exec", new_callable=AsyncMock)
     @patch("crosscodex_ingestion.converter.shutil.copy2")
