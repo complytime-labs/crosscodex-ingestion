@@ -1,0 +1,24 @@
+tests/conftest.py
+  s_bb84c6e4c4ce39::t_e9c5077caa3c8f 16,55-63
+  s_bb84c6e4c4ce39::t_90f4b3ac09368b 101,109
+tests/integration/test_security_e2e.py
+  s_bb84c6e4c4ce39::t_deae8afb7f61da 12,27-60,62-86,90
+  s_bb84c6e4c4ce39::t_aceee3c770e823 61
+  s_bb84c6e4c4ce39::t_90a953f8dfad65 87-89
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "3d98ab7a283758c3efdf7dd0d0b87e2835f3bd16",
+  "prompts": {},
+  "sessions": {
+    "s_bb84c6e4c4ce39": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1c679fed-791c-4482-b165-7d4148695927",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "LLM (riotbox) <llm@riotbox>"
+    }
+  }
+}
