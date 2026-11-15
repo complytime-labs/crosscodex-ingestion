@@ -13,7 +13,7 @@ from crosscodex_ingestion.dispatch import create_dispatch
 from crosscodex_ingestion.proto.crosscodex.v1 import ingestion_pb2_grpc
 from crosscodex_ingestion.server import create_grpc_server
 from crosscodex_ingestion.service import IngestionServiceServicer
-from crosscodex_ingestion.state import create_state_backend
+from crosscodex_ingestion.state import MemoryStateBackend
 from crosscodex_ingestion.storage import create_storage
 
 FIXTURES_DIR = Path(__file__).parent / "fixtures" / "documents"
@@ -52,7 +52,15 @@ def pki_dir(tmp_path_factory) -> Path:
 
 
 @pytest.fixture
-async def running_grpc_server(pki_dir: Path) -> AsyncGenerator[tuple[grpc.aio.Server, int], None]:
+def server_state() -> MemoryStateBackend:
+    """The running server's state backend, so tests can check what a request did or did not store."""
+    return MemoryStateBackend()
+
+
+@pytest.fixture
+async def running_grpc_server(
+    pki_dir: Path, server_state: MemoryStateBackend
+) -> AsyncGenerator[tuple[grpc.aio.Server, int], None]:
     """Start the real server (mutual TLS, attestation on, allowlist set) with filesystem backends.
 
     Built through create_grpc_server, so tests exercise the production credential and
@@ -82,7 +90,6 @@ async def running_grpc_server(pki_dir: Path) -> AsyncGenerator[tuple[grpc.aio.Se
             rlimit_fsize_mb=0,
         )
 
-        state_backend = create_state_backend(settings)
         storage_backend = create_storage(settings)
         attestation_manager = create_attestation_manager(settings)
 
@@ -91,7 +98,7 @@ async def running_grpc_server(pki_dir: Path) -> AsyncGenerator[tuple[grpc.aio.Se
 
         dispatch_backend = create_dispatch(
             settings=settings,
-            state=state_backend,
+            state=server_state,
             storage=storage_backend,
             attestation=attestation_manager,
             audit=audit_publisher,
@@ -99,7 +106,7 @@ async def running_grpc_server(pki_dir: Path) -> AsyncGenerator[tuple[grpc.aio.Se
 
         servicer = IngestionServiceServicer(
             settings=settings,
-            state_backend=state_backend,
+            state_backend=server_state,
             dispatch_backend=dispatch_backend,
         )
 
