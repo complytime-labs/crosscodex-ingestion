@@ -20,9 +20,12 @@ USER 1001
 # ignores it and targets the system Python 3.9, so point uv at the venv instead.
 ENV VIRTUAL_ENV=/opt/app-root
 
-# Install third-party dependencies first (layer caching); the package itself needs src/ and README.md
-COPY --chown=1001:0 pyproject.toml .
-RUN uv pip install --no-cache -r pyproject.toml
+# Install third-party dependencies first (layer caching); the package itself needs src/ and README.md.
+# Install exactly what uv.lock pins, hash-checked: resolving pyproject.toml afresh drifts from the
+# lock, and the model revisions in scripts/download_models.py match the locked Docling.
+COPY --chown=1001:0 pyproject.toml uv.lock ./
+RUN uv export --locked --no-dev --no-emit-project --format requirements.txt -o /tmp/requirements.txt && \
+    uv pip install --no-cache --require-hashes -r /tmp/requirements.txt
 
 # Copy proto files and generate gRPC stubs
 COPY --chown=1001:0 proto/ proto/
@@ -47,8 +50,10 @@ COPY --chown=1001:0 README.md .
 COPY --chown=1001:0 src/ src/
 RUN uv pip install --no-cache --no-deps .
 
-# Pre-download Docling models: the sandboxed worker runs offline (HF_HUB_OFFLINE=1)
-RUN docling-tools models download -o /opt/app-root/docling-models
+# Bake in the Docling and RapidOCR models, pinned by revision (see the script): the sandboxed
+# worker runs offline (HF_HUB_OFFLINE=1)
+COPY --chown=1001:0 scripts/download_models.py scripts/
+RUN python scripts/download_models.py /opt/app-root/docling-models
 
 # Stage 2: Runtime - Minimal FIPS-compliant production image
 FROM registry.access.redhat.com/ubi9-minimal:9.8
@@ -70,8 +75,9 @@ RUN useradd -u 1001 -g 0 -m appuser && \
     chmod -R g=u /app /data
 
 # Copy installed packages from builder
-# Note: UBI Python site-packages path differs from standard python:3.12-slim
-COPY --from=builder --chown=1001:0 /opt/app-root/lib64/python3.12/site-packages /opt/app-root/lib64/python3.12/site-packages
+# Note: UBI Python site-packages path differs from standard python:3.12-slim. In the builder,
+# /opt/app-root/lib64 is a symlink to lib, so lib holds everything; copying both paths
+# duplicated every package (~6 GB).
 COPY --from=builder --chown=1001:0 /opt/app-root/lib/python3.12/site-packages /opt/app-root/lib/python3.12/site-packages
 # Models stay root-owned and read-only to the service user: every conversion loads
 # them, so a compromised process must not be able to tamper with them.
@@ -80,8 +86,8 @@ RUN chown -R 0:0 /opt/app-root/docling-models && chmod -R a+rX,go-w /opt/app-roo
 
 ENV DOCLING_ARTIFACTS_PATH=/opt/app-root/docling-models
 
-# Set Python path to include both UBI and local site-packages
-ENV PYTHONPATH=/opt/app-root/lib64/python3.12/site-packages:/opt/app-root/lib/python3.12/site-packages
+# The runtime python3.12 is the system interpreter, so point it at the copied packages
+ENV PYTHONPATH=/opt/app-root/lib/python3.12/site-packages
 
 # Switch to non-root user
 USER 1001

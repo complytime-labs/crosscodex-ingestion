@@ -16,9 +16,12 @@ RUN apt-get update && \
 
 WORKDIR /app
 
-# Install third-party dependencies first (layer caching); the package itself needs src/ and README.md
-COPY pyproject.toml .
-RUN uv pip install --system --no-cache -r pyproject.toml
+# Install third-party dependencies first (layer caching); the package itself needs src/ and README.md.
+# Install exactly what uv.lock pins, hash-checked: resolving pyproject.toml afresh drifts from the
+# lock, and the model revisions in scripts/download_models.py match the locked Docling.
+COPY pyproject.toml uv.lock ./
+RUN uv export --locked --no-dev --no-emit-project --format requirements.txt -o /tmp/requirements.txt && \
+    uv pip install --system --no-cache --require-hashes -r /tmp/requirements.txt
 
 # Copy proto files and generate gRPC stubs
 COPY proto/ proto/
@@ -39,11 +42,13 @@ RUN find src/crosscodex_ingestion/proto -name '*_pb2*.py' -exec \
     sed -i 's/from crosscodex\.v1/from crosscodex_ingestion.proto.crosscodex.v1/g' {} +
 
 # Copy application source and install the package (hatchling reads README.md and src/), then
-# pre-download Docling models: the sandboxed worker runs offline (HF_HUB_OFFLINE=1)
+# bake in the Docling and RapidOCR models, pinned by revision (see the script): the sandboxed
+# worker runs offline (HF_HUB_OFFLINE=1)
 COPY README.md .
 COPY src/ src/
+COPY scripts/download_models.py scripts/
 RUN uv pip install --system --no-cache --no-deps . && \
-    docling-tools models download -o /opt/docling-models
+    python scripts/download_models.py /opt/docling-models
 
 # Stage 2: Runtime - Minimal production image
 FROM docker.io/library/python:3.12-slim

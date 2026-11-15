@@ -12,10 +12,39 @@ tasks:
         --junitxml=.test-output/unit-results.xml
         --cov=crosscodex_ingestion --cov-report=html:.test-output/coverage
 
+  models:
+    desc: Download the pinned Docling and RapidOCR models into .test-output/docling-models (once)
+    vars:
+      MODELS_DIR: "{{.ROOT_DIR}}/.test-output/docling-models"
+    # Download beside the target and rename, so an interrupted download is never mistaken for a
+    # complete one by the status check.
+    cmds:
+      - rm -rf "{{.MODELS_DIR}}.partial"
+      - uv run python "{{.ROOT_DIR}}/scripts/download_models.py" "{{.MODELS_DIR}}.partial"
+      - mv "{{.MODELS_DIR}}.partial" "{{.MODELS_DIR}}"
+    status:
+      - test -d "{{.MODELS_DIR}}"
+
   integration:
-    desc: Integration tests (requires Docling)
+    desc: Integration tests (requires Docling; downloads the models on first run)
+    deps: [models]
+    env:
+      # Without it the model-dependent tests skip rather than fail.
+      DOCLING_ARTIFACTS_PATH: "{{.ROOT_DIR}}/.test-output/docling-models"
     cmds:
       - uv run pytest tests/integration/ -v --junitxml=.test-output/integration-results.xml
+
+  # VARIANTS: space-separated images to test (default "standard fips")
+  container:
+    desc: Build images (needs podman); check each one's HEALTHCHECK and an offline PDF conversion
+    deps: [":certs"]
+    vars:
+      CERTS_DIR: '{{.CERTS_DIR | default ".test-output/certs"}}'
+      VARIANTS: '{{.VARIANTS | default "standard fips"}}'
+    cmds:
+      - for:
+          var: VARIANTS
+        cmd: CERTS_DIR={{.CERTS_DIR}} scripts/test_container.sh {{.ITEM}}
 
   all:
     desc: Run all test suites

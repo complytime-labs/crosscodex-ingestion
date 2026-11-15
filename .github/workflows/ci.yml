@@ -60,3 +60,32 @@ jobs:
 
       - name: Integration tests
         run: task test:integration
+
+  container:
+    needs: [build]
+    runs-on: ubuntu-latest
+    # Docling, torch and the models make each image build slow and several GB large, so each
+    # variant gets its own runner (and disk).
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        variant: [standard, fips]
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990 # v8.3.2
+
+      - uses: go-task/setup-task@01a4adf9db2d14c1de7a560f09170b6e0df736aa # v2.1.0
+        with:
+          repo-token: ${{ github.token }}
+
+      - name: Setup
+        run: task setup
+
+      # Builds the image, runs its HEALTHCHECK against a service with mutual TLS, and converts a
+      # PDF with the network disabled.
+      - name: Container tests
+        run: task test:container VARIANTS=${{ matrix.variant }}
