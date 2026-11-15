@@ -70,8 +70,9 @@ GRPC_TLS_CERT=$C/server.pem GRPC_TLS_KEY=$C/server.key GRPC_TLS_CA=$C/ca.pem \
 # Run tests
 task test
 
-# Run integration tests (requires docling and the downloaded models)
-DOCLING_ARTIFACTS_PATH=~/.cache/crosscodex/docling-models task test:integration
+# Run integration tests (first run downloads the pinned models into .test-output/docling-models;
+# a DOCLING_ARTIFACTS_PATH already set in your shell takes precedence)
+task test:integration
 ```
 
 The service refuses to start without the TLS and attestation settings. For a plaintext, unattested
@@ -116,6 +117,12 @@ export DOCLING_ARTIFACTS_PATH=<dir>
 The server **refuses to start** if `DOCLING_ARTIFACTS_PATH` is unset or not a directory. The container
 images download the models at build time (`/opt/docling-models` in the standard image,
 `/opt/app-root/docling-models` in the FIPS image) and set `DOCLING_ARTIFACTS_PATH` for you.
+
+The images fetch the models with `scripts/download_models.py`, not `docling-tools`: the CLI has no revision
+option and Docling requests the moving `main` ref for most of its models, so pinning the docling package does
+not fix their contents. The script pins each Hugging Face repository to a commit SHA (edit the table in the
+script to bump one). RapidOCR checkpoints come from URLs fixed by the installed Docling/RapidOCR versions.
+Both images install exactly the versions in `uv.lock`, hash-checked, so the models and Docling stay matched.
 
 ## Environment Variables
 
@@ -271,6 +278,12 @@ removed. Mount a volume at `/data/documents` to keep it. The container needs the
 files mounted (see "gRPC authentication" and "Attestation keys"); for a throwaway local run add
 `-e GRPC_TLS_MODE=off -e ATTESTATION_ENABLED=false`.
 
+`task test:container` builds both images, runs each image's `HEALTHCHECK` against a service started with mutual
+TLS and attestation, and converts `tests/fixtures/documents/sample.pdf` in a container started with
+`--network=none`. It needs `podman`, is slow (it downloads torch and the models), and runs in CI on every PR.
+If `podman build` fails with "mounting an overlay over build context directory" (podman nested inside another
+container), point `TMPDIR` at a directory on a non-overlay filesystem.
+
 ## Architecture
 
 The service has three primary components:
@@ -301,8 +314,11 @@ gRPC Request → Dispatch → Worker → [Converter → Extractor] → Storage �
 # Unit tests (fast, no external dependencies)
 task test
 
-# Integration tests (requires docling and DOCLING_ARTIFACTS_PATH, may be slow)
+# Integration tests (slow; downloads the pinned models on first run, see `task test:models`)
 task test:integration
+
+# Container tests (needs podman; builds both images, health check, offline conversion)
+task test:container
 
 # Lint (ruff + ruff format --check + mypy)
 task lint
