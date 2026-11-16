@@ -203,6 +203,34 @@ class TestGetDocument:
         assert response.document.tenant_context.tenant_id == "tenant-a"
 
     @pytest.mark.asyncio
+    async def test_get_document_returns_failure_code_message_and_details(self, servicer, state_backend):
+        """A schema violation's element index and id reach the client as Error.details."""
+        error = {
+            "code": common_pb2.ERROR_CODE_INTERNAL,
+            "message": "Structured output does not conform to schema 1.0: elements[0] ...",
+            "details": {"location": "elements[0] (element_id 'e-001').content", "element_id": "e-001"},
+        }
+        await state_backend.create(
+            DocumentRecord(
+                document_id=DOC_ID,
+                tenant_id="tenant-a",
+                status=common_pb2.JOB_STATUS_FAILED,
+                metadata={},
+                error=error,
+            )
+        )
+        request = ingestion_pb2.GetDocumentRequest(
+            tenant_context=common_pb2.TenantContext(tenant_id="tenant-a"),
+            document_id=DOC_ID,
+        )
+
+        response = await servicer.GetDocument(request, MockServicerContext())
+
+        assert response.document.error.code == common_pb2.ERROR_CODE_INTERNAL
+        assert response.document.error.message == error["message"]
+        assert dict(response.document.error.details) == error["details"]
+
+    @pytest.mark.asyncio
     async def test_get_document_missing_returns_not_found(self, servicer):
         """GetDocument for missing document calls abort(NOT_FOUND)."""
         request = ingestion_pb2.GetDocumentRequest(

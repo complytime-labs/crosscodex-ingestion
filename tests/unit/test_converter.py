@@ -21,6 +21,7 @@ from crosscodex_ingestion.converter import (
     convert_document,
     validate_artifacts_path,
 )
+from crosscodex_ingestion.output_schema import SCHEMA_VERSION
 from tests.unit.process_helpers import is_running, wait_for_pids
 
 
@@ -90,6 +91,22 @@ class TestConvertDocument:
         result = await convert_document("/path/to/doc.pdf", "pdf", IngestionSettings())
 
         assert result["metadata"]["processing_time_ms"] >= worker_seconds * 1000
+
+    @patch("crosscodex_ingestion.converter.asyncio.create_subprocess_exec", new_callable=AsyncMock)
+    @patch("crosscodex_ingestion.converter.shutil.copy2")
+    async def test_output_is_stamped_with_the_schema_version_first(self, mock_copy2, mock_subprocess_run):
+        """The parent, not the sandboxed worker, declares which schema version the output follows."""
+
+        def worker(*cmd, **kwargs):
+            Path(cmd[3]).write_text(json.dumps({"elements": [], "metadata": {}}))
+            return _proc(returncode=0)
+
+        mock_subprocess_run.side_effect = worker
+
+        result = await convert_document("/path/to/doc.pdf", "pdf", IngestionSettings())
+
+        assert next(iter(result)) == "schema_version"
+        assert result["schema_version"] == SCHEMA_VERSION
 
     @patch("crosscodex_ingestion.converter.asyncio.create_subprocess_exec", new_callable=AsyncMock)
     @patch("crosscodex_ingestion.converter.shutil.copy2")

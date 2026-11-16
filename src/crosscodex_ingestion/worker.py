@@ -27,6 +27,7 @@ from crosscodex_ingestion.audit import AuditPublisher
 from crosscodex_ingestion.config import IngestionSettings
 from crosscodex_ingestion.converter import ConversionError, ConversionTimeout, DocumentLimitError, convert_document
 from crosscodex_ingestion.metrics import ACTIVE_CONVERSIONS, DURATION, ERRORS_TOTAL, REQUESTS_TOTAL
+from crosscodex_ingestion.output_schema import SCHEMA_VERSION, OutputSchemaError, validate_output
 from crosscodex_ingestion.security import (
     fetch_url,
     sniff_format,
@@ -130,7 +131,7 @@ async def run_conversion(
     3. Validates format against allowed formats
     4. Validates content hash (if provided in metadata)
     5. Writes bytes to temp file
-    6. Calls convert_document (subprocess isolation)
+    6. Calls convert_document (subprocess isolation) and validates its output against the schema
     7. Uploads structured JSON to storage
     8. Creates cryptographic attestation link (if enabled)
     9. Uploads attestation to storage (if enabled)
@@ -255,6 +256,17 @@ async def run_conversion(
                 str(temp_file_path),
                 validated_format,
                 settings,
+            )
+
+        # The output schema is the contract with consumers: nothing that breaks it is stored.
+        validate_output(conversion_result)
+        for dropped in conversion_result["metadata"]["dropped"]:
+            logger.warning(
+                "Document %s: dropped a %s on page %s: %s",
+                document_id,
+                dropped["type"],
+                dropped["page"],
+                dropped["reason"],
             )
 
         # Step 7: Upload structured JSON to storage
@@ -388,11 +400,24 @@ async def run_conversion(
             error_type = "timeout"
         elif isinstance(exc, ConversionError):
             error_type = "conversion_error"
+        elif isinstance(exc, OutputSchemaError):
+            # Still INTERNAL (the service's output is wrong, not the request), but the message names
+            # locations and rules only, never document text, so it is safe to return in full.
+            error_message = f"{exc} (document ID {document_id}); contact the operator."
+            error_type = "invalid_output"
 
-        error_dict = {
+        error_dict: dict[str, Any] = {
             "code": error_code,
             "message": error_message,
         }
+        if isinstance(exc, OutputSchemaError):
+            first = exc.violations[0]
+            details = {"schema_version": SCHEMA_VERSION, "location": first.location}
+            if first.element_index is not None:
+                details["element_index"] = str(first.element_index)
+            if first.element_id is not None:
+                details["element_id"] = first.element_id
+            error_dict["details"] = details
 
         await record_failure(state, audit, tenant_id, document_id, metadata, error_dict, error_type, validated_format)
 
