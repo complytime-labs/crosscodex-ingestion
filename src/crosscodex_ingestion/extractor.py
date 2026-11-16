@@ -19,7 +19,6 @@ Extraction strategy (two-stage):
 """
 
 import re
-import time
 from dataclasses import dataclass
 from typing import Any
 
@@ -500,7 +499,6 @@ def extract_elements(
     ExtractionResult
         Elements and metadata.
     """
-    t_start = time.time()
     extractor = DocumentExtractor()
 
     # Clean the markdown text
@@ -517,11 +515,9 @@ def extract_elements(
         extractor._parse_markdown(cleaned_text)
 
     # Build metadata
-    elapsed_ms = (time.time() - t_start) * 1000
     metadata = {
         "element_count": len(extractor.elements),
         "detected_format": format_hint,
-        "processing_time_ms": round(elapsed_ms, 2),
         # Docling reports 0 pages for unpaginated formats (HTML, DOCX).
         "page_count": (doc.num_pages() or None) if doc is not None else None,
         "title": extractor.title,

@@ -14,6 +14,7 @@ import shutil
 import signal
 import sys
 import tempfile
+import time
 from pathlib import Path
 from typing import Any, cast
 
@@ -226,6 +227,7 @@ async def convert_document(input_path: str, format_hint: str, settings: Ingestio
             env["PYTHONPATH"] = os.environ["PYTHONPATH"]
 
         # Run subprocess in its own session/process group so the whole tree can be killed.
+        started = time.monotonic()
         proc = await asyncio.create_subprocess_exec(
             *cmd,
             stdout=asyncio.subprocess.DEVNULL,
@@ -243,6 +245,7 @@ async def convert_document(input_path: str, format_hint: str, settings: Ingestio
             if proc.returncode is None:
                 _kill_process_group(proc.pid)
                 await proc.wait()
+        processing_time_ms = round((time.monotonic() - started) * 1000, 2)
         # The finally block above reaps the worker, so returncode is always set here.
         returncode = cast("int", proc.returncode)
         stderr = stderr_bytes.decode(errors="replace")
@@ -285,6 +288,9 @@ async def convert_document(input_path: str, format_hint: str, settings: Ingestio
 
         with Path(output_path).open() as f:
             output_data: dict[str, Any] = json.load(f)
+
+        # Only this process sees the whole worker run: interpreter start, model load, conversion.
+        output_data["metadata"]["processing_time_ms"] = processing_time_ms
 
         return output_data
 

@@ -293,8 +293,8 @@ Final content.
         assert result.metadata["element_count"] == 2
         assert "detected_format" in result.metadata
         assert result.metadata["detected_format"] == "pdf"
-        assert "processing_time_ms" in result.metadata
-        assert result.metadata["processing_time_ms"] >= 0
+        # Only the converter sees the whole conversion, so it alone reports processing time.
+        assert "processing_time_ms" not in result.metadata
 
     def test_text_cleaning(self):
         """Text cleaning removes HTML comments and normalizes whitespace."""
