@@ -15,7 +15,7 @@ import signal
 import sys
 import tempfile
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from crosscodex_ingestion.config import IngestionSettings
 
@@ -30,6 +30,10 @@ class ConversionTimeout(Exception):
 
 # Worker exit code meaning "Docling rejected the document for exceeding max_pages".
 PAGE_LIMIT_EXIT_CODE = 3
+
+# The worker's hard CPU limit sits this far above the soft one. The kernel sends SIGXCPU at the
+# soft limit, so a CPU death is told apart from a SIGKILL (OOM killer) by its signal.
+CPU_KILL_GRACE_SECONDS = 5
 
 
 class DocumentLimitError(ValueError):
@@ -68,7 +72,7 @@ def main():
     if rlimit_as > 0:
         resource.setrlimit(resource.RLIMIT_AS, (rlimit_as, rlimit_as))
     if rlimit_cpu > 0:
-        resource.setrlimit(resource.RLIMIT_CPU, (rlimit_cpu, rlimit_cpu))
+        resource.setrlimit(resource.RLIMIT_CPU, (rlimit_cpu, rlimit_cpu + @CPU_KILL_GRACE_SECONDS@))
     if rlimit_fsize > 0:
         resource.setrlimit(resource.RLIMIT_FSIZE, (rlimit_fsize, rlimit_fsize))
 
@@ -111,7 +115,9 @@ def main():
 
 if __name__ == "__main__":
     main()
-""".replace("@PAGE_LIMIT_EXIT_CODE@", str(PAGE_LIMIT_EXIT_CODE))
+""".replace("@PAGE_LIMIT_EXIT_CODE@", str(PAGE_LIMIT_EXIT_CODE)).replace(
+    "@CPU_KILL_GRACE_SECONDS@", str(CPU_KILL_GRACE_SECONDS)
+)
 
 
 def validate_artifacts_path(artifacts_path: str) -> None:
@@ -237,11 +243,31 @@ async def convert_document(input_path: str, format_hint: str, settings: Ingestio
             if proc.returncode is None:
                 _kill_process_group(proc.pid)
                 await proc.wait()
-        returncode = proc.returncode
+        # The finally block above reaps the worker, so returncode is always set here.
+        returncode = cast("int", proc.returncode)
         stderr = stderr_bytes.decode(errors="replace")
 
         if returncode == PAGE_LIMIT_EXIT_CODE:
             raise DocumentLimitError(f"Document exceeds the maximum of {settings.max_pages} pages")
+
+        if returncode == -signal.SIGXCPU:
+            raise DocumentLimitError(
+                f"Conversion exceeded the CPU limit of {settings.rlimit_cpu} CPU-seconds (RLIMIT_CPU)"
+            )
+
+        if returncode < 0:
+            signum = -returncode
+            try:
+                signal_name = signal.Signals(signum).name
+            except ValueError:
+                signal_name = f"signal {signum}"
+            if signum == signal.SIGKILL:
+                cause = "; most likely out of memory (container memory limit or kernel OOM killer)"
+            elif signum == signal.SIGSEGV and settings.rlimit_as_mb > 0:
+                cause = f"; Docling crashes this way when RLIMIT_AS_MB ({settings.rlimit_as_mb}) is too low"
+            else:
+                cause = ""
+            raise ConversionError(f"Conversion subprocess was killed by {signal_name}{cause}. stderr: {stderr}")
 
         if returncode != 0:
             raise ConversionError(f"Conversion subprocess failed with exit code {returncode}. stderr: {stderr}")

@@ -1,4 +1,4 @@
-"""Integration tests: page limit enforced by the real Docling worker subprocess."""
+"""Integration tests: page, CPU and default resource limits enforced by the real Docling worker subprocess."""
 
 import os
 from pathlib import Path
@@ -10,6 +10,7 @@ from crosscodex_ingestion.config import IngestionSettings
 from crosscodex_ingestion.converter import DocumentLimitError, convert_document
 
 ARTIFACTS = os.environ.get("DOCLING_ARTIFACTS_PATH", "")
+FIXTURES_DIR = Path(__file__).parent.parent / "fixtures" / "documents"
 
 pytestmark = [
     pytest.mark.integration,
@@ -40,5 +41,31 @@ async def test_pdf_at_max_pages_converts(tmp_path):
     pdf_path = _make_pdf(tmp_path / "three.pdf", pages=3)
 
     result = await convert_document(pdf_path, "pdf", IngestionSettings(max_pages=3, docling_artifacts_path=ARTIFACTS))
+
+    assert result["elements"]
+
+
+async def test_real_worker_over_cpu_limit_reports_the_cpu_limit(tmp_path):
+    """The kernel's SIGXCPU reaches the parent as an actionable CPU-limit error, not an exit code."""
+    pdf_path = _make_pdf(tmp_path / "one.pdf", pages=1)
+
+    # Importing Docling alone costs more than one CPU-second.
+    with pytest.raises(DocumentLimitError, match="RLIMIT_CPU"):
+        await convert_document(pdf_path, "pdf", IngestionSettings(rlimit_cpu=1, docling_artifacts_path=ARTIFACTS))
+
+
+async def test_hundred_page_pdf_converts_with_default_limits(tmp_path):
+    pdf_path = _make_pdf(tmp_path / "hundred.pdf", pages=100)
+
+    result = await convert_document(pdf_path, "pdf", IngestionSettings(docling_artifacts_path=ARTIFACTS))
+
+    assert result["metadata"]["page_count"] == 100
+
+
+@pytest.mark.parametrize(("name", "format_hint"), [("sample.pdf", "pdf"), ("sample.docx", "docx")])
+async def test_real_documents_convert_with_default_limits(name, format_hint):
+    result = await convert_document(
+        str(FIXTURES_DIR / name), format_hint, IngestionSettings(docling_artifacts_path=ARTIFACTS)
+    )
 
     assert result["elements"]
