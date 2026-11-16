@@ -1,0 +1,32 @@
+src/crosscodex_ingestion/structured.py
+  s_2e118cfcd8b31e::t_479a3788781744 785,788-789
+tests/unit/test_converter.py
+  s_2e118cfcd8b31e::t_8e93d50ce49ed5 580-677,683-725,727-733
+  s_2e118cfcd8b31e::t_44d86d9ffaf067 15,23,26,28-29
+  s_2e118cfcd8b31e::t_9b6fcdcd955658 86,678-682,726
+tests/unit/test_structured.py
+  s_2e118cfcd8b31e::t_479a3788781744 703,706-707,711,713,718,720,729,731
+src/crosscodex_ingestion/converter.py
+  s_2e118cfcd8b31e::t_0b66af7d1ef42b 2,4-8,20,25,27-36
+  s_2e118cfcd8b31e::t_e22956ab072bb1 188-222,225-227,229,231,235,242,256,263-264,266,277-298,301-323,325-329,332-333,335-339,341-409,411-466
+  s_2e118cfcd8b31e::t_e9a14eecc8d036 137-162
+  s_2e118cfcd8b31e::t_9b6fcdcd955658 410
+tests/fixtures/structured/mitre-attack-enterprise-17.1/PROVENANCE.md
+  s_2e118cfcd8b31e::t_29de288477217f 29-31
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "b3ada4f322c33a9b3cba1a4a1fe70d2c6ac5b091",
+  "prompts": {},
+  "sessions": {
+    "s_2e118cfcd8b31e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "323e64fa-229f-434d-b49e-283dd9dc4d87",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "LLM (riotbox) <llm@riotbox>"
+    }
+  }
+}
