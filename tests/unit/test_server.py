@@ -7,10 +7,11 @@ import subprocess
 import sys
 import time
 
+import grpc
 import pytest
 
 from crosscodex_ingestion.config import IngestionSettings
-from crosscodex_ingestion.server import create_grpc_server, serve
+from crosscodex_ingestion.server import _GRPC_REQUEST_OVERHEAD, create_grpc_server, serve
 
 
 @pytest.mark.asyncio
@@ -114,3 +115,25 @@ async def test_server_refuses_a_port_another_server_holds():
             create_grpc_server(settings, f"[::]:{port}")
     finally:
         await first.stop(None)
+
+
+@pytest.mark.asyncio
+async def test_receive_limit_is_max_document_size_plus_request_overhead():
+    """Messages up to max_document_size + overhead reach the handler, so the service can give its
+    actionable size error; beyond that the transport rejects them before any handler runs."""
+    settings = IngestionSettings(grpc_tls_mode="off", max_document_size=1000)
+    limit = settings.max_document_size + _GRPC_REQUEST_OVERHEAD
+    server, port = create_grpc_server(settings, "127.0.0.1:0")
+    handler = grpc.unary_unary_rpc_method_handler(lambda request, _context: str(len(request)).encode())
+    server.add_generic_rpc_handlers((grpc.method_handlers_generic_handler("test.Echo", {"Size": handler}),))
+    await server.start()
+    try:
+        async with grpc.aio.insecure_channel(f"127.0.0.1:{port}") as channel:
+            size = channel.unary_unary("/test.Echo/Size")
+            for length in (settings.max_document_size + 1, limit):
+                assert await size(b"x" * length) == str(length).encode()
+            with pytest.raises(grpc.aio.AioRpcError) as exc:
+                await size(b"x" * (limit + 1))
+            assert exc.value.code() == grpc.StatusCode.RESOURCE_EXHAUSTED
+    finally:
+        await server.stop(None)
