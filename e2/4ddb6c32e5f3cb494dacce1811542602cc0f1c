@@ -1,0 +1,21 @@
+src/crosscodex_ingestion/security.py
+  s_2e118cfcd8b31e::t_638a4f9616221a 41,249,252-253,255,327
+tests/unit/test_security.py
+  s_2e118cfcd8b31e::t_ca9bda35c80531 261,298-306
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "e24ddb6c32e5f3cb494dacce1811542602cc0f1c",
+  "prompts": {},
+  "sessions": {
+    "s_2e118cfcd8b31e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "323e64fa-229f-434d-b49e-283dd9dc4d87",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "LLM (riotbox) <llm@riotbox>"
+    }
+  }
+}
