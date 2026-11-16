@@ -1,0 +1,36 @@
+tests/unit/test_converter.py
+  s_2e118cfcd8b31e::t_1baad4e99e3162 627,664-671,680
+  s_2e118cfcd8b31e::t_20dea589e50da8 698-699
+  s_2e118cfcd8b31e::t_ad23913a36b3b3 695-697
+tests/unit/test_worker.py
+  s_2e118cfcd8b31e::t_3f2ed3da7e9d1f 988
+  s_2e118cfcd8b31e::t_5d268e9fbc57ef 996-1001
+src/crosscodex_ingestion/structured.py
+  s_2e118cfcd8b31e::t_baa1afd4b190db 35,44,78,81-83,95,98,101-114,123-124,130,133-138,142,151-152,157-160,338,382,407,454-463,467-469,545-548,631,685,708,728,730,732-733,736,740,784
+  s_2e118cfcd8b31e::t_d1f99ed1d4f778 729,731
+  s_2e118cfcd8b31e::t_bfb352cc110df1 734-735
+src/crosscodex_ingestion/converter.py
+  s_2e118cfcd8b31e::t_d1f99ed1d4f778 420-423,425
+tests/unit/test_structured.py
+  s_2e118cfcd8b31e::t_c5c8c8a9ba1a47 8,10,292-316,652-664,720-742,744,749-754
+  s_2e118cfcd8b31e::t_0487c2c931befe 743,745
+  s_2e118cfcd8b31e::t_5d268e9fbc57ef 746-748
+tests/integration/test_structured_e2e.py
+  s_2e118cfcd8b31e::t_f1c54bbf665298 91-96
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "2a8182216ed4ef086d30b4eb4485ee259685d3dc",
+  "prompts": {},
+  "sessions": {
+    "s_2e118cfcd8b31e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "323e64fa-229f-434d-b49e-283dd9dc4d87",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "LLM (riotbox) <llm@riotbox>"
+    }
+  }
+}
