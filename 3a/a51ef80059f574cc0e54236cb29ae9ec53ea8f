@@ -1,0 +1,22 @@
+tests/unit/test_worker.py
+  s_2e118cfcd8b31e::t_eebda47605710c 5,1044
+  s_2e118cfcd8b31e::t_9562522a51e1a1 1005-1043,1045-1058
+src/crosscodex_ingestion/worker.py
+  s_2e118cfcd8b31e::t_eebda47605710c 115-138,161,163-167,184,291-295,312-322,474-479,527-528,530-531,533-535
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "3aa51ef80059f574cc0e54236cb29ae9ec53ea8f",
+  "prompts": {},
+  "sessions": {
+    "s_2e118cfcd8b31e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "323e64fa-229f-434d-b49e-283dd9dc4d87",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "LLM (riotbox) <llm@riotbox>"
+    }
+  }
+}
