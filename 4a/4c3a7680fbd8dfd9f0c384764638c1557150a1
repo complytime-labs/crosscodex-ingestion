@@ -1,0 +1,29 @@
+tests/integration/test_table_drop_e2e.py
+  s_2e118cfcd8b31e::t_5c86899db1dab8 1-39
+src/crosscodex_ingestion/extractor.py
+  s_2e118cfcd8b31e::t_5bbf1860e180c7 179-183
+  s_2e118cfcd8b31e::t_260069ff9d7404 505,514-515,534-540
+src/crosscodex_ingestion/converter.py
+  s_2e118cfcd8b31e::t_8989856191322d 104-105
+tests/unit/test_extractor.py
+  s_2e118cfcd8b31e::t_fd669c369fa6c9 62,65-66,71-76
+  s_2e118cfcd8b31e::t_ed6a4c0c5d2027 488-495,497-518
+  s_2e118cfcd8b31e::t_c63c206053ab00 450
+  s_2e118cfcd8b31e::t_7809e8e3fbd26d 77
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "4a4c3a7680fbd8dfd9f0c384764638c1557150a1",
+  "prompts": {},
+  "sessions": {
+    "s_2e118cfcd8b31e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "323e64fa-229f-434d-b49e-283dd9dc4d87",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "LLM (riotbox) <llm@riotbox>"
+    }
+  }
+}
