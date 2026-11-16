@@ -1,0 +1,32 @@
+src/crosscodex_ingestion/schemas/structured-output-v1.json
+  s_2e118cfcd8b31e::t_67dca486446c6b 5
+  s_2e118cfcd8b31e::t_f3620b9d575479 22-27
+  s_2e118cfcd8b31e::t_0684fbf2f78865 11-12
+  s_2e118cfcd8b31e::t_624176c2dbfa7d 53
+  s_2e118cfcd8b31e::t_62d7fadc94a39e 43
+tests/unit/test_output_schema.py
+  s_2e118cfcd8b31e::t_3776b080dbac17 163-193
+  s_2e118cfcd8b31e::t_20965df4241d04 239-249
+  s_2e118cfcd8b31e::t_9a58d92a350a44 139
+  s_2e118cfcd8b31e::t_f643c31554b412 24,31-40
+  s_2e118cfcd8b31e::t_5f86fa967cbb35 78
+  s_2e118cfcd8b31e::t_de84df658a3cf2 41
+src/crosscodex_ingestion/output_schema.py
+  s_2e118cfcd8b31e::t_2e9049cedd338a 4-7,10-12,16,24-26,31-32,35-37,45,70-81,92-94,101-102,104-105,114-115,117-118,120,141-147,156
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "cbbee9c49d3e113738772f4a58c60d60d45361ca",
+  "prompts": {},
+  "sessions": {
+    "s_2e118cfcd8b31e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "323e64fa-229f-434d-b49e-283dd9dc4d87",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "LLM (riotbox) <llm@riotbox>"
+    }
+  }
+}
