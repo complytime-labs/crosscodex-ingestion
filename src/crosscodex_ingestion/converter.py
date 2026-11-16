@@ -19,6 +19,7 @@ from pathlib import Path
 from typing import Any, cast
 
 from crosscodex_ingestion.config import IngestionSettings
+from crosscodex_ingestion.output_schema import SCHEMA_VERSION
 
 
 class ConversionError(Exception):
@@ -99,10 +100,9 @@ def main():
             sys.exit(@PAGE_LIMIT_EXIT_CODE@)
         sys.exit(1)
     doc = result.document
-    markdown = doc.export_to_markdown()
 
-    # Extract elements
-    extraction_result = extract_elements(doc, markdown, format_hint)
+    # Extract elements; the extractor exports Markdown itself, only if it needs the fallback.
+    extraction_result = extract_elements(doc, None, format_hint)
 
     # Write output
     output_data = {
@@ -158,7 +158,8 @@ async def convert_document(input_path: str, format_hint: str, settings: Ingestio
     3. Calls extract_elements()
     4. Writes result JSON to temp directory
 
-    The parent reads the JSON and returns the parsed dict.
+    The parent reads the JSON, adds processing_time_ms and schema_version, and returns the
+    dict. It does not validate it: run_conversion does, right before storing it.
 
     Parameters
     ----------
@@ -172,7 +173,7 @@ async def convert_document(input_path: str, format_hint: str, settings: Ingestio
     Returns
     -------
     dict
-        Dictionary with 'elements' and 'metadata' keys.
+        Dictionary with 'schema_version', 'elements' and 'metadata' keys.
 
     Raises
     ------
@@ -292,7 +293,8 @@ async def convert_document(input_path: str, format_hint: str, settings: Ingestio
         # Only this process sees the whole worker run: interpreter start, model load, conversion.
         output_data["metadata"]["processing_time_ms"] = processing_time_ms
 
-        return output_data
+        # The version leads the document so a reader sees it before anything it must interpret.
+        return {"schema_version": SCHEMA_VERSION, **output_data}
 
     finally:
         # Clean up temp directory

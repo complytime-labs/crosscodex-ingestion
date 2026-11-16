@@ -1,13 +1,16 @@
 """Unit tests for worker module."""
 
 import asyncio
+import json
 import time
+from pathlib import Path
 from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
 from crosscodex_ingestion.config import IngestionSettings
 from crosscodex_ingestion.converter import ConversionError, ConversionTimeout, DocumentLimitError
+from crosscodex_ingestion.output_schema import SCHEMA_VERSION
 from crosscodex_ingestion.state import DocumentRecord, MemoryStateBackend
 from crosscodex_ingestion.storage import FilesystemStorage
 from crosscodex_ingestion.worker import (
@@ -16,6 +19,7 @@ from crosscodex_ingestion.worker import (
     SHUTDOWN_ERROR,
     run_conversion,
 )
+from tests.unit.output_samples import conforming_output
 
 
 @pytest.fixture
@@ -69,10 +73,7 @@ async def test_run_conversion_with_bytes_successful(
     await state_backend.create(record)
 
     # Mock convert_document to return structured data
-    mock_result = {
-        "elements": [{"type": "text", "content": "Sample text"}],
-        "metadata": {"page_count": 1},
-    }
+    mock_result = conforming_output()
 
     with patch("crosscodex_ingestion.worker.convert_document", return_value=mock_result):
         await run_conversion(
@@ -122,10 +123,7 @@ async def test_run_conversion_with_url_successful(settings, state_backend, stora
     await state_backend.create(record)
 
     # Mock fetch_url and convert_document
-    mock_result = {
-        "elements": [{"type": "text", "content": "Sample text"}],
-        "metadata": {"page_count": 1},
-    }
+    mock_result = conforming_output()
 
     with (
         patch("crosscodex_ingestion.worker.fetch_url") as mock_fetch,
@@ -261,10 +259,7 @@ async def test_run_conversion_storage_failure(settings, state_backend, storage_b
     await state_backend.create(record)
 
     # Mock convert_document to succeed
-    mock_result = {
-        "elements": [{"type": "text", "content": "Sample text"}],
-        "metadata": {"page_count": 1},
-    }
+    mock_result = conforming_output()
 
     # Mock storage.upload to raise exception
     with (
@@ -319,10 +314,7 @@ async def test_run_conversion_with_attestation(settings, state_backend, storage_
     )
 
     # Mock convert_document
-    mock_result = {
-        "elements": [{"type": "text", "content": "Sample text"}],
-        "metadata": {"page_count": 1},
-    }
+    mock_result = conforming_output()
 
     with patch("crosscodex_ingestion.worker.convert_document", return_value=mock_result):
         await run_conversion(
@@ -374,10 +366,7 @@ async def test_run_conversion_audit_event_published(settings, state_backend, sto
     )
     await state_backend.create(record)
 
-    mock_result = {
-        "elements": [{"type": "text", "content": "Sample text"}],
-        "metadata": {"page_count": 1},
-    }
+    mock_result = conforming_output()
 
     with patch("crosscodex_ingestion.worker.convert_document", return_value=mock_result):
         await run_conversion(
@@ -418,10 +407,7 @@ async def test_run_conversion_temp_files_cleaned_on_success(settings, state_back
     )
     await state_backend.create(record)
 
-    mock_result = {
-        "elements": [{"type": "text", "content": "Sample text"}],
-        "metadata": {"page_count": 1},
-    }
+    mock_result = conforming_output()
 
     temp_file_created = None
 
@@ -515,10 +501,7 @@ async def test_run_conversion_hash_validation(settings, state_backend, storage_b
     )
     await state_backend.create(record)
 
-    mock_result = {
-        "elements": [{"type": "text", "content": "Sample text"}],
-        "metadata": {"page_count": 1},
-    }
+    mock_result = conforming_output()
 
     with (
         patch("crosscodex_ingestion.worker.convert_document", return_value=mock_result),
@@ -584,7 +567,7 @@ async def test_slow_conversion_does_not_block_event_loop(settings, state_backend
 
     async def slow_convert(*args, **kwargs):
         await asyncio.sleep(0.5)
-        return {"elements": [], "metadata": {}}
+        return conforming_output()
 
     with patch("crosscodex_ingestion.worker.convert_document", side_effect=slow_convert):
         ticks = await _count_ticks_while(_run_pdf_conversion(settings, state_backend, storage_backend, audit_publisher))
@@ -603,7 +586,7 @@ async def test_slow_url_fetch_does_not_block_event_loop(settings, state_backend,
     with (
         patch("crosscodex_ingestion.worker.validate_url", side_effect=slow_validate),
         patch("crosscodex_ingestion.worker.fetch_url") as mock_fetch,
-        patch("crosscodex_ingestion.worker.convert_document", return_value={"elements": [], "metadata": {}}),
+        patch("crosscodex_ingestion.worker.convert_document", return_value=conforming_output()),
         patch("pathlib.Path.read_bytes", return_value=b"%PDF-1.4 test"),
     ):
         mock_fetch.return_value.__enter__ = Mock(return_value=("/tmp/x.pdf", "pdf"))
@@ -624,7 +607,7 @@ async def test_max_redirects_setting_is_passed_to_fetch_url(state_backend, stora
     with (
         patch("crosscodex_ingestion.worker.validate_url"),
         patch("crosscodex_ingestion.worker.fetch_url") as mock_fetch,
-        patch("crosscodex_ingestion.worker.convert_document", return_value={"elements": [], "metadata": {}}),
+        patch("crosscodex_ingestion.worker.convert_document", return_value=conforming_output()),
         patch("pathlib.Path.read_bytes", return_value=b"%PDF-1.4 test"),
     ):
         mock_fetch.return_value.__enter__ = Mock(return_value=("/tmp/x.pdf", "pdf"))
@@ -729,7 +712,7 @@ async def test_slow_storage_upload_does_not_block_event_loop(settings, state_bac
 
     with (
         patch.object(storage_backend, "upload", side_effect=slow_upload),
-        patch("crosscodex_ingestion.worker.convert_document", return_value={"elements": [], "metadata": {}}),
+        patch("crosscodex_ingestion.worker.convert_document", return_value=conforming_output()),
     ):
         ticks = await _count_ticks_while(_run_pdf_conversion(settings, state_backend, storage_backend, audit_publisher))
 
@@ -763,3 +746,95 @@ async def test_cancelled_conversion_is_failed_with_retryable_error_and_audited(
     event = audit_publisher.publish.call_args.kwargs["event"]
     assert event["status"] == "failed"
     assert event["error"] == SHUTDOWN_ERROR
+
+
+@pytest.mark.asyncio
+async def test_non_conforming_output_fails_with_the_offending_element_and_stores_nothing(
+    settings, state_backend, storage_backend, audit_publisher, tmp_path
+):
+    """An output that breaks the schema is never stored; the client learns which element broke which rule."""
+    output = conforming_output()
+    output["elements"][0]["content"] = " "
+
+    with patch("crosscodex_ingestion.worker.convert_document", return_value=output):
+        await _run_pdf_conversion(settings, state_backend, storage_backend, audit_publisher)
+
+    record = await state_backend.get("tenant-t", "doc-t")
+    assert record.status == JOB_STATUS_FAILED
+    assert not record.structured_json_uri
+    assert record.error["code"] == 6  # INTERNAL: the service's own output is wrong, not the request
+    assert "elements[0] (element_id 'e-001').content" in record.error["message"]
+    assert "doc-t" in record.error["message"]
+    assert record.error["details"] == {
+        "schema_version": SCHEMA_VERSION,
+        "location": "elements[0] (element_id 'e-001').content",
+        "element_index": "0",
+        "element_id": "e-001",
+    }
+    assert audit_publisher.publish.call_args.kwargs["event"]["error"] == record.error
+    assert not list((tmp_path / "storage").rglob("*"))
+
+
+@pytest.mark.asyncio
+async def test_non_conforming_output_is_never_attested(
+    settings, state_backend, storage_backend, audit_publisher, tmp_path
+):
+    """With attestation enabled, a rejected output gets no signed link either."""
+    output = conforming_output()
+    output["elements"][1]["parent_id"] = "e-999"
+    attestation = Mock()
+    await state_backend.create(DocumentRecord(document_id="doc-t", tenant_id="tenant-t", status=1, metadata={}))
+
+    with patch("crosscodex_ingestion.worker.convert_document", return_value=output):
+        await run_conversion(
+            document_id="doc-t",
+            tenant_id="tenant-t",
+            content=b"%PDF-1.4 test",
+            source_uri=None,
+            metadata={},
+            settings=settings,
+            state=state_backend,
+            storage=storage_backend,
+            attestation=attestation,
+            audit=audit_publisher,
+        )
+
+    assert (await state_backend.get("tenant-t", "doc-t")).status == JOB_STATUS_FAILED
+    attestation.create_link.assert_not_called()
+    assert not list((tmp_path / "storage").rglob("*"))
+
+
+@pytest.mark.asyncio
+async def test_violation_outside_an_element_has_no_element_details(
+    settings, state_backend, storage_backend, audit_publisher
+):
+    output = conforming_output()
+    del output["metadata"]["dropped"]
+
+    with patch("crosscodex_ingestion.worker.convert_document", return_value=output):
+        await _run_pdf_conversion(settings, state_backend, storage_backend, audit_publisher)
+
+    error = (await state_backend.get("tenant-t", "doc-t")).error
+    assert error["details"] == {"schema_version": SCHEMA_VERSION, "location": "metadata"}
+    assert "'dropped' is a required property" in error["message"]
+
+
+@pytest.mark.asyncio
+async def test_dropped_content_is_logged_and_kept_in_the_stored_output(
+    settings, state_backend, storage_backend, audit_publisher, caplog
+):
+    output = conforming_output()
+    output["metadata"]["dropped"] = [{"type": "table", "page": 4, "reason": "table exported no content"}]
+
+    with (
+        patch("crosscodex_ingestion.worker.convert_document", return_value=output),
+        caplog.at_level("WARNING"),
+    ):
+        await _run_pdf_conversion(settings, state_backend, storage_backend, audit_publisher)
+
+    record = await state_backend.get("tenant-t", "doc-t")
+    assert record.status == 3
+    stored = json.loads(Path(record.structured_json_uri.removeprefix("file://")).read_text())
+    assert stored["metadata"]["dropped"] == output["metadata"]["dropped"]
+    warnings = [r.getMessage() for r in caplog.records if r.levelname == "WARNING"]
+    assert any("doc-t" in m and "table" in m and "page 4" in m and "exported no content" in m for m in warnings)
