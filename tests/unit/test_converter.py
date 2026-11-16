@@ -70,6 +70,29 @@ class TestConvertDocument:
 
     @patch("crosscodex_ingestion.converter.asyncio.create_subprocess_exec", new_callable=AsyncMock)
     @patch("crosscodex_ingestion.converter.shutil.copy2")
+    async def test_processing_time_covers_the_whole_worker_run(self, mock_copy2, mock_subprocess_run):
+        """processing_time_ms is the worker's wall time, not a sub-step the worker timed itself."""
+        worker_seconds = 0.2
+
+        def slow_worker(*cmd, **kwargs):
+            Path(cmd[3]).write_text(json.dumps({"elements": [], "metadata": {"processing_time_ms": 1.0}}))
+            proc = _proc(returncode=0)
+
+            async def communicate():
+                await asyncio.sleep(worker_seconds)
+                return b"", b""
+
+            proc.communicate = communicate
+            return proc
+
+        mock_subprocess_run.side_effect = slow_worker
+
+        result = await convert_document("/path/to/doc.pdf", "pdf", IngestionSettings())
+
+        assert result["metadata"]["processing_time_ms"] >= worker_seconds * 1000
+
+    @patch("crosscodex_ingestion.converter.asyncio.create_subprocess_exec", new_callable=AsyncMock)
+    @patch("crosscodex_ingestion.converter.shutil.copy2")
     async def test_subprocess_crash_raises_conversion_error(self, mock_copy2, mock_subprocess_run):
         """Subprocess crash (non-zero exit) raises ConversionError."""
         # Arrange
@@ -498,7 +521,7 @@ class TestDocumentLimits:
             "/path/to/doc.pdf", "pdf", IngestionSettings(max_extraction_length=len(payload))
         )
 
-        assert result == {"elements": [], "metadata": {}}
+        assert result["elements"] == []
 
 
 class TestWorkerLifecycle:
