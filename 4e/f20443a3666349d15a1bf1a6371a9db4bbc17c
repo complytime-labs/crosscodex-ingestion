@@ -1,0 +1,23 @@
+proto/crosscodex/v1/ingestion.proto
+  s_9993eb1eba47c5::t_96528a476a5076 45-46
+README.md
+  s_9993eb1eba47c5::t_96528a476a5076 132-146
+docs/output-schema.md
+  s_9993eb1eba47c5::t_96528a476a5076 8-13
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "4ef20443a3666349d15a1bf1a6371a9db4bbc17c",
+  "prompts": {},
+  "sessions": {
+    "s_9993eb1eba47c5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "06ad1925-e5b0-4542-973b-ca2e13ce71c8",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "LLM (riotbox) <llm@riotbox>"
+    }
+  }
+}
