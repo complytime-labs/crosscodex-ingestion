@@ -1,0 +1,31 @@
+tests/unit/test_security.py
+  s_2e118cfcd8b31e::t_9fefaa30134a26 221,235
+  s_2e118cfcd8b31e::t_2bf8b5812edadb 121-206,208-220,223-234,237-242
+  s_2e118cfcd8b31e::t_2ab9e7d47d0eb3 222,236
+  s_2e118cfcd8b31e::t_a40f93351e52ae 207
+  s_2e118cfcd8b31e::t_b01f401fa6b612 9,16
+src/crosscodex_ingestion/security.py
+  s_2e118cfcd8b31e::t_f2fb33bdb3b772 5,26,34
+  s_2e118cfcd8b31e::t_2ab9e7d47d0eb3 285-289,318,320-321,323-324,326
+  s_2e118cfcd8b31e::t_0f7bf78f123fe4 480
+  s_2e118cfcd8b31e::t_b95f661ce97278 203-205,215-217,228-230,233-261,264-267,281-282
+  s_2e118cfcd8b31e::t_24599e0dffe576 307,311-317,319,322,325,327-350
+  s_2e118cfcd8b31e::t_29f0197da30c67 395,400-403,412
+  s_2e118cfcd8b31e::t_de40614c99e66a 351-352
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "2fb4751bed70111fbf991660d7c6c939f1c7afe4",
+  "prompts": {},
+  "sessions": {
+    "s_2e118cfcd8b31e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "323e64fa-229f-434d-b49e-283dd9dc4d87",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "LLM (riotbox) <llm@riotbox>"
+    }
+  }
+}
