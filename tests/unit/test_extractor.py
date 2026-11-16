@@ -3,7 +3,10 @@
 from collections.abc import Iterator
 from dataclasses import dataclass, field
 
+import pytest
+
 from crosscodex_ingestion.extractor import ExtractionResult, extract_elements
+from crosscodex_ingestion.output_schema import SCHEMA_VERSION, validate_output
 
 
 # Mock Docling types (avoid importing the real library in unit tests)
@@ -38,15 +41,39 @@ class MockDocItem:
     prov: list[MockProvenance] = field(default_factory=list)
 
 
+@dataclass
+class MockTableItem:
+    """Mock Docling TableItem whose markdown export returns *markdown* or raises *error*."""
+
+    markdown: str = ""
+    error: Exception | None = None
+    prov: list[MockProvenance] = field(default_factory=list)
+    label: str = DocItemLabel.TABLE
+
+    def export_to_markdown(self, doc: object = None) -> str:
+        if self.error:
+            raise self.error
+        return self.markdown
+
+
 class MockDoclingDocument:
     """Mock DoclingDocument for testing."""
 
-    def __init__(self, items: list[MockDocItem], pages: int = 0):
+    def __init__(self, items: list[MockDocItem], pages: int = 0, markdown: str | Exception = ""):
         self._items = items
         self._pages = pages
+        self._markdown = markdown
+        self.markdown_exports = 0
 
     def num_pages(self) -> int:
         return self._pages
+
+    def export_to_markdown(self) -> str:
+        """Docling renders tables here with the same serializer as TableItem.export_to_markdown."""
+        self.markdown_exports += 1
+        if isinstance(self._markdown, Exception):
+            raise self._markdown
+        return self._markdown
 
     def iterate_items(self) -> Iterator[tuple[MockDocItem, int]]:
         """Yield (item, depth) tuples."""
@@ -373,3 +400,157 @@ class TestDoclingStructureFidelity:
 
         assert result.metadata["page_count"] is None
         assert result.metadata["title"] is None
+
+
+class TestBlankHeadings:
+    """CrossCodex turns headings into OSCAL groups, which need a title: a blank heading must never be emitted."""
+
+    def test_blank_heading_is_not_emitted_and_its_content_attaches_to_the_heading_above(self):
+        items = [
+            MockDocItem(label=DocItemLabel.SECTION_HEADER, text="Access Control", level=1),
+            MockDocItem(label=DocItemLabel.SECTION_HEADER, text="  ", level=2, prov=[MockProvenance(page_no=7)]),
+            MockDocItem(label=DocItemLabel.TEXT, text="Restrict access to authorized users."),
+        ]
+        result = extract_elements(MockDoclingDocument(items, pages=7), "", "pdf")
+
+        assert [(e["type"], e["content"]) for e in result.elements] == [
+            ("heading", "Access Control"),
+            ("paragraph", "Restrict access to authorized users."),
+        ]
+        assert result.elements[1]["parent_id"] == result.elements[0]["element_id"]
+        assert result.metadata["dropped"] == [
+            {
+                "type": "heading",
+                "page": 7,
+                "reason": "heading has no text; its content is attached to the heading above",
+            }
+        ]
+
+    def test_blank_heading_does_not_end_the_section_above(self):
+        """A blank heading at a higher level must not pop the real headings off the hierarchy."""
+        items = [
+            MockDocItem(label=DocItemLabel.SECTION_HEADER, text="Chapter", level=1),
+            MockDocItem(label=DocItemLabel.SECTION_HEADER, text="Section", level=2),
+            MockDocItem(label=DocItemLabel.SECTION_HEADER, text="", level=1),
+            MockDocItem(label=DocItemLabel.SECTION_HEADER, text="Subsection", level=3),
+        ]
+        result = extract_elements(MockDoclingDocument(items), "", "pdf")
+
+        by_content = {e["content"]: e for e in result.elements}
+        assert by_content["Subsection"]["parent_id"] == by_content["Section"]["element_id"]
+
+    def test_blank_first_heading_leaves_its_content_at_the_top_level(self):
+        items = [
+            MockDocItem(label=DocItemLabel.SECTION_HEADER, text="", level=1),
+            MockDocItem(label=DocItemLabel.TEXT, text="Preamble text."),
+        ]
+        result = extract_elements(MockDoclingDocument(items), "", "pdf")
+
+        assert [(e["type"], e["parent_id"]) for e in result.elements] == [("paragraph", None)]
+        assert result.metadata["dropped"][0]["reason"] == "heading has no text; its content stays at the top level"
+
+
+class TestDroppedTables:
+    """Requirement catalogs keep requirements in tables; a table that can't be exported must leave a trace."""
+
+    def test_table_that_fails_to_export_is_recorded_with_its_page(self):
+        items = [
+            MockDocItem(label=DocItemLabel.SECTION_HEADER, text="Controls"),
+            MockTableItem(error=ValueError("bad cell span"), prov=[MockProvenance(page_no=4)]),
+            MockDocItem(label=DocItemLabel.TEXT, text="After the table."),
+        ]
+        result = extract_elements(MockDoclingDocument(items, pages=4), "", "pdf")
+
+        assert [e["type"] for e in result.elements] == ["heading", "paragraph"]
+        assert result.metadata["dropped"] == [
+            {"type": "table", "page": 4, "reason": "table could not be exported to Markdown (ValueError)"}
+        ]
+
+    def test_table_that_exports_nothing_is_recorded(self):
+        items = [MockDocItem(label=DocItemLabel.SECTION_HEADER, text="Controls"), MockTableItem(markdown="  \n")]
+        result = extract_elements(MockDoclingDocument(items), "", "pdf")
+
+        assert [e["type"] for e in result.elements] == ["heading"]
+        assert result.metadata["dropped"] == [{"type": "table", "page": None, "reason": "table exported no content"}]
+
+    def test_exported_table_becomes_an_element_under_its_heading(self):
+        items = [
+            MockDocItem(label=DocItemLabel.SECTION_HEADER, text="Controls"),
+            MockTableItem(markdown="| ID |\n|----|\n| AC-1 |\n"),
+        ]
+        result = extract_elements(MockDoclingDocument(items), "", "pdf")
+
+        assert result.elements[1]["type"] == "table"
+        assert result.elements[1]["content"] == "| ID |\n|----|\n| AC-1 |"
+        assert result.elements[1]["parent_id"] == result.elements[0]["element_id"]
+        assert result.metadata["dropped"] == []
+
+    def test_drops_survive_the_markdown_fallback(self):
+        """Docling's Markdown can't render what the typed pass dropped, so the drops still describe the output."""
+        items = [
+            MockDocItem(label=DocItemLabel.SECTION_HEADER, text=" ", prov=[MockProvenance(page_no=1)]),
+            MockTableItem(markdown="", prov=[MockProvenance(page_no=2)]),
+        ]
+        doc = MockDoclingDocument(items, pages=2, markdown="Some body text with more than five words.")
+        result = extract_elements(doc, None, "pdf")
+
+        assert [e["type"] for e in result.elements] == ["paragraph"]
+        assert [(d["type"], d["page"]) for d in result.metadata["dropped"]] == [("heading", 1), ("table", 2)]
+
+    def test_unexportable_table_does_not_fail_extraction_when_the_typed_pass_has_content(self):
+        """The document's Markdown export raises on the same table, so it is exported only for the fallback."""
+        items = [
+            MockDocItem(label=DocItemLabel.SECTION_HEADER, text="Controls"),
+            MockTableItem(error=ValueError("bad cell span"), prov=[MockProvenance(page_no=4)]),
+        ]
+        doc = MockDoclingDocument(items, pages=4, markdown=ValueError("bad cell span"))
+        result = extract_elements(doc, None, "pdf")
+
+        assert doc.markdown_exports == 0
+        assert [e["type"] for e in result.elements] == ["heading"]
+        assert result.metadata["dropped"][0]["type"] == "table"
+
+    def test_fallback_exports_the_document_markdown_when_none_is_given(self):
+        doc = MockDoclingDocument([], markdown="# Scope\n\nApplies to all systems.\n")
+        result = extract_elements(doc, None, "pdf")
+
+        assert doc.markdown_exports == 1
+        assert [e["content"] for e in result.elements] == ["Scope", "Applies to all systems."]
+
+
+class TestExtractionConformsToSchema:
+    """Every extraction path produces elements and metadata that pass the output schema."""
+
+    @pytest.mark.parametrize(
+        ("doc", "markdown", "fmt"),
+        [
+            (
+                MockDoclingDocument(
+                    [
+                        MockDocItem(label=DocItemLabel.TITLE, text="Policy"),
+                        MockDocItem(label=DocItemLabel.SECTION_HEADER, text="Scope", prov=[MockProvenance(page_no=1)]),
+                        MockDocItem(label=DocItemLabel.SECTION_HEADER, text=" ", level=2),
+                        MockDocItem(label=DocItemLabel.LIST_ITEM, text="Item one."),
+                        MockTableItem(error=RuntimeError("boom"), prov=[MockProvenance(page_no=2)]),
+                        MockTableItem(markdown="| a |\n|---|\n| 1 |"),
+                    ],
+                    pages=2,
+                ),
+                "",
+                "pdf",
+            ),
+            (None, "# One\n\nText one.\n\n## Two\n\nText two.\n", "md"),
+            (None, "Section 1. Intro\n\nBody one.\n\nSection 2. More\n\nBody two.\n\nSection 3. End\n\nBody.\n", "txt"),
+            (None, "This paragraph has more than five words in it.\n\nSo does this second one here.\n", "txt"),
+            (None, "", "txt"),
+        ],
+    )
+    def test_extraction_output_validates(self, doc, markdown, fmt):
+        result = extract_elements(doc, markdown, fmt)
+        output = {
+            "schema_version": SCHEMA_VERSION,
+            "elements": result.elements,
+            "metadata": {**result.metadata, "processing_time_ms": 1.0},
+        }
+
+        validate_output(output)

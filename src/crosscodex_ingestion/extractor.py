@@ -9,6 +9,8 @@ Extraction strategy (two-stage):
     hierarchy via level (1-100). No regex or heuristics required for
     well-structured documents. Each element records the page it starts on,
     and the first TITLE item becomes the document title in metadata.
+    Blank headings and tables that can't be exported are not emitted;
+    each is recorded in metadata["dropped"] with its page and the reason.
 
   Fallback — _parse_markdown() cascade (runs when primary finds no elements):
     Used for .txt files, scanned PDFs, and documents where Docling emits no
@@ -64,6 +66,7 @@ class DocumentExtractor:
     def __init__(self) -> None:
         self.elements: list[dict] = []
         self.discarded_content: list[str] = []
+        self.dropped: list[dict] = []
         self.title: str | None = None
         self._element_counter = 0
 
@@ -167,6 +170,20 @@ class DocumentExtractor:
 
             if label in HEADING_LABELS:
                 title = getattr(item, "text", "").strip()
+                if not title:
+                    # Leaving the heading stack untouched attaches what follows to the heading above.
+                    self.dropped.append(
+                        {
+                            "type": "heading",
+                            "page": self._page_of(item),
+                            "reason": (
+                                "heading has no text; its content is attached to the heading above"
+                                if current_heading_id
+                                else "heading has no text; its content stays at the top level"
+                            ),
+                        }
+                    )
+                    continue
                 level = getattr(item, "level", 1)
                 element_id = self._next_element_id()
 
@@ -209,25 +226,30 @@ class DocumentExtractor:
                     )
 
             elif label == DocItemLabel.TABLE:
-                # Extract table as element
                 try:
                     table_md = item.export_to_markdown(doc=doc).strip()
-                    if table_md:
-                        element_id = self._next_element_id()
-                        self.elements.append(
-                            {
-                                "element_id": element_id,
-                                "type": "table",
-                                "content": table_md,
-                                "page": self._page_of(item),
-                                "level": None,
-                                "parent_id": current_heading_id,
-                                "style": {},
-                            }
-                        )
-                except Exception:  # noqa: S110
-                    # Silently skip unparseable tables
-                    pass
+                except Exception as exc:
+                    # Only the exception type: its message may quote document text.
+                    reason = f"table could not be exported to Markdown ({type(exc).__name__})"
+                    self.dropped.append({"type": "table", "page": self._page_of(item), "reason": reason})
+                    continue
+                if not table_md:
+                    self.dropped.append(
+                        {"type": "table", "page": self._page_of(item), "reason": "table exported no content"}
+                    )
+                    continue
+                element_id = self._next_element_id()
+                self.elements.append(
+                    {
+                        "element_id": element_id,
+                        "type": "table",
+                        "content": table_md,
+                        "page": self._page_of(item),
+                        "level": None,
+                        "parent_id": current_heading_id,
+                        "style": {},
+                    }
+                )
 
     def _parse_markdown(self, text: str) -> None:
         """Fallback extraction: parse markdown text using detection cascade.
@@ -480,7 +502,7 @@ class DocumentExtractor:
 
 def extract_elements(
     doc: Any,
-    markdown: str,
+    markdown: str | None,
     format_hint: str,
 ) -> ExtractionResult:
     """Extract structured elements from Docling document or markdown text.
@@ -489,8 +511,8 @@ def extract_elements(
     ----------
     doc : DoclingDocument or None
         Docling document object (if available).
-    markdown : str
-        Markdown text (fallback if doc is None).
+    markdown : str or None
+        Markdown text for the fallback. None exports it from *doc*, and only if the fallback runs.
     format_hint : str
         Format hint (e.g., 'pdf', 'html', 'txt').
 
@@ -501,9 +523,6 @@ def extract_elements(
     """
     extractor = DocumentExtractor()
 
-    # Clean the markdown text
-    cleaned_text = extractor._clean_text(markdown)
-
     # Primary: typed Docling document traversal
     if doc is not None:
         extractor._parse_docling_document(doc)
@@ -512,7 +531,13 @@ def extract_elements(
     if not extractor.elements:
         if extractor.discarded_content:
             extractor.discarded_content.clear()
-        extractor._parse_markdown(cleaned_text)
+        if markdown is None:
+            # Exported only here: Docling renders tables in it with the serializer the typed pass
+            # uses, so one unexportable table would otherwise fail a conversion the typed pass
+            # handles. That table can't appear in this Markdown either, so the typed pass's drops
+            # still describe the output and are kept.
+            markdown = doc.export_to_markdown() if doc is not None else ""
+        extractor._parse_markdown(extractor._clean_text(markdown))
 
     # Build metadata
     metadata = {
@@ -521,6 +546,7 @@ def extract_elements(
         # Docling reports 0 pages for unpaginated formats (HTML, DOCX).
         "page_count": (doc.num_pages() or None) if doc is not None else None,
         "title": extractor.title,
+        "dropped": extractor.dropped,
     }
 
     return ExtractionResult(elements=extractor.elements, metadata=metadata)

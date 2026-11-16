@@ -99,10 +99,9 @@ def main():
             sys.exit(@PAGE_LIMIT_EXIT_CODE@)
         sys.exit(1)
     doc = result.document
-    markdown = doc.export_to_markdown()
 
-    # Extract elements
-    extraction_result = extract_elements(doc, markdown, format_hint)
+    # Extract elements; the extractor exports Markdown itself, only if it needs the fallback.
+    extraction_result = extract_elements(doc, None, format_hint)
 
     # Write output
     output_data = {
