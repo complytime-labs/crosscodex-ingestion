@@ -1,0 +1,114 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:crosscodex-ingestion:structured-output:v1",
+  "title": "CrossCodex Ingestion structured output",
+  "description": "The document stored at structured_json_uri. Three rules are outside JSON Schema and are checked by the service in code: element_id values are unique, a non-null parent_id names an earlier element, and metadata.element_count equals the number of elements.",
+  "type": "object",
+  "required": ["schema_version", "elements", "metadata"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "description": "MAJOR.MINOR version the output conforms to. This file validates every released 1.x: minors only add optional fields.",
+      "enum": ["1.0"]
+    },
+    "elements": {
+      "description": "Document content in reading order.",
+      "type": "array",
+      "items": { "$ref": "#/$defs/element" }
+    },
+    "metadata": { "$ref": "#/$defs/metadata" }
+  },
+  "$defs": {
+    "elementId": {
+      "$comment": "(?![\\s\\S]) anchors the end of the string; '$' would also accept a trailing newline in Python.",
+      "description": "Opaque identifier, unique within the document: e- followed by 3 to 30 digits.",
+      "type": "string",
+      "pattern": "^e-[0-9]{3,30}(?![\\s\\S])"
+    },
+    "nonBlankString": {
+      "description": "Must contain at least one non-whitespace character.",
+      "type": "string",
+      "pattern": "\\S"
+    },
+    "page": {
+      "description": "1-based page the item starts on; null when the format has no pages or Docling recorded none.",
+      "type": ["integer", "null"],
+      "minimum": 1
+    },
+    "element": {
+      "type": "object",
+      "required": ["element_id", "type", "content", "page", "level", "parent_id", "style"],
+      "additionalProperties": false,
+      "properties": {
+        "element_id": { "$ref": "#/$defs/elementId" },
+        "type": { "enum": ["heading", "paragraph", "list_item", "table"] },
+        "content": {
+          "description": "Text of the element (a table is GitHub-flavoured Markdown). Never blank.",
+          "$ref": "#/$defs/nonBlankString"
+        },
+        "page": { "$ref": "#/$defs/page" },
+        "level": { "description": "Heading depth; null for every other type." },
+        "parent_id": {
+          "description": "element_id of the heading this element sits under, or null at the top level.",
+          "oneOf": [{ "$ref": "#/$defs/elementId" }, { "type": "null" }]
+        },
+        "style": {
+          "description": "Reserved; always empty.",
+          "type": "object",
+          "additionalProperties": false
+        }
+      },
+      "if": { "properties": { "type": { "const": "heading" } } },
+      "then": {
+        "properties": {
+          "level": {
+            "description": "A heading's level is an integer from 1 (top) to 100.",
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "level": { "description": "Only headings have a level.", "type": "null" }
+        }
+      }
+    },
+    "dropped": {
+      "description": "Source content that was not emitted as an element.",
+      "type": "object",
+      "required": ["type", "page", "reason"],
+      "additionalProperties": false,
+      "properties": {
+        "type": { "enum": ["heading", "table"] },
+        "page": { "$ref": "#/$defs/page" },
+        "reason": { "$ref": "#/$defs/nonBlankString" }
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "required": ["element_count", "detected_format", "page_count", "title", "processing_time_ms", "dropped"],
+      "additionalProperties": false,
+      "properties": {
+        "element_count": { "description": "Length of elements.", "type": "integer", "minimum": 0 },
+        "detected_format": { "description": "Validated input format, e.g. pdf, html, docx, txt.", "type": "string" },
+        "page_count": {
+          "description": "Pages in the source; null for unpaginated formats (HTML, DOCX, text).",
+          "type": ["integer", "null"],
+          "minimum": 1
+        },
+        "title": {
+          "description": "The document's title as Docling labelled it, or null.",
+          "oneOf": [{ "$ref": "#/$defs/nonBlankString" }, { "type": "null" }]
+        },
+        "processing_time_ms": {
+          "description": "Wall time of the conversion worker in milliseconds.",
+          "type": "number",
+          "minimum": 0
+        },
+        "dropped": { "type": "array", "items": { "$ref": "#/$defs/dropped" } }
+      }
+    }
+  }
+}
