@@ -1,0 +1,14 @@
+tests/unit/test_server.py
+  h_4db53f42b9be42 10,14,118-139
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "02ce517d2c7254c843d04c889564e70cf207ae38",
+  "prompts": {},
+  "humans": {
+    "h_4db53f42b9be42": {
+      "author": "Trevor Vaughan <peiriannydd@gmail.com>"
+    }
+  }
+}
