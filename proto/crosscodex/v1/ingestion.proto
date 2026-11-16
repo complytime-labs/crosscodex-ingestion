@@ -41,7 +41,10 @@ message Document {
   ContentMetadata metadata = 3;
   AuditMetadata audit = 4;
   JobStatus conversion_status = 5;
-  string structured_json_uri = 6;  // Object storage path to output
+  // Object storage path to the output; its format is the JSON Schema in
+  // src/crosscodex_ingestion/schemas/structured-output-v1.json
+  // (README "Output format").
+  string structured_json_uri = 6;
   Error error = 7;  // If conversion failed
 }
 

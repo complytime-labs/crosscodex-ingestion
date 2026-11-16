@@ -104,6 +104,81 @@ Conversion is asynchronous. A completed document's `structuredJsonUri` points to
 instead of `content` to have the service fetch a URL. `tenant_id` must be a valid identifier (see
 "Identifiers").
 
+## Output format
+
+The file at `structured_json_uri` is one JSON document. Its contract is the JSON Schema
+[`src/crosscodex_ingestion/schemas/structured-output-v1.json`](src/crosscodex_ingestion/schemas/structured-output-v1.json),
+which is also installed with the package (`crosscodex_ingestion/schemas/structured-output-v1.json`).
+
+```json
+{
+  "schema_version": "1.0",
+  "elements": [
+    {"element_id": "e-001", "type": "heading", "content": "Access Control", "page": 3,
+     "level": 1, "parent_id": null, "style": {}},
+    {"element_id": "e-002", "type": "paragraph", "content": "Limit system access to authorized users.",
+     "page": 3, "level": null, "parent_id": "e-001", "style": {}},
+    {"element_id": "e-003", "type": "table", "content": "| ID | Control |\n|----|----|\n| AC-1 | Policy |",
+     "page": 4, "level": null, "parent_id": "e-001", "style": {}}
+  ],
+  "metadata": {
+    "element_count": 3, "detected_format": "pdf", "page_count": 12, "title": "Access Policy",
+    "processing_time_ms": 8412.5,
+    "dropped": [{"type": "table", "page": 7, "reason": "table could not be exported to Markdown (ValueError)"}]
+  }
+}
+```
+
+| Field                         | Meaning                                                                                                                   |
+|-------------------------------|---------------------------------------------------------------------------------------------------------------------------|
+| `schema_version`              | `MAJOR.MINOR` version of the schema the document follows (see "Versions" below).                                          |
+| `elements`                    | Document content in reading order.                                                                                        |
+| `element_id`                  | Opaque identifier, unique within the document. Don't parse it.                                                            |
+| `type`                        | `heading`, `paragraph`, `list_item` or `table`. A table's `content` is Markdown.                                          |
+| `content`                     | The element's text. Never blank.                                                                                          |
+| `page`                        | 1-based page the element starts on; `null` for HTML, DOCX and text, or when Docling recorded none.                        |
+| `level`                       | Heading depth, 1 (top) to 100; `null` on every other type.                                                                |
+| `parent_id`                   | `element_id` of the heading the element sits under, or `null` at the top level.                                           |
+| `style`                       | Reserved; always `{}`.                                                                                                    |
+| `metadata.page_count`         | Pages in the source; `null` for unpaginated formats.                                                                      |
+| `metadata.title`              | Document title as Docling labelled it, or `null`.                                                                         |
+| `metadata.processing_time_ms` | Wall time of the conversion worker.                                                                                       |
+| `metadata.dropped`            | Source content that was not emitted as an element, each with `type`, `page` and `reason`. Empty when nothing was dropped. |
+
+### What version 1.0 guarantees
+
+- No element has blank `content`. A heading whose text is blank is not emitted: the content under it is
+  attached to the nearest non-blank heading above, and the heading is listed in `metadata.dropped`.
+- `level` is an integer from 1 to 100 on headings and `null` on everything else.
+- `element_id` values are unique, and every non-null `parent_id` is the `element_id` of an **earlier**
+  element, so one pass in document order can build the tree. `metadata.element_count` equals the number
+  of elements. JSON Schema can't express these three rules: a generic schema validator doesn't check
+  them, but the service does (see below).
+- A table that can't be exported is listed in `metadata.dropped` with its page, and logged by the service;
+  the rest of the document still converts. Nothing is discarded silently.
+- The service validates every output against the schema and the rules above before it stores it. A
+  conversion whose output doesn't conform stores nothing and fails with `ERROR_CODE_INTERNAL` (it is a
+  service bug, not a problem with your request). The error message names the offending element and
+  rule, and `Error.details` carries `schema_version`, `location` and, when the problem is inside an
+  element, `element_index` and `element_id`. Messages never quote document text. The only values they
+  quote are element ids and property names, and only when they have the form the service generates.
+
+### Versions
+
+`schema_version` is `MAJOR.MINOR`. There is one schema file per major, and its name carries the
+major (`-v1`).
+
+- A **minor** version only adds optional fields (on elements or in `metadata`). Every field and guarantee
+  of earlier minors keeps its meaning. **Readers must ignore fields they don't know**, so a reader written
+  for 1.0 reads any 1.x output.
+- A **major** version is anything else: removing, renaming or retyping a field, a new `type` value,
+  or a weaker guarantee.
+- Readers should check the major of `schema_version` and reject a major they don't know.
+- The `-v1` file validates every released 1.x output: `schema_version` lists each released minor, and
+  fields added by a minor are optional, so outputs stored under an earlier minor stay valid. The file
+  rejects fields it doesn't define, so validate with a copy at least as new as the output (a 1.0-era
+  copy rejects fields that 1.1 adds).
+
 ## Docling models
 
 The conversion worker runs in a sandboxed subprocess with no network access to model hubs
@@ -296,13 +371,14 @@ The service has three primary components:
 3. **Worker** (`worker.py`): Fetches, validates, converts, extracts, stores, and attests documents.
 
 ```
-gRPC Request → Dispatch → Worker → [Converter → Extractor] → Storage → State → Response
+gRPC Request → Dispatch → Worker → [Converter → Extractor] → Output schema check → Storage → State → Response
 ```
 
 **Security Modules:**
 - `security.py`: SSRF prevention, URL validation, content type detection, resource limit enforcement. URL fetches connect directly and ignore `HTTP_PROXY`/`HTTPS_PROXY`/`ALL_PROXY`: the address actually connected to is checked against the blocked ranges, and through a proxy that check would only see the proxy.
 - `converter.py`: Async subprocess-based Docling execution with rlimits and timeout; the subprocess's process group is killed on timeout or cancellation
 - `extractor.py`: Structured element extraction from Docling output
+- `output_schema.py`: Validates every output against the versioned output schema before it is stored (design: [docs/output-schema.md](docs/output-schema.md))
 
 **Supporting Modules:**
 - `state.py`: Document record state management (async interface; memory, or Redis via `redis.asyncio`)
