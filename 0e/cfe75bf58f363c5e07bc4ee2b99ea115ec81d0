@@ -1,0 +1,25 @@
+src/crosscodex_ingestion/security.py
+  s_4adc9dbe8d486a::t_e75df0cab81a5b 5,41-42,203-205,215-217,228-230,233-268,271-274,288-289,292-296,314-316,320-364,407,412-415,424,492
+src/crosscodex_ingestion/zipdir.py
+  s_4adc9dbe8d486a::t_bd2d5b01afd30f 1-94
+tests/unit/test_security.py
+  s_4adc9dbe8d486a::t_5f75025b68624a 9,11,13-14,19,123-339
+tests/unit/test_zipdir.py
+  s_4adc9dbe8d486a::t_41b7562de041bc 1-125
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "0ecfe75bf58f363c5e07bc4ee2b99ea115ec81d0",
+  "prompts": {},
+  "sessions": {
+    "s_4adc9dbe8d486a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4f6cdd22-c6b7-4995-b091-5578b9b8f0aa",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "LLM (riotbox) <llm@riotbox>"
+    }
+  }
+}
