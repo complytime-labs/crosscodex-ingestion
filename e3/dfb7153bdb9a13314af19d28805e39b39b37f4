@@ -1,0 +1,37 @@
+src/crosscodex_ingestion/structured.py
+  s_4adc9dbe8d486a::t_1d42b3b4d6b3fe 1-931
+tests/fixtures/structured/NOTICE
+  s_4adc9dbe8d486a::t_6038b7bbd47391 1-33
+tests/fixtures/structured/mitre-attack-enterprise-17.1/PROVENANCE.md
+  s_4adc9dbe8d486a::t_6f4d69afcc4775 1-44
+tests/fixtures/structured/mitre-attack-enterprise-17.1/expected.json
+  s_4adc9dbe8d486a::t_1c6abef8fccc68 1-214
+tests/fixtures/structured/nist-sp800-53r5/PROVENANCE.md
+  s_4adc9dbe8d486a::t_74451a918668fa 1-23
+tests/fixtures/structured/nist-sp800-53r5/expected.json
+  s_4adc9dbe8d486a::t_db6c8fc011aa80 1-121
+tests/fixtures/structured/owasp-asvs-5.0.0/PROVENANCE.md
+  s_4adc9dbe8d486a::t_981598562d2f9f 1-36
+tests/fixtures/structured/owasp-asvs-5.0.0/expected.json
+  s_4adc9dbe8d486a::t_65ea1c9501babd 1-786
+tests/fixtures/structured/owasp-asvs-5.0.0/input.json
+  s_4adc9dbe8d486a::t_6ca86d5d361694 1-381
+tests/unit/test_structured.py
+  s_4adc9dbe8d486a::t_caf2833ceae9a8 1-978
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "e3dfb7153bdb9a13314af19d28805e39b39b37f4",
+  "prompts": {},
+  "sessions": {
+    "s_4adc9dbe8d486a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4f6cdd22-c6b7-4995-b091-5578b9b8f0aa",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "LLM (riotbox) <llm@riotbox>"
+    }
+  }
+}
