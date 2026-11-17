@@ -1,0 +1,20 @@
+# NIST SP 800-53 Revision 5 control catalog spreadsheet. A control enhancement's ID is its control's ID
+# plus "(n)" (AC-2(1) -> AC-2), so the parent comes from the ID-prefix rule.
+mapping_version: 1
+id: nist-sp800-53r5-catalog-xlsx
+title: NIST SP 800-53 Revision 5 control catalog
+source:
+  format: xlsx
+  release: https://csrc.nist.gov/files/pubs/sp/800/53/r5/upd1/final/docs/sp800-53r5-control-catalog.xlsx
+  sheet: SP 800-53 Revision 5
+  header_row: 1
+rows:
+  id: Control Identifier
+  title: Control (or Control Enhancement) Name
+  text: Control Text
+  parent:
+    id_prefix:
+      separator: "("
+  properties:
+    discussion: Discussion
+    related_controls: Related Controls

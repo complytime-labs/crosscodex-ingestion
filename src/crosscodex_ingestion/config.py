@@ -31,7 +31,27 @@ class IngestionSettings(BaseSettings):
     max_processing_time: int = 3600
     max_pages: int = 1000
     max_extraction_length: int = 10_485_760
-    allowed_formats: str = "pdf,docx,html,txt"
+    allowed_formats: str = "pdf,docx,html,txt,json,csv,xlsx"
+
+    # Structured sources (JSON, CSV, XLSX read through a mapping). Directory of extra mapping
+    # files (*.yaml) beside the packaged ones; every mapping is validated at startup.
+    mappings_path: str = ""
+    # Limits on untrusted structured input, checked by the structured worker.
+    max_json_depth: int = Field(default=64, ge=1)
+    max_structured_nodes: int = Field(default=100_000, ge=1)
+    max_table_rows: int = Field(default=100_000, ge=1)
+    max_table_columns: int = Field(default=256, ge=1)
+    # Excel's own limit on the characters in a cell.
+    max_cell_length: int = Field(default=32_767, ge=1)
+    max_id_length: int = Field(default=256, ge=1)
+    max_xlsx_entries: int = Field(default=10_000, ge=1)
+    max_xlsx_uncompressed_bytes: int = Field(default=268_435_456, ge=1)
+    max_xlsx_compression_ratio: int = Field(default=100, ge=1)
+    # The structured worker imports no Docling or torch, so its limits are far lower than the
+    # Docling worker's (0 disables a limit, as for RLIMIT_*).
+    structured_max_processing_time: int = Field(default=300, ge=1)
+    structured_rlimit_as_mb: int = Field(default=4096, ge=0)
+    structured_rlimit_cpu: int = Field(default=300, ge=0)
 
     # Directory holding pre-downloaded Docling models (layout, table, OCR). The sandboxed
     # worker runs offline, so the server refuses to start if this is unset or not a directory.
