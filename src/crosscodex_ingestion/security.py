@@ -2,7 +2,7 @@
 security.py — SSRF prevention, format validation, and hash verification.
 
 Ported from OllamaCrosswalker url_fetcher.py and adapted for CrossCodex ingestion service.
-Supports pdf, docx, html, txt formats.
+Supports pdf, docx, html, txt formats, and json, csv, xlsx for structured sources (read through a mapping).
 
 Security measures:
   - Only http and https schemes are accepted.
@@ -37,6 +37,8 @@ import requests
 from requests.adapters import HTTPAdapter
 from urllib3.connection import HTTPConnection, HTTPSConnection
 from urllib3.connectionpool import HTTPConnectionPool, HTTPSConnectionPool
+
+from crosscodex_ingestion.zipdir import ZipDirectory, ZipDirectoryError, ZipDirectoryTooLarge, read_zip_directory
 
 log = logging.getLogger(__name__)
 
@@ -198,6 +200,9 @@ _TYPE_SUFFIX = {
     "html": ".html",
     "docx": ".docx",
     "txt": ".txt",
+    "json": ".json",
+    "csv": ".csv",
+    "xlsx": ".xlsx",
 }
 
 # Content-Type → detected type
@@ -207,6 +212,9 @@ _CT_MAP = {
     "application/xhtml+xml": "html",
     "text/plain": "txt",
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "docx",
+    "application/json": "json",
+    "text/csv": "csv",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": "xlsx",
 }
 
 # URL extension → detected type
@@ -217,11 +225,53 @@ _EXT_MAP = {
     ".xhtml": "html",
     ".docx": "docx",
     ".txt": "txt",
+    ".json": "json",
+    ".csv": "csv",
+    ".xlsx": "xlsx",
 }
+
+# Formats that are read through a mapping (structured.py) instead of Docling.
+STRUCTURED_FORMATS = frozenset({"json", "csv", "xlsx"})
+
+# Main part of each OOXML format; its presence in the ZIP directory identifies the format.
+_OOXML_PARTS = {"xl/workbook.xml": "xlsx", "word/document.xml": "docx"}
+
+# sniff_format and confirm_structured_format run in the service process, not the sandbox, so a ZIP's
+# directory is read with zipdir (never zipfile) and at most this many records of it.
+_MAX_SNIFF_ZIP_ENTRIES = 10_000
+
+# JSON's first token: an object (then a key or '}') or an array (then a value or ']'). Bounded,
+# unlike parsing, and specific enough that a CSV header such as "[ID],name" does not match.
+_JSON_START = re.compile(r'\s*(?:\{\s*["}]|\[\s*[\[{"\-0-9tfn\]])')
+
+
+def _zip_directory(content: bytes) -> ZipDirectory | str:
+    """The ZIP directory of *content*, or a description of the input when it can't be read."""
+    try:
+        return read_zip_directory(content, _MAX_SNIFF_ZIP_ENTRIES)
+    except ZipDirectoryTooLarge as exc:
+        return f"a ZIP archive with more than {exc.max_entries} entries"
+    except ZipDirectoryError as exc:
+        return f"a ZIP archive that is truncated or corrupt: {exc}"
+
+
+def _ooxml_format(content: bytes) -> str | None:
+    """'docx' or 'xlsx' from a complete ZIP's directory; None if it is neither, too large, or not a whole ZIP."""
+    directory = _zip_directory(content)
+    if isinstance(directory, str):
+        return None
+    return next((fmt for part, fmt in _OOXML_PARTS.items() if part in directory.names), None)
+
+
+def _looks_like_json(text: str) -> bool:
+    return _JSON_START.match(text) is not None
 
 
 def sniff_format(content: bytes, mime_type: str = "", url: str = "") -> str:
-    """Return a format string (e.g. 'pdf', 'html', 'docx', 'txt').
+    """Return a format string (e.g. 'pdf', 'html', 'docx', 'txt', 'json', 'csv', 'xlsx').
+
+    JSON and CSV are recognised only from the Content-Type or the URL extension, never from the
+    bytes alone, so text that happens to look like JSON or CSV is still text.
 
     Raises ValueError if the type cannot be determined.
     """
@@ -235,11 +285,15 @@ def sniff_format(content: bytes, mime_type: str = "", url: str = "") -> str:
     if lower_stripped.startswith((b"<html", b"<!doctype")):
         return "html"
 
-    # ZIP-based Office formats: magic bytes PK\x03\x04 + URL extension
+    # ZIP-based Office formats: the ZIP directory names the main part. A prefix of a download
+    # (fetch_url sniffs 512 bytes) has no directory, so the URL extension decides.
     if content[:4] == b"PK\x03\x04":
         url_path = urllib.parse.urlparse(url).path.lower()
-        if url_path.endswith(".docx"):
-            return "docx"
+        zip_format = _ooxml_format(content) or next(
+            (fmt for fmt in ("docx", "xlsx") if url_path.endswith(f".{fmt}")), None
+        )
+        if zip_format:
+            return zip_format
         # Generic ZIP — fall through to Content-Type / extension checks
 
     # Content-Type header
@@ -257,8 +311,55 @@ def sniff_format(content: bytes, mime_type: str = "", url: str = "") -> str:
     raise ValueError(
         f"Cannot determine file type from {url!r}. "
         f"Content-Type was {ct!r} and the first bytes were {content[:16]!r}. "
-        "Supported formats: PDF, HTML, DOCX, plain text."
+        "Supported formats: PDF, HTML, DOCX, plain text. JSON, CSV and XLSX are read through a mapping: set "
+        "ConvertDocumentRequest.mapping to a registered mapping, whose format is then expected; without one they "
+        "are recognised only by metadata.mime_type or the URL extension."
     )
+
+
+def _describe_input(content: bytes) -> str:
+    """Name what *content* is, for a format-mismatch message."""
+    if content.startswith(b"%PDF-"):
+        return "pdf"
+    if content[:4] == b"PK\x03\x04":
+        directory = _zip_directory(content)
+        if isinstance(directory, str):
+            return directory
+        ooxml = next((fmt for part, fmt in _OOXML_PARTS.items() if part in directory.names), None)
+        return ooxml or f"a ZIP archive without {' or '.join(_OOXML_PARTS)}"
+    try:
+        text: str | None = content.decode("utf-8-sig")
+    except UnicodeDecodeError:
+        text = None
+    if text is None or "\0" in text:
+        return "binary data"
+    if _looks_like_json(text):
+        return "json"
+    return "html" if text.lstrip().lower().startswith(("<html", "<!doctype")) else "text"
+
+
+def confirm_structured_format(content: bytes, mapping_id: str, expected: str) -> str:
+    """Return *expected* if *content* is a file of that format; raise ValueError naming both otherwise.
+
+    The mapping says what the input must be, so this confirms rather than guesses:
+      - json: the first non-whitespace character after an optional UTF-8 BOM is '{' or '['
+      - xlsx: a ZIP whose directory lists xl/workbook.xml (a DOCX lists word/document.xml)
+      - csv: valid UTF-8 (BOM allowed) without NUL characters, and not starting like JSON
+    """
+    if expected == "xlsx":
+        confirmed = content[:4] == b"PK\x03\x04" and _ooxml_format(content) == "xlsx"
+    else:
+        try:
+            text = content.decode("utf-8-sig")
+        except UnicodeDecodeError:
+            text = None
+        if expected == "json":
+            confirmed = text is not None and text.lstrip()[:1] in ("{", "[")
+        else:
+            confirmed = text is not None and "\0" not in text and not _looks_like_json(text)
+    if not confirmed:
+        raise ValueError(f"Mapping {mapping_id!r} reads {expected}, but the input is {_describe_input(content)}.")
+    return expected
 
 
 def validate_format(
@@ -303,10 +404,15 @@ def fetch_url(
     max_bytes: int = DEFAULT_MAX_BYTES,
     timeout: int = DEFAULT_TIMEOUT,
     max_redirects: int = DEFAULT_MAX_REDIRECTS,
+    expected_format: str | None = None,
 ) -> Iterator[tuple[str, str]]:
     """Download *url* to a temporary file; yield ``(local_path, detected_type)``.
 
     *detected_type* is a format string such as ``'pdf'``, ``'html'``, ``'docx'``, ``'txt'``.
+    With *expected_format* (a structured source's mapping format) the first bytes are not
+    sniffed and *expected_format* is yielded: release downloads are often served as
+    application/octet-stream from extension-less URLs, and the caller must confirm the complete
+    file with confirm_structured_format instead.
     The temp file is deleted when the context manager exits, whether or not an exception occurred.
 
     Raises ``ValueError`` for:
@@ -315,7 +421,7 @@ def fetch_url(
     - HTTP errors
     - responses that exceed *max_bytes*
     - too many redirects
-    - unrecognised content type
+    - unrecognised content type (without *expected_format*)
     - empty response body
     """
     validate_url(url)
@@ -383,7 +489,7 @@ def fetch_url(
         if not first_bytes:
             raise ValueError(f"Empty response body from {url!r}.")
 
-        detected_type = sniff_format(
+        detected_type = expected_format or sniff_format(
             first_bytes,
             resp.headers.get("Content-Type", ""),
             current_url,
