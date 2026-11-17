@@ -208,6 +208,41 @@ async def test_run_conversion_format_validation_failure(settings, state_backend,
 
 
 @pytest.mark.asyncio
+async def test_unknown_format_error_keeps_input_bytes_out_of_state_audit_and_logs(
+    settings, state_backend, storage_backend, audit_publisher, caplog
+):
+    """The unknown-format failure reports a classification and size, never a prefix of the document."""
+    document_id = "doc-prefix"
+    tenant_id = "tenant-prefix"
+    content = b"SECRET-TENANT-PREFIX more document text"
+    await state_backend.create(DocumentRecord(document_id=document_id, tenant_id=tenant_id, status=1, metadata={}))
+
+    with caplog.at_level("DEBUG"):
+        await run_conversion(
+            document_id=document_id,
+            tenant_id=tenant_id,
+            content=content,
+            source_uri=None,
+            metadata={},
+            settings=settings,
+            state=state_backend,
+            storage=storage_backend,
+            attestation=None,
+            audit=audit_publisher,
+            mappings=REGISTRY,
+        )
+
+    final_record = await state_backend.get(tenant_id, document_id)
+    assert final_record is not None
+    assert final_record.status == 4  # JOB_STATUS_FAILED
+    assert "Cannot determine file type" in final_record.error["message"]
+    audit_event = audit_publisher.publish.call_args.kwargs["event"]
+    assert "Cannot determine file type" in json.dumps(audit_event)
+    for surface in (json.dumps(final_record.error), json.dumps(audit_event), caplog.text):
+        assert "SECRET" not in surface
+
+
+@pytest.mark.asyncio
 async def test_run_conversion_timeout(settings, state_backend, storage_backend, audit_publisher):
     """Test conversion timeout results in FAILED state."""
     document_id = "doc-timeout"

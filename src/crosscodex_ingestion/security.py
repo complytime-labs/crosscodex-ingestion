@@ -308,9 +308,11 @@ def sniff_format(content: bytes, mime_type: str = "", url: str = "") -> str:
         if url_path.endswith(ext):
             return fmt
 
+    # The message reaches the state record, audit stream and logs: describe the input, never quote it.
+    source = f" from {url!r}" if url else ""
     raise ValueError(
-        f"Cannot determine file type from {url!r}. "
-        f"Content-Type was {ct!r} and the first bytes were {content[:16]!r}. "
+        f"Cannot determine file type{source}. "
+        f"Content-Type was {ct!r}; the input is {len(content)} bytes of {_describe_input(content)}. "
         "Supported formats: PDF, HTML, DOCX, plain text. JSON, CSV and XLSX are read through a mapping: set "
         "ConvertDocumentRequest.mapping to a registered mapping, whose format is then expected; without one they "
         "are recognised only by metadata.mime_type or the URL extension."
