@@ -1,0 +1,21 @@
+# MITRE ATT&CK Enterprise v17.1, techniques spreadsheet. A sub-technique names its parent technique in
+# "sub-technique of"; techniques leave it blank.
+mapping_version: 1
+id: mitre-attack-enterprise-17.1-techniques-xlsx
+title: MITRE ATT&CK Enterprise v17.1 techniques
+source:
+  format: xlsx
+  release: https://attack.mitre.org/docs/attack-excel-files/v17.1/enterprise-attack/enterprise-attack-v17.1-techniques.xlsx
+  sheet: techniques
+  header_row: 1
+rows:
+  id: ID
+  title: name
+  text: description
+  parent:
+    column: sub-technique of
+  properties:
+    url: url
+    version: version
+    tactics: tactics
+    platforms: platforms

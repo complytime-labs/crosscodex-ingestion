@@ -10,6 +10,7 @@ from crosscodex_ingestion.attestation import create_attestation_manager
 from crosscodex_ingestion.audit import AuditPublisher
 from crosscodex_ingestion.config import IngestionSettings
 from crosscodex_ingestion.dispatch import create_dispatch
+from crosscodex_ingestion.mapping import load_registry
 from crosscodex_ingestion.proto.crosscodex.v1 import ingestion_pb2_grpc
 from crosscodex_ingestion.server import create_grpc_server
 from crosscodex_ingestion.service import IngestionServiceServicer
@@ -91,6 +92,7 @@ async def running_grpc_server(
         )
 
         storage_backend = create_storage(settings)
+        mappings = load_registry(settings.mappings_path)
         attestation_manager = create_attestation_manager(settings)
 
         audit_publisher = AuditPublisher(settings)
@@ -102,12 +104,14 @@ async def running_grpc_server(
             storage=storage_backend,
             attestation=attestation_manager,
             audit=audit_publisher,
+            mappings=mappings,
         )
 
         servicer = IngestionServiceServicer(
             settings=settings,
             state_backend=server_state,
             dispatch_backend=dispatch_backend,
+            mappings=mappings,
         )
 
         server, port = create_grpc_server(settings, "[::]:0")  # port 0: ephemeral

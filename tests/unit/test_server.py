@@ -52,6 +52,28 @@ async def test_serve_refuses_to_start_with_attestation_enabled_and_no_keys(monke
 
 
 @pytest.mark.asyncio
+async def test_serve_refuses_to_start_with_a_malformed_mapping(monkeypatch, startable_env, tmp_path):
+    """Fail closed: a mapping that does not load would otherwise fail every request that names it."""
+    mappings = tmp_path / "mappings"
+    mappings.mkdir()
+    (mappings / "broken-1.0-json.yaml").write_text("mapping_version: 1\nid: [unclosed\n")
+    monkeypatch.setenv("MAPPINGS_PATH", str(mappings))
+
+    with pytest.raises(
+        SystemExit, match=r"Configuration error: Mapping .*broken-1\.0-json\.yaml: invalid YAML at line"
+    ):
+        await serve()
+
+
+@pytest.mark.asyncio
+async def test_serve_refuses_to_start_when_the_mappings_path_is_missing(monkeypatch, startable_env, tmp_path):
+    monkeypatch.setenv("MAPPINGS_PATH", str(tmp_path / "absent"))
+
+    with pytest.raises(SystemExit, match="MAPPINGS_PATH"):
+        await serve()
+
+
+@pytest.mark.asyncio
 async def test_serve_refuses_to_start_with_mutual_tls_and_no_certs(monkeypatch, startable_env):
     monkeypatch.setenv("ATTESTATION_ENABLED", "false")
     monkeypatch.delenv("GRPC_TLS_MODE", raising=False)

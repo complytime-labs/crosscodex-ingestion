@@ -7,7 +7,8 @@ import "crosscodex/v1/common.proto";
 option go_package = "github.com/complytime-labs/crosscodex/api/gen/go/crosscodex/v1;crosscodexv1";  // protolint:disable:this MAX_LINE_LENGTH
 
 // IngestionService handles document conversion using Docling.
-// Converts PDF, DOCX, HTML to structured JSON without OSCAL knowledge.
+// Converts PDF, DOCX, HTML and text, and JSON, CSV and XLSX through a
+// registered mapping, to structured JSON without OSCAL knowledge.
 //
 // COUPLING: Output feeds into catalog.ParseCatalog
 service IngestionService {
@@ -28,6 +29,10 @@ message ConvertDocumentRequest {
     string source_uri = 3;    // URL to fetch
   }
   ContentMetadata metadata = 4;
+  // ID of a mapping registered on the server (README "Structured sources").
+  // Required for JSON, CSV and XLSX input, which is read through the mapping;
+  // leave empty for documents.
+  string mapping = 5;
 }
 
 message ConvertDocumentResponse {

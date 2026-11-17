@@ -5,12 +5,12 @@ For maintainers. The consumer-facing description of the format and its guarantee
 
 ## Where each part of the output comes from
 
-| Step       | Module                                                             | Process                     | Adds                                                        |
-|------------|--------------------------------------------------------------------|-----------------------------|-------------------------------------------------------------|
-| Extraction | `extractor.py`                                                     | sandboxed worker subprocess | `elements`, `metadata` except `processing_time_ms`          |
-| Collection | `converter.py` (`convert_document`)                                | service                     | `metadata.processing_time_ms`, `schema_version` (first key) |
-| Validation | `worker.py` (`run_conversion`) via `output_schema.validate_output` | service                     | nothing; raises `OutputSchemaError`                         |
-| Storage    | `worker.py`                                                        | service                     | nothing                                                     |
+| Step       | Module                                                                                                             | Process                     | Adds                                                        |
+|------------|--------------------------------------------------------------------------------------------------------------------|-----------------------------|-------------------------------------------------------------|
+| Extraction | `extractor.py` (documents) or `structured.py` (structured sources, [structured-sources.md](structured-sources.md)) | sandboxed worker subprocess | `elements`, `metadata` except `processing_time_ms`          |
+| Collection | `converter.py` (`convert_document`, `convert_structured`)                                                          | service                     | `metadata.processing_time_ms`, `schema_version` (first key) |
+| Validation | `worker.py` (`run_conversion`) via `output_schema.validate_output`                                                 | service                     | nothing; raises `OutputSchemaError`                         |
+| Storage    | `worker.py`                                                                                                        | service                     | nothing                                                     |
 
 ## Decisions
 
@@ -32,9 +32,9 @@ drift apart.
 
 **Rules JSON Schema can't express are checked in code.** JSON Schema can't relate one array item to
 another, or compare a value with an array's length. So unique `element_id`, "a non-null `parent_id` names
-an earlier element" and "`metadata.element_count` equals the number of elements" live in
-`_reference_violations`. It runs only when the schema passes, so it can rely on every field being present
-and typed. Further cross-element rules (for example uniqueness of a source `id`) belong beside it.
+an earlier element", "non-null source `id` values are unique" (1.1) and "`metadata.element_count` equals
+the number of elements" live in `_reference_violations`. It runs only when the schema passes, so it can rely
+on every field being present and typed. Further cross-element rules belong beside it.
 
 **The schema is closed; tolerance is the reader's job.** Every object has `additionalProperties: false`.
 The schema states exactly what one version emits, so a field added in code without a schema change fails
@@ -52,6 +52,9 @@ taken from the output are these:
   The schema enforces that form, so after the schema passes every id is safe to quote.
 - An unexpected property's name, quoted only when it matches `^[a-z_]{1,64}$`. Other unexpected
   properties are only counted.
+
+A source `id` (1.1) is tenant data and is never quoted: a duplicate is reported as "duplicates the id of
+elements[N]".
 
 The schema's id pattern ends in `(?![\s\S])` rather than `$`, because Python's `$` also matches before
 a trailing newline. The first violation is also returned as `Error.details` (`schema_version`,
@@ -88,3 +91,11 @@ can't contain a table the typed pass dropped, so `metadata.dropped` is kept when
    `task test:integration` (`tests/integration/test_output_schema_e2e.py` validates real conversions of
    every fixture document).
 5. Update the README "Output format" section: field table, guarantees, and the example.
+
+## 1.1: what structured sources added
+
+`id`, `title`, `properties` on elements and `metadata.source` are optional, so 1.0 outputs still validate and
+1.0 readers still work. The Docling path emits none of them: it has no source IDs, and emitting `id: null`
+on every element would only add bytes. `title` is forbidden on headings (`"title": false` in the schema's
+`then` branch), because a heading's title is its `content`. Property names follow the same identifier rule
+as mapping property names; property values are non-blank strings.

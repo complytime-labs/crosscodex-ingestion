@@ -19,6 +19,7 @@ from crosscodex_ingestion.audit import AuditPublisher
 from crosscodex_ingestion.config import IngestionSettings
 from crosscodex_ingestion.converter import validate_artifacts_path
 from crosscodex_ingestion.dispatch import create_dispatch
+from crosscodex_ingestion.mapping import MappingError, load_registry
 from crosscodex_ingestion.proto.crosscodex.v1 import ingestion_pb2_grpc
 from crosscodex_ingestion.service import IngestionServiceServicer
 from crosscodex_ingestion.state import create_state_backend
@@ -45,7 +46,9 @@ async def serve() -> None:
 
     try:
         validate_artifacts_path(settings.docling_artifacts_path)
-    except ValueError as exc:
+        # Every mapping is validated now: a request can only name one that was valid at startup.
+        mappings = load_registry(settings.mappings_path)
+    except (ValueError, MappingError) as exc:
         raise SystemExit(f"Configuration error: {exc}") from exc
 
     # Fail closed on unverifiable attestations and unauthenticated callers before opening anything
@@ -66,6 +69,7 @@ async def serve() -> None:
             "execution_mode": settings.execution_mode,
             "storage_backend": settings.storage_backend,
             "state_backend": settings.state_backend,
+            "mappings": mappings.ids(),
         },
     )
 
@@ -84,6 +88,7 @@ async def serve() -> None:
         storage=storage_backend,
         attestation=attestation_manager,
         audit=audit_publisher,
+        mappings=mappings,
     )
 
     # Create gRPC servicer
@@ -91,6 +96,7 @@ async def serve() -> None:
         settings=settings,
         state_backend=state_backend,
         dispatch_backend=dispatch_backend,
+        mappings=mappings,
     )
 
     ingestion_pb2_grpc.add_IngestionServiceServicer_to_server(servicer, server)

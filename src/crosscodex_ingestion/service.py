@@ -8,6 +8,7 @@ import grpc
 
 from crosscodex_ingestion.config import IngestionSettings
 from crosscodex_ingestion.dispatch import DispatchBackend
+from crosscodex_ingestion.mapping import MappingRegistry
 from crosscodex_ingestion.metrics import DOC_SIZE, ERRORS_TOTAL, REQUESTS_TOTAL
 from crosscodex_ingestion.proto.crosscodex.v1 import common_pb2, ingestion_pb2, ingestion_pb2_grpc
 from crosscodex_ingestion.security import validate_document_id, validate_tenant_id
@@ -27,6 +28,7 @@ class IngestionServiceServicer(ingestion_pb2_grpc.IngestionServiceServicer):
         settings: IngestionSettings,
         state_backend: StateBackend,
         dispatch_backend: DispatchBackend,
+        mappings: MappingRegistry,
     ):
         """Initialize the servicer.
 
@@ -34,10 +36,12 @@ class IngestionServiceServicer(ingestion_pb2_grpc.IngestionServiceServicer):
             settings: Configuration settings.
             state_backend: State management backend.
             dispatch_backend: Job dispatch backend.
+            mappings: Structured-source mappings a request may name.
         """
         self._settings = settings
         self._state = state_backend
         self._dispatch = dispatch_backend
+        self._mappings = mappings
 
     async def ConvertDocument(
         self, request: ingestion_pb2.ConvertDocumentRequest, context: grpc.aio.ServicerContext
@@ -92,6 +96,22 @@ class IngestionServiceServicer(ingestion_pb2_grpc.IngestionServiceServicer):
             metadata["format_version"] = request.metadata.format_version
         if request.metadata.source_uri:
             metadata["source_uri"] = request.metadata.source_uri
+        if request.mapping:
+            mapping = self._mappings.get(request.mapping)
+            if mapping is None:
+                registered = self._mappings.ids()
+                known = (
+                    f"Registered mappings: {', '.join(registered)}."
+                    if registered
+                    else "No mappings are registered on this server."
+                )
+                await context.abort(
+                    grpc.StatusCode.INVALID_ARGUMENT, f"Unknown mapping {request.mapping[:64]!r}. {known}"
+                )
+                raise RuntimeError("unreachable")
+            # The worker re-checks the hash: in distributed mode it may run another deployment's mappings.
+            metadata["mapping_id"] = mapping.id
+            metadata["mapping_sha256"] = mapping.sha256
 
         # Create audit dict
         now = datetime.now(UTC).isoformat()

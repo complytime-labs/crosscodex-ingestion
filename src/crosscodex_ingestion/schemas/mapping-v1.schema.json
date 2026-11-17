@@ -1,0 +1,156 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:crosscodex-ingestion:mapping:v1",
+  "title": "CrossCodex Ingestion structured-source mapping",
+  "description": "Declares how one publisher release of a structured source (JSON, CSV, XLSX) becomes elements. A JSON source is a tree and uses 'nodes'; a CSV or XLSX source is a table and uses 'rows'.",
+  "type": "object",
+  "required": ["mapping_version", "id", "title", "source"],
+  "additionalProperties": false,
+  "properties": {
+    "mapping_version": { "description": "Version of this mapping format.", "const": 1 },
+    "id": {
+      "description": "Registered name of the mapping; include the publisher's release (owasp-asvs-5.0.0-json). Lowercase letters and digits, separated by single '.' or '-'.",
+      "type": "string",
+      "maxLength": 128,
+      "pattern": "^[a-z0-9]+([.-][a-z0-9]+)*(?![\\s\\S])"
+    },
+    "title": { "description": "Human-readable name of the source.", "$ref": "#/$defs/text" },
+    "source": {
+      "type": "object",
+      "required": ["format", "release"],
+      "properties": {
+        "format": { "enum": ["json", "csv", "xlsx"] },
+        "release": {
+          "description": "Where the publisher releases the file this mapping was written for.",
+          "type": "string",
+          "maxLength": 2048,
+          "pattern": "^https://\\S+(?![\\s\\S])"
+        }
+      }
+    },
+    "nodes": {
+      "description": "Tree sources: where the nodes are and which fields carry what.",
+      "type": "object",
+      "required": ["select", "id"],
+      "anyOf": [{ "required": ["title"] }, { "required": ["text"] }],
+      "additionalProperties": false,
+      "properties": {
+        "select": {
+          "description": "Dotted object keys from the root to the array of top-level nodes; \"\" when the root is that array. No wildcards, filters or patterns.",
+          "type": "string",
+          "maxLength": 1024,
+          "pattern": "^([^.]+(\\.[^.]+)*)?(?![\\s\\S])"
+        },
+        "children": { "description": "Key of a node's array of child nodes, at every depth.", "$ref": "#/$defs/field" },
+        "id": { "$ref": "#/$defs/field" },
+        "title": { "$ref": "#/$defs/field" },
+        "text": { "$ref": "#/$defs/field" },
+        "properties": { "$ref": "#/$defs/properties" }
+      }
+    },
+    "rows": {
+      "description": "Table sources: which columns carry what, and how a row finds its parent.",
+      "type": "object",
+      "required": ["id"],
+      "anyOf": [{ "required": ["title"] }, { "required": ["text"] }],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "$ref": "#/$defs/field" },
+        "title": { "$ref": "#/$defs/field" },
+        "text": { "$ref": "#/$defs/field" },
+        "parent": {
+          "oneOf": [
+            {
+              "description": "The parent's ID is in this column; a blank cell makes the row top-level.",
+              "type": "object",
+              "required": ["column"],
+              "additionalProperties": false,
+              "properties": { "column": { "$ref": "#/$defs/field" } }
+            },
+            {
+              "description": "The parent's ID is the row's ID cut at the last separator (AC-2(1) -> AC-2); an ID without the separator is top-level.",
+              "type": "object",
+              "required": ["id_prefix"],
+              "additionalProperties": false,
+              "properties": {
+                "id_prefix": {
+                  "type": "object",
+                  "required": ["separator"],
+                  "additionalProperties": false,
+                  "properties": { "separator": { "type": "string", "minLength": 1, "maxLength": 8 } }
+                }
+              }
+            }
+          ]
+        },
+        "properties": { "$ref": "#/$defs/properties" }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "source": { "properties": { "format": { "const": "json" } } } } },
+      "then": {
+        "required": ["nodes"],
+        "not": { "required": ["rows"] },
+        "properties": {
+          "source": { "properties": { "format": true, "release": true }, "additionalProperties": false }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "source": { "properties": { "format": { "const": "csv" } } } } },
+      "then": {
+        "required": ["rows"],
+        "not": { "required": ["nodes"] },
+        "properties": {
+          "source": {
+            "properties": {
+              "format": true,
+              "release": true,
+              "delimiter": {
+                "description": "Field delimiter; default ','. Not the quote character or a line break.",
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 1,
+                "not": { "enum": ["\"", "\r", "\n"] }
+              },
+              "encoding": { "description": "Only UTF-8 is supported (a BOM is allowed).", "const": "utf-8" }
+            },
+            "additionalProperties": false
+          }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "source": { "properties": { "format": { "const": "xlsx" } } } } },
+      "then": {
+        "required": ["rows"],
+        "not": { "required": ["nodes"] },
+        "properties": {
+          "source": {
+            "required": ["sheet"],
+            "properties": {
+              "format": true,
+              "release": true,
+              "sheet": { "description": "Name of the worksheet to read.", "$ref": "#/$defs/text" },
+              "header_row": { "description": "1-based row holding the column names; default 1.", "type": "integer", "minimum": 1, "maximum": 1000 }
+            },
+            "additionalProperties": false
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "text": { "type": "string", "minLength": 1, "maxLength": 256, "pattern": "\\S" },
+    "field": { "description": "A JSON key or a column header, matched exactly.", "$ref": "#/$defs/text" },
+    "properties": {
+      "description": "Extra element properties: output name -> source field.",
+      "type": "object",
+      "maxProperties": 64,
+      "propertyNames": { "pattern": "^[a-z][a-z0-9_]{0,63}(?![\\s\\S])" },
+      "additionalProperties": { "$ref": "#/$defs/field" }
+    }
+  }
+}

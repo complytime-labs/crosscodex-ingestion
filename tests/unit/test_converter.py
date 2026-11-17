@@ -12,6 +12,7 @@ from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
+from crosscodex_ingestion import converter
 from crosscodex_ingestion.config import IngestionSettings
 from crosscodex_ingestion.converter import (
     PAGE_LIMIT_EXIT_CODE,
@@ -19,10 +20,13 @@ from crosscodex_ingestion.converter import (
     ConversionTimeout,
     DocumentLimitError,
     convert_document,
+    convert_structured,
     validate_artifacts_path,
 )
+from crosscodex_ingestion.mapping import load_registry
 from crosscodex_ingestion.output_schema import SCHEMA_VERSION
-from tests.unit.process_helpers import is_running, wait_for_pids
+from crosscodex_ingestion.structured import INPUT_ERROR_EXIT_CODE, StructuredSourceError
+from tests.unit.process_helpers import SLEEPER_SCRIPT, is_running, wait_for_pids
 
 
 def _proc(returncode: int, stderr: str = "") -> Mock:
@@ -79,7 +83,7 @@ class TestConvertDocument:
             Path(cmd[3]).write_text(json.dumps({"elements": [], "metadata": {"processing_time_ms": 1.0}}))
             proc = _proc(returncode=0)
 
-            async def communicate():
+            async def communicate(input=None):  # noqa: A002 (asyncio.subprocess.Process.communicate)
                 await asyncio.sleep(worker_seconds)
                 return b"", b""
 
@@ -571,5 +575,202 @@ class TestWorkerLifecycle:
 
         with pytest.raises(ConversionTimeout, match="timed out after 1 seconds"):
             await convert_document(str(input_path), "pdf", IngestionSettings(max_processing_time=1))
+
+        assert not any(is_running(p) for p in await wait_for_pids(pidfile))
+
+
+STRUCTURED_FIXTURES = Path(__file__).parent.parent / "fixtures" / "structured"
+ASVS = load_registry("").get("owasp-asvs-5.0.0-json")
+
+
+def _error_worker(error: object) -> AsyncMock:
+    """Fake structured worker that writes *error* (JSON-encoded unless bytes) to the error file and exits 4."""
+
+    def run(*cmd, **kwargs):
+        content = error if isinstance(error, bytes) else json.dumps(error).encode()
+        (Path(cmd[3]).parent / "error.json").write_bytes(content)
+        return _proc(returncode=INPUT_ERROR_EXIT_CODE)
+
+    return AsyncMock(side_effect=run)
+
+
+class TestConvertStructured:
+    """The structured worker: same isolation as Docling's, its own lower limits, actionable input errors."""
+
+    async def test_real_worker_converts_the_asvs_fixture(self, tmp_path):
+        source = STRUCTURED_FIXTURES / "owasp-asvs-5.0.0" / "input.json"
+
+        result = await convert_structured(str(source), ASVS, IngestionSettings())
+
+        expected = json.loads((STRUCTURED_FIXTURES / "owasp-asvs-5.0.0" / "expected.json").read_text())
+        assert next(iter(result)) == "schema_version"
+        assert result["schema_version"] == SCHEMA_VERSION
+        assert result["elements"] == expected["elements"]
+        assert result["metadata"]["processing_time_ms"] > 0
+        assert result["metadata"]["source"] == expected["metadata"]["source"]
+
+    async def test_real_worker_reports_source_problems_with_details(self, tmp_path):
+        source = tmp_path / "bad.json"
+        source.write_text('{"Requirements": [{"Description": "no id"}]}')
+
+        with pytest.raises(StructuredSourceError) as exc_info:
+            await convert_structured(str(source), ASVS, IngestionSettings())
+
+        assert str(exc_info.value) == (
+            f"Problem in source (mapping {ASVS.id}): Node at Requirements[0] has no ID: field 'Shortcode' is "
+            "missing or blank."
+        )
+        assert exc_info.value.details == {
+            "mapping": ASVS.id,
+            "count": "1",
+            "problem.1": "Node at Requirements[0] has no ID: field 'Shortcode' is missing or blank.",
+            "location.1": "Requirements[0]",
+        }
+
+    @patch("crosscodex_ingestion.converter.shutil.copy2")
+    async def test_limit_error_keeps_its_redacted_message(self, mock_copy2):
+        error = {
+            "kind": "limit",
+            "message": "ZIP entry 'x' is big",
+            "redacted_message": "A ZIP entry is big",
+            "details": {},
+        }
+        with (
+            patch("crosscodex_ingestion.converter.asyncio.create_subprocess_exec", _error_worker(error)),
+            pytest.raises(DocumentLimitError) as exc_info,
+        ):
+            await convert_structured("/path/to/source.json", ASVS, IngestionSettings())
+
+        assert (str(exc_info.value), exc_info.value.redacted_message) == ("ZIP entry 'x' is big", "A ZIP entry is big")
+
+    def test_document_limit_error_without_redacted_form_is_its_own(self):
+        assert DocumentLimitError("Document exceeds the maximum of 3 pages").redacted_message == (
+            "Document exceeds the maximum of 3 pages"
+        )
+
+    async def test_real_worker_reports_limits_as_limit_errors(self, tmp_path):
+        source = tmp_path / "deep.json"
+        source.write_text("[" * 10 + "]" * 10)
+
+        with pytest.raises(DocumentLimitError, match=r"MAX_JSON_DEPTH \(5\)"):
+            await convert_structured(str(source), ASVS, IngestionSettings(max_json_depth=5))
+
+    @patch("crosscodex_ingestion.converter.asyncio.create_subprocess_exec", new_callable=AsyncMock)
+    @patch("crosscodex_ingestion.converter.shutil.copy2")
+    async def test_worker_gets_the_mapping_and_limits_on_stdin_and_its_own_rlimits(
+        self, mock_copy2, mock_subprocess_run
+    ):
+        proc = _proc(returncode=1)
+        mock_subprocess_run.return_value = proc
+        settings = IngestionSettings(
+            structured_rlimit_as_mb=512, structured_rlimit_cpu=30, rlimit_fsize_mb=7, max_table_rows=9
+        )
+
+        with pytest.raises(ConversionError):
+            await convert_structured("/path/to/source.json", ASVS, settings)
+
+        cmd = mock_subprocess_run.call_args[0]
+        assert cmd[4:] == (str(512 * 1024 * 1024), "30", str(7 * 1024 * 1024))
+        job = json.loads(proc.communicate.call_args.kwargs["input"])
+        assert job["mapping"] == ASVS.document
+        assert job["mapping_sha256"] == ASVS.sha256
+        assert job["limits"]["max_table_rows"] == 9
+        assert mock_subprocess_run.call_args.kwargs["stdin"] == asyncio.subprocess.PIPE
+
+    @patch("crosscodex_ingestion.converter.shutil.copy2")
+    async def test_source_error_is_rebuilt_from_the_problems(self, mock_copy2):
+        error = {
+            "kind": "source",
+            "message": "ignored: the service rebuilds the message",
+            "details": {
+                "mapping": ASVS.id,
+                "count": "2",
+                "problem.1": "A.",
+                "problem.2": "B.",
+                "location.1": "row 2",
+                "location.2": "row 3",
+            },
+        }
+        with (
+            patch("crosscodex_ingestion.converter.asyncio.create_subprocess_exec", _error_worker(error)),
+            pytest.raises(StructuredSourceError) as exc_info,
+        ):
+            await convert_structured("/path/to/source.json", ASVS, IngestionSettings())
+
+        assert str(exc_info.value) == f"2 problems in source (mapping {ASVS.id}): 1) A. 2) B."
+        assert exc_info.value.locations == ["row 2", "row 3"]
+
+    @pytest.mark.parametrize(
+        "error",
+        [
+            b"not json",
+            {"kind": "other", "message": "x", "details": {}},
+            {
+                "kind": "source",
+                "message": "x",
+                "details": {"mapping": "another-mapping", "count": "1", "problem.1": "A"},
+            },
+            {"kind": "source", "message": "x", "details": {"mapping": "owasp-asvs-5.0.0-json", "count": "2"}},
+            {"kind": "limit", "message": 5, "details": {}},
+            {"kind": "limit", "message": "x" * 3000, "redacted_message": "x", "details": {}},
+            {"kind": "limit", "message": "x", "details": {}},
+            {"kind": "limit", "message": "x", "redacted_message": "x" * 3000, "details": {}},
+            {
+                "kind": "source",
+                "message": "x",
+                "details": {"mapping": "owasp-asvs-5.0.0-json", "count": "1", "problem.1": "A"},
+            },
+            {
+                "kind": "source",
+                "message": "x",
+                "details": {"mapping": "owasp-asvs-5.0.0-json", "count": "1", "problem.1": "x" * 3000},
+            },
+            b"{" + b" " * 70_000 + b"}",
+        ],
+    )
+    @patch("crosscodex_ingestion.converter.shutil.copy2")
+    async def test_malformed_error_file_is_an_internal_error(self, mock_copy2, error):
+        with (
+            patch("crosscodex_ingestion.converter.asyncio.create_subprocess_exec", _error_worker(error)),
+            pytest.raises(ConversionError, match="error file"),
+        ):
+            await convert_structured("/path/to/source.json", ASVS, IngestionSettings())
+
+    @patch("crosscodex_ingestion.converter.asyncio.create_subprocess_exec", new_callable=AsyncMock)
+    @patch("crosscodex_ingestion.converter.shutil.copy2")
+    async def test_cpu_death_names_the_structured_setting(self, mock_copy2, mock_subprocess_run):
+        mock_subprocess_run.return_value = _proc(returncode=-signal.SIGXCPU)
+
+        with pytest.raises(DocumentLimitError, match=r"60 CPU-seconds \(STRUCTURED_RLIMIT_CPU\)"):
+            await convert_structured("/path/to/source.json", ASVS, IngestionSettings(structured_rlimit_cpu=60))
+
+    @patch("crosscodex_ingestion.converter.asyncio.create_subprocess_exec", new_callable=AsyncMock)
+    @patch("crosscodex_ingestion.converter.shutil.copy2")
+    async def test_segfault_names_the_structured_address_space_setting(self, mock_copy2, mock_subprocess_run):
+        mock_subprocess_run.return_value = _proc(returncode=-signal.SIGSEGV)
+
+        with pytest.raises(ConversionError, match="STRUCTURED_RLIMIT_AS_MB"):
+            await convert_structured("/path/to/source.json", ASVS, IngestionSettings())
+
+    @patch("crosscodex_ingestion.converter.asyncio.create_subprocess_exec", new_callable=AsyncMock)
+    @patch("crosscodex_ingestion.converter.shutil.copy2")
+    async def test_output_over_max_extraction_length_is_rejected(self, mock_copy2, mock_subprocess_run):
+        def write_output(*cmd, **kwargs):
+            Path(cmd[3]).write_text('{"elements":[],"metadata":{}}')
+            return _proc(returncode=0)
+
+        mock_subprocess_run.side_effect = write_output
+
+        with pytest.raises(DocumentLimitError, match="exceeds the maximum of"):
+            await convert_structured("/path/to/source.json", ASVS, IngestionSettings(max_extraction_length=5))
+
+    async def test_timeout_uses_the_structured_limit_and_kills_the_worker(self, tmp_path, monkeypatch):
+        pidfile = tmp_path / "pids"
+        monkeypatch.setattr(converter, "_STRUCTURED_WORKER_SCRIPT", SLEEPER_SCRIPT.replace("@PIDFILE@", str(pidfile)))
+        source = tmp_path / "source.json"
+        source.write_text("{}")
+
+        with pytest.raises(ConversionTimeout, match="timed out after 1 seconds"):
+            await convert_structured(str(source), ASVS, IngestionSettings(structured_max_processing_time=1))
 
         assert not any(is_running(p) for p in await wait_for_pids(pidfile))

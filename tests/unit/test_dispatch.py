@@ -15,8 +15,11 @@ from crosscodex_ingestion.dispatch import (
     NatsDispatch,
     create_dispatch,
 )
+from crosscodex_ingestion.mapping import MappingRegistry
 from crosscodex_ingestion.state import StateBackend
 from crosscodex_ingestion.storage import StorageBackend
+
+REGISTRY = MappingRegistry({})
 
 
 @pytest.fixture
@@ -68,6 +71,7 @@ class TestEmbeddedDispatch:
             storage=mock_storage,
             attestation=mock_attestation,
             audit=mock_audit,
+            mappings=REGISTRY,
         )
 
         with patch("crosscodex_ingestion.dispatch.asyncio.create_task") as mock_create_task:
@@ -98,6 +102,7 @@ class TestEmbeddedDispatch:
             storage=mock_storage,
             attestation=mock_attestation,
             audit=mock_audit,
+            mappings=REGISTRY,
         )
 
         with patch("crosscodex_ingestion.dispatch.run_conversion", new_callable=AsyncMock) as mock_run:
@@ -124,6 +129,7 @@ class TestEmbeddedDispatch:
                 storage=mock_storage,
                 attestation=mock_attestation,
                 audit=mock_audit,
+                mappings=REGISTRY,
             )
 
     @pytest.mark.asyncio
@@ -140,6 +146,7 @@ class TestEmbeddedDispatch:
             storage=mock_storage,
             attestation=mock_attestation,
             audit=mock_audit,
+            mappings=REGISTRY,
         )
 
         # Create a flag to track how many tasks are running concurrently
@@ -182,6 +189,7 @@ class TestEmbeddedDispatch:
             storage=mock_storage,
             attestation=mock_attestation,
             audit=mock_audit,
+            mappings=REGISTRY,
         )
 
         task_started = False
@@ -222,6 +230,7 @@ class TestEmbeddedDispatch:
             storage=mock_storage,
             attestation=mock_attestation,
             audit=mock_audit,
+            mappings=REGISTRY,
         )
 
         with patch("crosscodex_ingestion.dispatch.run_conversion", new_callable=AsyncMock):
@@ -278,6 +287,23 @@ class TestNatsDispatch:
             assert payload["content"] == base64.b64encode(b"test content").decode("utf-8")
             assert payload["source_uri"] == "https://example.com/doc.pdf"
             assert payload["metadata"] == {"mime_type": "application/pdf"}
+
+    @pytest.mark.asyncio
+    async def test_job_carries_the_mapping_id_and_hash(self, mock_settings):
+        """The consuming worker re-checks the hash against its own mappings (worker.MappingSkewError)."""
+        mock_nc = AsyncMock()
+        mock_js = AsyncMock()
+        mock_nc.jetstream = Mock(return_value=mock_js)
+        metadata = {"mapping_id": "owasp-asvs-5.0.0-json", "mapping_sha256": "a" * 64}
+
+        with patch("crosscodex_ingestion.dispatch.nats.connect", return_value=mock_nc):
+            dispatcher = NatsDispatch(settings=mock_settings)
+            await dispatcher.dispatch(
+                document_id="doc-123", tenant_id="tenant-1", content=b"{}", source_uri=None, metadata=metadata
+            )
+
+        payload = json.loads(mock_js.publish.call_args.kwargs["payload"])
+        assert payload["metadata"] == metadata
 
     @pytest.mark.asyncio
     async def test_dispatch_with_null_content(self, mock_settings):
@@ -340,6 +366,7 @@ class TestCreateDispatch:
             storage=mock_storage,
             attestation=mock_attestation,
             audit=mock_audit,
+            mappings=REGISTRY,
         )
 
         assert isinstance(dispatcher, EmbeddedDispatch)
@@ -356,6 +383,7 @@ class TestCreateDispatch:
             storage=mock_storage,
             attestation=mock_attestation,
             audit=mock_audit,
+            mappings=REGISTRY,
         )
 
         assert isinstance(dispatcher, NatsDispatch)
@@ -372,4 +400,5 @@ class TestCreateDispatch:
                 storage=mock_storage,
                 attestation=mock_attestation,
                 audit=mock_audit,
+                mappings=REGISTRY,
             )

@@ -38,3 +38,60 @@ def conforming_output() -> dict[str, Any]:
             "dropped": [],
         },
     }
+
+
+def structured_output() -> dict[str, Any]:
+    """Return a fresh output of a structured source: a node with children and text, and one leaf under it."""
+    return {
+        "schema_version": SCHEMA_VERSION,
+        "elements": [
+            {
+                "element_id": "e-001",
+                "type": "heading",
+                "content": "Password Security",
+                "page": None,
+                "level": 1,
+                "parent_id": None,
+                "style": {},
+                "id": "V6.2",
+                "properties": {},
+            },
+            {
+                "element_id": "e-002",
+                "type": "paragraph",
+                "content": "Passwords must be long.",
+                "page": None,
+                "level": None,
+                "parent_id": "e-001",
+                "style": {},
+                "id": None,
+            },
+            {
+                "element_id": "e-003",
+                "type": "paragraph",
+                "content": "Verify that passwords have at least 8 characters.",
+                "page": None,
+                "level": None,
+                "parent_id": "e-001",
+                "style": {},
+                "id": "V6.2.1",
+                "title": "Length",
+                "properties": {"level": "1"},
+            },
+        ],
+        "metadata": {
+            "element_count": 3,
+            "detected_format": "json",
+            "page_count": None,
+            "title": "OWASP ASVS 5.0.0",
+            "processing_time_ms": 3.5,
+            "dropped": [],
+            "source": {
+                "kind": "structured",
+                "format": "json",
+                "mapping": {"id": "owasp-asvs-5.0.0-json", "sha256": "a" * 64, "mapping_version": 1},
+                "node_count": 2,
+                "unmapped_fields": ["Ordinal"],
+            },
+        },
+    }

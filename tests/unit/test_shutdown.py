@@ -9,6 +9,7 @@ import pytest
 from crosscodex_ingestion import converter
 from crosscodex_ingestion.config import IngestionSettings
 from crosscodex_ingestion.dispatch import CANCEL_CLEANUP_SECONDS, EmbeddedDispatch
+from crosscodex_ingestion.mapping import MappingRegistry
 from crosscodex_ingestion.state import DocumentRecord, MemoryStateBackend
 from crosscodex_ingestion.storage import FilesystemStorage
 from crosscodex_ingestion.worker import (
@@ -56,6 +57,7 @@ def make_dispatch(tmp_path, state, audit):
             storage=FilesystemStorage(str(tmp_path / "storage")),
             attestation=None,
             audit=audit,
+            mappings=MappingRegistry({}),
         )
 
     return _make

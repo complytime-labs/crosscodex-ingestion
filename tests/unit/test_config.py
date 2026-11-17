@@ -18,7 +18,7 @@ def test_allowed_formats_set():
     from crosscodex_ingestion.config import IngestionSettings
 
     settings = IngestionSettings()
-    assert settings.allowed_formats_set == {"pdf", "docx", "html", "txt"}
+    assert settings.allowed_formats_set == {"pdf", "docx", "html", "txt", "json", "csv", "xlsx"}
 
 
 def test_allowed_formats_custom(monkeypatch):

@@ -22,6 +22,7 @@ import nats
 from crosscodex_ingestion.attestation import AttestationManager
 from crosscodex_ingestion.audit import AuditPublisher
 from crosscodex_ingestion.config import IngestionSettings
+from crosscodex_ingestion.mapping import MappingRegistry
 from crosscodex_ingestion.state import StateBackend
 from crosscodex_ingestion.storage import StorageBackend
 from crosscodex_ingestion.worker import SHUTDOWN_ERROR, record_failure, run_conversion
@@ -82,6 +83,7 @@ class EmbeddedDispatch(DispatchBackend):
         storage: StorageBackend,
         attestation: AttestationManager | None,
         audit: AuditPublisher,
+        mappings: MappingRegistry,
     ):
         """Initialize the embedded dispatch backend.
 
@@ -91,12 +93,14 @@ class EmbeddedDispatch(DispatchBackend):
             storage: Storage backend.
             attestation: Optional attestation manager.
             audit: Audit event publisher.
+            mappings: Structured-source mappings registered at startup.
         """
         self._settings = settings
         self._state = state
         self._storage = storage
         self._attestation = attestation
         self._audit = audit
+        self._mappings = mappings
 
         # Create semaphore to limit concurrent conversions
         self._semaphore = asyncio.Semaphore(settings.max_concurrent_conversions)
@@ -172,6 +176,7 @@ class EmbeddedDispatch(DispatchBackend):
                 storage=self._storage,
                 attestation=self._attestation,
                 audit=self._audit,
+                mappings=self._mappings,
             )
 
     async def shutdown(self, grace_seconds: float) -> None:
@@ -236,7 +241,9 @@ class NatsDispatch(DispatchBackend):
     """NATS JetStream dispatch backend.
 
     Publishes conversion jobs to a NATS JetStream work queue for distributed processing.
-    Jobs are serialized as JSON and published to the 'ingestion.jobs' subject.
+    Jobs are serialized as JSON and published to the 'ingestion.jobs' subject. A structured
+    source's mapping travels as metadata mapping_id and mapping_sha256; the consuming worker's
+    run_conversion fails the job as retryable if its own mapping differs.
     """
 
     def __init__(self, settings: IngestionSettings):
@@ -335,6 +342,7 @@ def create_dispatch(
     storage: StorageBackend,
     attestation: AttestationManager | None,
     audit: AuditPublisher,
+    mappings: MappingRegistry,
 ) -> DispatchBackend:
     """Factory function to create the appropriate dispatch backend.
 
@@ -344,6 +352,7 @@ def create_dispatch(
         storage: Storage backend.
         attestation: Optional attestation manager.
         audit: Audit event publisher.
+        mappings: Structured-source mappings registered at startup (used by the embedded workers).
 
     Returns:
         DispatchBackend instance based on execution_mode.
@@ -359,6 +368,7 @@ def create_dispatch(
             storage=storage,
             attestation=attestation,
             audit=audit,
+            mappings=mappings,
         )
     if settings.execution_mode == "distributed":
         logger.info("Creating NATS dispatch backend")

@@ -1,0 +1,33 @@
+Third-party data in tests/fixtures/structured/
+
+The inputs and expected outputs in these directories are trimmed excerpts of publisher releases,
+kept as test fixtures. Each directory's PROVENANCE.md names the original file, its SHA-256 and
+how it was trimmed. The expected.json files are this service's conversion of the excerpts and
+carry the same terms as their inputs.
+
+owasp-asvs-5.0.0/
+  OWASP Application Security Verification Standard 5.0.0, by the OWASP Foundation.
+  https://github.com/OWASP/ASVS
+  Licensed under the Creative Commons Attribution-ShareAlike 4.0 International License
+  (CC BY-SA 4.0), https://creativecommons.org/licenses/by-sa/4.0/. The excerpt is a modified
+  version (chapters and sections removed) and is shared under the same license.
+
+mitre-attack-enterprise-17.1/
+  MITRE ATT&CK Enterprise v17.1, techniques spreadsheet.
+  https://attack.mitre.org/resources/attack-data-and-tools/
+
+  © 2026 The MITRE Corporation. This work is reproduced and distributed with the permission of
+  The MITRE Corporation.
+
+  License (ATT&CK Terms of Use, https://attack.mitre.org/resources/legal-and-branding/terms-of-use/):
+  The MITRE Corporation (MITRE) hereby grants you a non-exclusive, royalty-free license to use
+  ATT&CK® for research, development, and commercial purposes. Any copy you make for such
+  purposes is authorized provided that you reproduce MITRE's copyright designation and this
+  license in any such copy.
+
+nist-sp800-53r5/
+  NIST Special Publication 800-53 Revision 5, Security and Privacy Controls for Information
+  Systems and Organizations, control catalog spreadsheet. National Institute of Standards and
+  Technology, https://csrc.nist.gov/pubs/sp/800/53/r5/upd1/final
+  A work of the United States Government, not subject to copyright in the United States
+  (17 U.S.C. 105).

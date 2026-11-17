@@ -1,9 +1,11 @@
 """
-Document converter — subprocess isolation for Docling.
+Document converter — subprocess isolation for Docling and for structured sources.
 
-Runs Docling conversion in an isolated subprocess with configurable resource limits
-(RLIMIT_AS, RLIMIT_CPU, RLIMIT_FSIZE). The subprocess writes results to a temp
-directory, which the parent reads and cleans up.
+Runs each conversion in an isolated subprocess with configurable resource limits
+(RLIMIT_AS, RLIMIT_CPU, RLIMIT_FSIZE) and a wall-clock timeout. The subprocess writes results to
+a temp directory, which the parent reads and cleans up. Documents go to a Docling worker;
+structured sources (JSON, CSV, XLSX with a mapping) to a lighter worker that runs
+structured.run_job, imports no Docling or torch, and has its own lower limits.
 """
 
 import asyncio
@@ -15,11 +17,25 @@ import signal
 import sys
 import tempfile
 import time
+from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any, cast
 
 from crosscodex_ingestion.config import IngestionSettings
+from crosscodex_ingestion.mapping import Mapping
 from crosscodex_ingestion.output_schema import SCHEMA_VERSION
+from crosscodex_ingestion.structured import (
+    ERROR_FILE_NAME,
+    INPUT_ERROR_EXIT_CODE,
+    MAX_LISTED_PROBLEMS,
+    StructuredLimits,
+    StructuredSourceError,
+)
+
+# The structured worker's error file holds at most 20 problems with short source excerpts.
+_MAX_ERROR_FILE_BYTES = 65_536
+# Longest message or problem accepted from it; generated ones quote at most a few 64-character excerpts.
+_MAX_ERROR_TEXT = 2048
 
 
 class ConversionError(Exception):
@@ -42,7 +58,13 @@ class DocumentLimitError(ValueError):
     """Raised when a document exceeds max_pages or its output exceeds max_extraction_length.
 
     Subclasses ValueError because the message is safe and actionable for the client.
+    *redacted_message* is the message without the caller's data, for the audit stream and logs; it
+    is the message itself when that quotes none.
     """
+
+    def __init__(self, message: str, redacted_message: str | None = None) -> None:
+        super().__init__(message)
+        self.redacted_message = redacted_message or message
 
 
 # Worker script executed in the subprocess
@@ -120,6 +142,32 @@ if __name__ == "__main__":
     "@CPU_KILL_GRACE_SECONDS@", str(CPU_KILL_GRACE_SECONDS)
 )
 
+# Structured-source worker: limits first, then structured.run_job with the job read from stdin.
+_STRUCTURED_WORKER_SCRIPT = """
+import json
+import resource
+import sys
+
+
+def main():
+    input_path, output_path = sys.argv[1], sys.argv[2]
+    rlimit_as, rlimit_cpu, rlimit_fsize = (int(v) for v in sys.argv[3:6])
+    if rlimit_as > 0:
+        resource.setrlimit(resource.RLIMIT_AS, (rlimit_as, rlimit_as))
+    if rlimit_cpu > 0:
+        resource.setrlimit(resource.RLIMIT_CPU, (rlimit_cpu, rlimit_cpu + @CPU_KILL_GRACE_SECONDS@))
+    if rlimit_fsize > 0:
+        resource.setrlimit(resource.RLIMIT_FSIZE, (rlimit_fsize, rlimit_fsize))
+
+    from crosscodex_ingestion.structured import run_job
+
+    sys.exit(run_job(input_path, output_path, json.load(sys.stdin)))
+
+
+if __name__ == "__main__":
+    main()
+""".replace("@CPU_KILL_GRACE_SECONDS@", str(CPU_KILL_GRACE_SECONDS))
+
 
 def validate_artifacts_path(artifacts_path: str) -> None:
     """Raise ValueError unless *artifacts_path* is an existing directory.
@@ -145,12 +193,152 @@ def _kill_process_group(pid: int) -> None:
         os.killpg(pid, signal.SIGKILL)
 
 
+@dataclass(frozen=True)
+class _WorkerLimits:
+    """Resource limits of one kind of worker, and the settings that name them in error messages."""
+
+    name: str
+    timeout: int
+    timeout_setting: str
+    rlimit_as_mb: int
+    rlimit_as_setting: str
+    rlimit_cpu: int
+    rlimit_cpu_setting: str
+
+
+@dataclass(frozen=True)
+class _WorkerResult:
+    returncode: int
+    stderr: str
+    processing_time_ms: float
+    output: dict[str, Any] | None  # the parsed output file, when the worker exited 0
+    error_file: bytes | None  # the worker's error file (at most _MAX_ERROR_FILE_BYTES + 1 bytes), if any
+
+
+async def _run_worker(
+    script: str,
+    input_path: str,
+    args: list[str],
+    limits: _WorkerLimits,
+    settings: IngestionSettings,
+    stdin_data: bytes | None = None,
+) -> _WorkerResult:
+    """Run *script* on a copy of *input_path* in a sandboxed subprocess; return what it left behind.
+
+    The command is [python, script, input, output, *args]; *args* include the worker's rlimits
+    (see _rlimits). The subprocess runs in its own session so that on
+    timeout or cancellation the whole process group is SIGKILLed and reaped before this coroutine
+    exits; the temp directory is removed either way.
+
+    Raises ConversionTimeout after limits.timeout seconds. When the worker exits 0 it must have
+    written the output file, no larger than max_extraction_length (ConversionError,
+    DocumentLimitError otherwise); any other exit is for the caller to interpret.
+    """
+    temp_dir = tempfile.mkdtemp(prefix="crosscodex_conv_")
+    try:
+        temp_input_path = Path(temp_dir) / Path(input_path).name
+        await asyncio.to_thread(shutil.copy2, input_path, temp_input_path)
+        output_path = Path(temp_dir) / "output.json"
+        worker_script_path = Path(temp_dir) / "worker.py"
+        worker_script_path.write_text(script)
+
+        cmd = [
+            sys.executable,
+            str(worker_script_path),
+            str(temp_input_path),
+            str(output_path),
+            *args,
+        ]
+
+        # Minimal environment: HF_HUB_OFFLINE keeps the sandboxed worker off the network.
+        env = {"PATH": os.environ.get("PATH", ""), "HF_HUB_OFFLINE": "1"}
+        # The worker must import the same packages as this process; the FIPS image finds them
+        # only via PYTHONPATH.
+        if "PYTHONPATH" in os.environ:
+            env["PYTHONPATH"] = os.environ["PYTHONPATH"]
+
+        # Run subprocess in its own session/process group so the whole tree can be killed.
+        started = time.monotonic()
+        proc = await asyncio.create_subprocess_exec(
+            *cmd,
+            stdin=asyncio.subprocess.PIPE if stdin_data is not None else None,
+            stdout=asyncio.subprocess.DEVNULL,
+            stderr=asyncio.subprocess.PIPE,
+            env=env,
+            start_new_session=True,
+        )
+        try:
+            async with asyncio.timeout(limits.timeout):
+                _, stderr_bytes = await proc.communicate(input=stdin_data)
+        except TimeoutError as e:
+            raise ConversionTimeout(f"Conversion timed out after {limits.timeout} seconds") from e
+        finally:
+            # Runs on success, timeout, error and cancellation: never leave the worker running.
+            if proc.returncode is None:
+                _kill_process_group(proc.pid)
+                await proc.wait()
+        processing_time_ms = round((time.monotonic() - started) * 1000, 2)
+        # The finally block above reaps the worker, so returncode is always set here.
+        returncode = cast("int", proc.returncode)
+        stderr = stderr_bytes.decode(errors="replace")
+
+        output: dict[str, Any] | None = None
+        if returncode == 0:
+            if not output_path.exists():
+                raise ConversionError("Conversion subprocess completed but did not create output file")
+            # The worker serializes compactly, so the file size is the serialized output length.
+            output_size = output_path.stat().st_size
+            if output_size > settings.max_extraction_length:
+                raise DocumentLimitError(
+                    f"Extracted output ({output_size} bytes) exceeds the maximum of "
+                    f"{settings.max_extraction_length} bytes"
+                )
+            with output_path.open() as f:
+                output = json.load(f)
+
+        error_path = Path(temp_dir) / ERROR_FILE_NAME
+        error_file = None
+        if error_path.exists():
+            with error_path.open("rb") as f:
+                error_file = f.read(_MAX_ERROR_FILE_BYTES + 1)
+        return _WorkerResult(returncode, stderr, processing_time_ms, output, error_file)
+    finally:
+        shutil.rmtree(temp_dir, ignore_errors=True)
+
+
+def _rlimits(limits: _WorkerLimits, settings: IngestionSettings) -> list[str]:
+    """RLIMIT_AS, RLIMIT_CPU and RLIMIT_FSIZE for the worker's command line, in bytes and seconds (0: none)."""
+    return [str(limits.rlimit_as_mb * 1024 * 1024), str(limits.rlimit_cpu), str(settings.rlimit_fsize_mb * 1024 * 1024)]
+
+
+def _raise_for_exit(result: _WorkerResult, limits: _WorkerLimits) -> None:
+    """Raise for a worker that did not exit 0; CPU deaths are limit errors, other deaths internal errors."""
+    returncode = result.returncode
+    if returncode == -signal.SIGXCPU:
+        raise DocumentLimitError(
+            f"Conversion exceeded the CPU limit of {limits.rlimit_cpu} CPU-seconds ({limits.rlimit_cpu_setting})"
+        )
+    if returncode < 0:
+        signum = -returncode
+        try:
+            signal_name = signal.Signals(signum).name
+        except ValueError:
+            signal_name = f"signal {signum}"
+        if signum == signal.SIGKILL:
+            cause = "; most likely out of memory (container memory limit or kernel OOM killer)"
+        elif signum == signal.SIGSEGV and limits.rlimit_as_mb > 0:
+            cause = (
+                f"; {limits.name} crashes this way when {limits.rlimit_as_setting} ({limits.rlimit_as_mb}) is too low"
+            )
+        else:
+            cause = ""
+        raise ConversionError(f"Conversion subprocess was killed by {signal_name}{cause}. stderr: {result.stderr}")
+    if returncode != 0:
+        raise ConversionError(f"Conversion subprocess failed with exit code {returncode}. stderr: {result.stderr}")
+
+
 async def convert_document(input_path: str, format_hint: str, settings: IngestionSettings) -> dict[str, Any]:
     """Convert a document using Docling in an isolated subprocess.
-
-    The subprocess runs in its own session so that on timeout or cancellation the whole
-    process group (Docling may spawn helpers) is SIGKILLed and reaped before this coroutine
-    exits; the temp directory is removed either way.
 
     The subprocess:
     1. Sets resource limits (RLIMIT_AS, RLIMIT_CPU, RLIMIT_FSIZE)
@@ -184,119 +372,108 @@ async def convert_document(input_path: str, format_hint: str, settings: Ingestio
     ConversionError
         When subprocess fails (non-zero exit code).
     """
-    temp_dir = None
+    limits = _WorkerLimits(
+        "Docling",
+        settings.max_processing_time,
+        "MAX_PROCESSING_TIME",
+        settings.rlimit_as_mb,
+        "RLIMIT_AS_MB",
+        settings.rlimit_cpu,
+        "RLIMIT_CPU",
+    )
+    result = await _run_worker(
+        _WORKER_SCRIPT,
+        input_path,
+        [format_hint, *_rlimits(limits, settings), settings.docling_artifacts_path, str(settings.max_pages)],
+        limits,
+        settings,
+    )
+    if result.returncode == PAGE_LIMIT_EXIT_CODE:
+        raise DocumentLimitError(f"Document exceeds the maximum of {settings.max_pages} pages")
+    _raise_for_exit(result, limits)
+    return _stamp(result)
+
+
+def _stamp(result: _WorkerResult) -> dict[str, Any]:
+    """The worker's output with the service's fields: processing_time_ms, and schema_version first."""
+    output = cast("dict[str, Any]", result.output)
+    # Only this process sees the whole worker run: interpreter start, imports, conversion.
+    output["metadata"]["processing_time_ms"] = result.processing_time_ms
+    # The version leads the document so a reader sees it before anything it must interpret.
+    return {"schema_version": SCHEMA_VERSION, **output}
+
+
+def _input_error(error_file: bytes, mapping: Mapping) -> ValueError:
+    """The client-facing error for the structured worker's error file; ConversionError if it is malformed.
+
+    The worker parses untrusted input, so its error file is untrusted too: it must be small, and
+    the message the client sees is rebuilt here from the listed problems.
+    """
     try:
-        # Create temp directory
-        temp_dir = tempfile.mkdtemp(prefix="crosscodex_conv_")
+        if len(error_file) > _MAX_ERROR_FILE_BYTES:
+            raise ValueError("too large")
+        error = json.loads(error_file)
+        kind, message, details = error["kind"], error["message"], error["details"]
+        if not isinstance(message, str) or not isinstance(details, dict):
+            raise TypeError("wrong types")
+        if kind == "limit":
+            redacted = error["redacted_message"]
+            if not isinstance(redacted, str) or max(len(message), len(redacted)) > _MAX_ERROR_TEXT:
+                raise ValueError("bad limit message")
+            return DocumentLimitError(message, redacted)
+        if kind != "source" or details.get("mapping") != mapping.id:
+            raise ValueError("unknown kind or mapping")
+        count = int(details["count"])
+        listed = range(1, min(count, MAX_LISTED_PROBLEMS) + 1)
+        problems = [details[f"problem.{n}"] for n in listed]
+        locations = [details[f"location.{n}"] for n in listed]
+        if count < 1 or not all(isinstance(t, str) and len(t) <= _MAX_ERROR_TEXT for t in problems + locations):
+            raise ValueError("bad problems")
+        return StructuredSourceError(mapping.id, problems, locations, count)
+    except (ValueError, KeyError, TypeError) as exc:
+        raise ConversionError(f"The structured worker wrote a malformed error file ({exc})") from exc
 
-        # Copy input file to temp dir
-        input_filename = Path(input_path).name
-        temp_input_path = Path(temp_dir) / input_filename
-        await asyncio.to_thread(shutil.copy2, input_path, temp_input_path)
 
-        # Output path for JSON result
-        output_path = Path(temp_dir) / "output.json"
+async def convert_structured(input_path: str, mapping: Mapping, settings: IngestionSettings) -> dict[str, Any]:
+    """Convert a structured source through *mapping* in an isolated subprocess (structured.run_job).
 
-        # Write worker script to temp file
-        worker_script_path = Path(temp_dir) / "worker.py"
-        worker_script_path.write_text(_WORKER_SCRIPT)
+    The worker imports no Docling or torch and runs under the STRUCTURED_* limits. The job (mapping
+    document, sha256, input limits) goes to it on stdin.
 
-        # Calculate rlimit values in bytes/seconds
-        rlimit_as_bytes = settings.rlimit_as_mb * 1024 * 1024
-        rlimit_cpu_seconds = settings.rlimit_cpu
-        rlimit_fsize_bytes = settings.rlimit_fsize_mb * 1024 * 1024
-
-        # Build subprocess command
-        cmd = [
-            sys.executable,
-            str(worker_script_path),
-            str(temp_input_path),
-            str(output_path),
-            format_hint,
-            str(rlimit_as_bytes),
-            str(rlimit_cpu_seconds),
-            str(rlimit_fsize_bytes),
-            settings.docling_artifacts_path,
-            str(settings.max_pages),
-        ]
-
-        # Minimal environment: HF_HUB_OFFLINE keeps the sandboxed worker off the network.
-        env = {"PATH": os.environ.get("PATH", ""), "HF_HUB_OFFLINE": "1"}
-        # The worker must import the same packages as this process; the FIPS image finds them
-        # only via PYTHONPATH.
-        if "PYTHONPATH" in os.environ:
-            env["PYTHONPATH"] = os.environ["PYTHONPATH"]
-
-        # Run subprocess in its own session/process group so the whole tree can be killed.
-        started = time.monotonic()
-        proc = await asyncio.create_subprocess_exec(
-            *cmd,
-            stdout=asyncio.subprocess.DEVNULL,
-            stderr=asyncio.subprocess.PIPE,
-            env=env,
-            start_new_session=True,
-        )
-        try:
-            async with asyncio.timeout(settings.max_processing_time):
-                _, stderr_bytes = await proc.communicate()
-        except TimeoutError as e:
-            raise ConversionTimeout(f"Conversion timed out after {settings.max_processing_time} seconds") from e
-        finally:
-            # Runs on success, timeout, error and cancellation: never leave the worker running.
-            if proc.returncode is None:
-                _kill_process_group(proc.pid)
-                await proc.wait()
-        processing_time_ms = round((time.monotonic() - started) * 1000, 2)
-        # The finally block above reaps the worker, so returncode is always set here.
-        returncode = cast("int", proc.returncode)
-        stderr = stderr_bytes.decode(errors="replace")
-
-        if returncode == PAGE_LIMIT_EXIT_CODE:
-            raise DocumentLimitError(f"Document exceeds the maximum of {settings.max_pages} pages")
-
-        if returncode == -signal.SIGXCPU:
-            raise DocumentLimitError(
-                f"Conversion exceeded the CPU limit of {settings.rlimit_cpu} CPU-seconds (RLIMIT_CPU)"
-            )
-
-        if returncode < 0:
-            signum = -returncode
-            try:
-                signal_name = signal.Signals(signum).name
-            except ValueError:
-                signal_name = f"signal {signum}"
-            if signum == signal.SIGKILL:
-                cause = "; most likely out of memory (container memory limit or kernel OOM killer)"
-            elif signum == signal.SIGSEGV and settings.rlimit_as_mb > 0:
-                cause = f"; Docling crashes this way when RLIMIT_AS_MB ({settings.rlimit_as_mb}) is too low"
-            else:
-                cause = ""
-            raise ConversionError(f"Conversion subprocess was killed by {signal_name}{cause}. stderr: {stderr}")
-
-        if returncode != 0:
-            raise ConversionError(f"Conversion subprocess failed with exit code {returncode}. stderr: {stderr}")
-
-        # Read output JSON
-        if not output_path.exists():
-            raise ConversionError("Conversion subprocess completed but did not create output file")
-
-        # The worker serializes compactly, so the file size is the serialized output length.
-        output_size = output_path.stat().st_size
-        if output_size > settings.max_extraction_length:
-            raise DocumentLimitError(
-                f"Extracted output ({output_size} bytes) exceeds the maximum of {settings.max_extraction_length} bytes"
-            )
-
-        with Path(output_path).open() as f:
-            output_data: dict[str, Any] = json.load(f)
-
-        # Only this process sees the whole worker run: interpreter start, model load, conversion.
-        output_data["metadata"]["processing_time_ms"] = processing_time_ms
-
-        # The version leads the document so a reader sees it before anything it must interpret.
-        return {"schema_version": SCHEMA_VERSION, **output_data}
-
-    finally:
-        # Clean up temp directory
-        if temp_dir:
-            shutil.rmtree(temp_dir, ignore_errors=True)
+    Raises
+    ------
+    StructuredSourceError
+        When the source does not fit the mapping (the client sees the problems).
+    DocumentLimitError
+        When the source exceeds an input limit, the CPU limit, or the output exceeds max_extraction_length.
+    ConversionTimeout
+        When the worker exceeds structured_max_processing_time.
+    ConversionError
+        When the worker fails otherwise.
+    """
+    limits = _WorkerLimits(
+        "the structured worker",
+        settings.structured_max_processing_time,
+        "STRUCTURED_MAX_PROCESSING_TIME",
+        settings.structured_rlimit_as_mb,
+        "STRUCTURED_RLIMIT_AS_MB",
+        settings.structured_rlimit_cpu,
+        "STRUCTURED_RLIMIT_CPU",
+    )
+    job = {
+        "mapping": mapping.document,
+        "mapping_sha256": mapping.sha256,
+        "limits": asdict(StructuredLimits.from_settings(settings)),
+    }
+    result = await _run_worker(
+        _STRUCTURED_WORKER_SCRIPT,
+        input_path,
+        _rlimits(limits, settings),
+        limits,
+        settings,
+        stdin_data=json.dumps(job).encode(),
+    )
+    if result.returncode == INPUT_ERROR_EXIT_CODE and result.error_file is not None:
+        raise _input_error(result.error_file, mapping)
+    _raise_for_exit(result, limits)
+    return _stamp(result)
