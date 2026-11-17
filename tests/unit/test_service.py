@@ -7,12 +7,14 @@ import grpc
 import pytest
 
 from crosscodex_ingestion.config import IngestionSettings
+from crosscodex_ingestion.mapping import MappingRegistry, load_registry
 from crosscodex_ingestion.proto.crosscodex.v1 import common_pb2, ingestion_pb2
 from crosscodex_ingestion.service import IngestionServiceServicer
 from crosscodex_ingestion.state import DocumentRecord, MemoryStateBackend
 
 DOC_ID = "6f1c1c1e-3b2a-4c55-9d0e-0a1b2c3d4e5f"
 MISSING_ID = "00000000-0000-4000-8000-000000000000"
+REGISTRY = load_registry("")
 
 
 class MockServicerContext:
@@ -61,6 +63,7 @@ def servicer(settings, state_backend, mock_dispatch):
         settings=settings,
         state_backend=state_backend,
         dispatch_backend=mock_dispatch,
+        mappings=REGISTRY,
     )
 
 
@@ -167,6 +170,87 @@ class TestConvertDocument:
         assert context.aborted
         assert context.abort_code == grpc.StatusCode.RESOURCE_EXHAUSTED
         assert "size" in context.abort_details.lower() or "large" in context.abort_details.lower()
+
+
+class TestConvertWithMapping:
+    """request.mapping names a registered mapping; it is checked before anything is stored or dispatched."""
+
+    @pytest.mark.asyncio
+    async def test_registered_mapping_is_recorded_with_its_hash_and_dispatched(
+        self, servicer, mock_dispatch, state_backend
+    ):
+        asvs = REGISTRY.get("owasp-asvs-5.0.0-json")
+        request = ingestion_pb2.ConvertDocumentRequest(
+            tenant_context=common_pb2.TenantContext(tenant_id="tenant-a"),
+            content=b'{"Requirements": []}',
+            mapping=asvs.id,
+        )
+
+        response = await servicer.ConvertDocument(request, MockServicerContext())
+
+        record = await state_backend.get("tenant-a", response.document_id)
+        assert record.metadata["mapping_id"] == asvs.id
+        assert record.metadata["mapping_sha256"] == asvs.sha256
+        dispatched = mock_dispatch.dispatch.call_args.kwargs["metadata"]
+        assert (dispatched["mapping_id"], dispatched["mapping_sha256"]) == (asvs.id, asvs.sha256)
+
+    @pytest.mark.asyncio
+    async def test_without_mapping_nothing_is_recorded(self, servicer, mock_dispatch, state_backend):
+        request = ingestion_pb2.ConvertDocumentRequest(
+            tenant_context=common_pb2.TenantContext(tenant_id="tenant-a"), content=b"%PDF-1.4"
+        )
+
+        response = await servicer.ConvertDocument(request, MockServicerContext())
+
+        record = await state_backend.get("tenant-a", response.document_id)
+        assert "mapping_id" not in record.metadata
+
+    @pytest.mark.asyncio
+    async def test_unknown_mapping_is_rejected_listing_the_registered_ones(
+        self, servicer, mock_dispatch, state_backend
+    ):
+        request = ingestion_pb2.ConvertDocumentRequest(
+            tenant_context=common_pb2.TenantContext(tenant_id="tenant-a"), content=b"{}", mapping="owasp-asvs-4.0"
+        )
+        context = MockServicerContext()
+
+        with pytest.raises(grpc.RpcError):
+            await servicer.ConvertDocument(request, context)
+
+        assert context.abort_code == grpc.StatusCode.INVALID_ARGUMENT
+        assert context.abort_details == (
+            "Unknown mapping 'owasp-asvs-4.0'. Registered mappings: mitre-attack-enterprise-17.1-techniques-xlsx, "
+            "nist-sp800-53r5-catalog-xlsx, owasp-asvs-5.0.0-json."
+        )
+        mock_dispatch.dispatch.assert_not_called()
+        assert (await state_backend.list_documents("tenant-a", 10, ""))[0] == []
+
+    @pytest.mark.asyncio
+    async def test_unknown_mapping_is_echoed_truncated(self, servicer):
+        request = ingestion_pb2.ConvertDocumentRequest(
+            tenant_context=common_pb2.TenantContext(tenant_id="tenant-a"), content=b"{}", mapping="x" * 500
+        )
+        context = MockServicerContext()
+
+        with pytest.raises(grpc.RpcError):
+            await servicer.ConvertDocument(request, context)
+
+        assert "x" * 65 not in context.abort_details
+
+    @pytest.mark.asyncio
+    async def test_unknown_mapping_on_a_server_without_mappings(self, settings, state_backend, mock_dispatch):
+        servicer = IngestionServiceServicer(
+            settings=settings, state_backend=state_backend, dispatch_backend=mock_dispatch, mappings=MappingRegistry({})
+        )
+        request = ingestion_pb2.ConvertDocumentRequest(
+            tenant_context=common_pb2.TenantContext(tenant_id="tenant-a"), content=b"{}", mapping="any"
+        )
+        context = MockServicerContext()
+
+        with pytest.raises(grpc.RpcError):
+            await servicer.ConvertDocument(request, context)
+
+        assert context.abort_details == "Unknown mapping 'any'. No mappings are registered on this server."
 
 
 class TestGetDocument:

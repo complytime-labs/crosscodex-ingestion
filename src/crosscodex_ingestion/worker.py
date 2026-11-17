@@ -2,9 +2,9 @@
 
 This module provides the core run_conversion function that coordinates:
 1. Input resolution (fetch URL or use provided bytes)
-2. Format validation
+2. Format validation (structured sources: confirmed against the request's mapping)
 3. Content hash verification
-4. Document conversion via Docling
+4. Conversion via Docling, or via the structured worker for a structured source
 5. Storage of structured output
 6. Cryptographic attestation
 7. Audit event publishing
@@ -25,10 +25,19 @@ from opentelemetry import trace
 from crosscodex_ingestion.attestation import AttestationManager
 from crosscodex_ingestion.audit import AuditPublisher
 from crosscodex_ingestion.config import IngestionSettings
-from crosscodex_ingestion.converter import ConversionError, ConversionTimeout, DocumentLimitError, convert_document
+from crosscodex_ingestion.converter import (
+    ConversionError,
+    ConversionTimeout,
+    DocumentLimitError,
+    convert_document,
+    convert_structured,
+)
+from crosscodex_ingestion.mapping import Mapping, MappingRegistry
 from crosscodex_ingestion.metrics import ACTIVE_CONVERSIONS, DURATION, ERRORS_TOTAL, REQUESTS_TOTAL
 from crosscodex_ingestion.output_schema import SCHEMA_VERSION, OutputSchemaError, validate_output
 from crosscodex_ingestion.security import (
+    STRUCTURED_FORMATS,
+    confirm_structured_format,
     fetch_url,
     sniff_format,
     validate_content_hash,
@@ -37,6 +46,7 @@ from crosscodex_ingestion.security import (
 )
 from crosscodex_ingestion.state import StateBackend
 from crosscodex_ingestion.storage import StorageBackend
+from crosscodex_ingestion.structured import StructuredSourceError
 
 logger = logging.getLogger(__name__)
 
@@ -62,9 +72,18 @@ SHUTDOWN_ERROR = {
 }
 
 
-def _fetch_source(source_uri: str, settings: IngestionSettings) -> tuple[bytes, str]:
+class MappingSkewError(Exception):
+    """The request's mapping is not registered on this worker with the hash the service validated.
+
+    Only possible when the service and the worker are different deployments (distributed mode, or a
+    rollout in progress); the conversion fails as retryable rather than using another mapping.
+    """
+
+
+def _fetch_source(source_uri: str, settings: IngestionSettings, expected_format: str | None) -> tuple[bytes, str]:
     """Validate and download *source_uri*; return (bytes, detected_format).
 
+    *expected_format* is a mapping's format: the download is confirmed against it afterwards.
     Blocking (DNS, HTTP); call via asyncio.to_thread.
     """
     validate_url(source_uri)
@@ -73,8 +92,61 @@ def _fetch_source(source_uri: str, settings: IngestionSettings) -> tuple[bytes, 
         max_bytes=settings.max_url_bytes,
         timeout=settings.url_timeout,
         max_redirects=settings.max_redirects,
+        expected_format=expected_format,
     ) as (file_path, file_format):
         return Path(file_path).read_bytes(), file_format
+
+
+def _request_mapping(metadata: dict, mappings: MappingRegistry) -> Mapping | None:
+    """The mapping the request named (metadata mapping_id), checked against the hash the service recorded."""
+    mapping_id = metadata.get("mapping_id")
+    if not mapping_id:
+        return None
+    mapping = mappings.get(mapping_id)
+    if mapping is None or mapping.sha256 != metadata.get("mapping_sha256"):
+        found = "is not registered" if mapping is None else "has different content"
+        raise MappingSkewError(
+            f"Mapping {mapping_id!r} {found} on the worker that ran this conversion (the service and the worker run "
+            "different mapping sets, e.g. during a deployment); resubmit the document."
+        )
+    return mapping
+
+
+def _check_format(
+    content: bytes,
+    mapping: Mapping | None,
+    detected_format: str,
+    allowed_formats: set[str],
+    mime_type: str,
+    source_uri: str,
+    mappings: MappingRegistry,
+) -> str:
+    """The validated format: the mapping's, confirmed by the bytes; or the sniffed one, which must not need a mapping.
+
+    Blocking (reads the whole input); call via asyncio.to_thread.
+    """
+    if mapping:
+        validated = confirm_structured_format(content, mapping.id, mapping.format)
+        if validated not in allowed_formats:
+            raise ValueError(f"Detected format {validated!r} is not in allowed formats: {sorted(allowed_formats)}")
+        return validated
+    validated = validate_format(content, detected_format, allowed_formats, mime_type, source_uri)
+    if validated in STRUCTURED_FORMATS:
+        raise _missing_mapping(validated, mappings)
+    return validated
+
+
+def _missing_mapping(detected_format: str, mappings: MappingRegistry) -> ValueError:
+    registered = mappings.ids()
+    known = (
+        f"Registered mappings: {', '.join(registered)}."
+        if registered
+        else 'No mappings are registered on this server; an operator must add one (README "Structured sources").'
+    )
+    return ValueError(
+        f"The input is {detected_format}, which is read through a mapping: set ConvertDocumentRequest.mapping to the "
+        f"ID of a registered mapping. {known}"
+    )
 
 
 async def record_failure(
@@ -86,8 +158,13 @@ async def record_failure(
     error: dict,
     error_type: str,
     document_format: str,
+    audit_error: dict | None = None,
 ) -> None:
-    """Mark a document FAILED with *error*, count it, and publish the audit event."""
+    """Mark a document FAILED with *error*, count it, and publish the audit event.
+
+    *audit_error*, when given, is published instead of *error*: the same failure without the
+    caller's data, which only the caller gets (through GetDocument).
+    """
     ERRORS_TOTAL.labels(error_type=error_type).inc()
     REQUESTS_TOTAL.labels(format=document_format, status="failed").inc()
 
@@ -104,7 +181,7 @@ async def record_failure(
             "document_id": document_id,
             "tenant_id": tenant_id,
             "status": "failed",
-            "error": error,
+            "error": audit_error or error,
         },
         trace_id=metadata.get("correlation_id", ""),
         span_id="",
@@ -122,16 +199,18 @@ async def run_conversion(
     storage: StorageBackend,
     attestation: AttestationManager | None,
     audit: AuditPublisher,
+    mappings: MappingRegistry,
 ) -> None:
     """Run the document conversion pipeline.
 
     This function orchestrates the entire conversion workflow:
     1. Updates state to RUNNING
     2. Resolves input (fetch URL or use provided bytes)
-    3. Validates format against allowed formats
+    3. Validates format against allowed formats (with a mapping: confirms the mapping's format)
     4. Validates content hash (if provided in metadata)
     5. Writes bytes to temp file
-    6. Calls convert_document (subprocess isolation) and validates its output against the schema
+    6. Calls convert_document, or convert_structured with the request's mapping (subprocess isolation),
+       and validates its output against the schema
     7. Uploads structured JSON to storage
     8. Creates cryptographic attestation link (if enabled)
     9. Uploads attestation to storage (if enabled)
@@ -162,6 +241,9 @@ async def run_conversion(
         Attestation manager for cryptographic signing (optional).
     audit : AuditPublisher
         Audit event publisher.
+    mappings : MappingRegistry
+        Mappings registered on this worker; metadata["mapping_id"] and ["mapping_sha256"] name the
+        request's mapping, as validated by the service.
 
     Returns
     -------
@@ -180,6 +262,8 @@ async def run_conversion(
         logger.info("Starting conversion for document %s (tenant %s)", document_id, tenant_id)
         await state.update(tenant_id, document_id, status=JOB_STATUS_RUNNING)
 
+        mapping = _request_mapping(metadata, mappings)
+
         # Step 2: Resolve input
         input_bytes: bytes
         detected_format: str
@@ -191,7 +275,9 @@ async def run_conversion(
                 span.set_attribute("source.uri", source_uri)
 
                 logger.info("Fetching document from URL: %s", source_uri)
-                input_bytes, detected_format = await asyncio.to_thread(_fetch_source, source_uri, settings)
+                input_bytes, detected_format = await asyncio.to_thread(
+                    _fetch_source, source_uri, settings, mapping.format if mapping else None
+                )
                 span.set_attribute("document.size_bytes", len(input_bytes))
                 span.set_attribute("document.format", detected_format)
 
@@ -199,10 +285,14 @@ async def run_conversion(
             # Use provided bytes
             input_bytes = content
 
-            # Sniff format from bytes
+            # Sniff format from bytes; a mapping's format is confirmed below instead.
             mime_type = metadata.get("mime_type", "")
             source_uri_fallback = metadata.get("source_uri", "")
-            detected_format = sniff_format(input_bytes, mime_type, source_uri_fallback)
+            detected_format = (
+                mapping.format
+                if mapping
+                else await asyncio.to_thread(sniff_format, input_bytes, mime_type, source_uri_fallback)
+            )
 
         else:
             raise ValueError("Either content or source_uri must be provided")
@@ -219,12 +309,16 @@ async def run_conversion(
             mime_type = metadata.get("mime_type", "")
             source_uri_for_validation = source_uri or metadata.get("source_uri", "")
 
-            validated_format = validate_format(
+            # Reads the untrusted bytes in this (unsandboxed) process: keep it off the event loop.
+            validated_format = await asyncio.to_thread(
+                _check_format,
                 input_bytes,
+                mapping,
                 detected_format,
                 allowed_formats_set,
                 mime_type,
                 source_uri_for_validation,
+                mappings,
             )
             span.set_attribute("document.validated_format", validated_format)
 
@@ -251,12 +345,13 @@ async def run_conversion(
             span.set_attribute("document.size_bytes", len(input_bytes))
 
             logger.info("Converting document %s (format: %s)", document_id, validated_format)
-            # Awaits the Docling subprocess; cancelling this task kills the subprocess.
-            conversion_result: dict[str, Any] = await convert_document(
-                str(temp_file_path),
-                validated_format,
-                settings,
-            )
+            # Awaits the worker subprocess; cancelling this task kills the subprocess.
+            conversion_result: dict[str, Any]
+            if mapping:
+                span.set_attribute("mapping.id", mapping.id)
+                conversion_result = await convert_structured(str(temp_file_path), mapping, settings)
+            else:
+                conversion_result = await convert_document(str(temp_file_path), validated_format, settings)
 
         # The output schema is the contract with consumers: nothing that breaks it is stored.
         validate_output(conversion_result)
@@ -317,6 +412,9 @@ async def run_conversion(
                     "tenant_id": tenant_id,
                     "format": validated_format,
                 }
+                if mapping:
+                    byproducts["mapping_id"] = mapping.id
+                    byproducts["mapping_sha256"] = mapping.sha256
 
                 link = attestation.create_link(
                     step_name="convert-document",
@@ -373,8 +471,15 @@ async def run_conversion(
         REQUESTS_TOTAL.labels(format=validated_format, status="completed").inc()
 
     except Exception as exc:
-        # Handle all errors by updating state to FAILED
-        logger.exception("Conversion failed for document %s", document_id)
+        # Handle all errors by updating state to FAILED. Problems and some limit messages of a
+        # structured source quote the caller's data, so the log (like the audit event below) gets
+        # them without source values.
+        if isinstance(exc, StructuredSourceError):
+            logger.warning("Conversion failed for document %s: %s", document_id, exc.redacted()[0])
+        elif isinstance(exc, DocumentLimitError):
+            logger.warning("Conversion failed for document %s: %s", document_id, exc.redacted_message)
+        else:
+            logger.exception("Conversion failed for document %s", document_id)
 
         # Client-visible messages: specific only for failures the caller caused and can fix
         # (ValueError family, our own timeout text); generic for everything else so internals
@@ -394,6 +499,10 @@ async def run_conversion(
             error_code = ERROR_CODE_INVALID_ARGUMENT
             error_message = str(exc)
             error_type = "invalid_argument"
+        elif isinstance(exc, MappingSkewError):
+            error_code = ERROR_CODE_UNAVAILABLE
+            error_message = str(exc)
+            error_type = "mapping_skew"
         elif isinstance(exc, ConversionTimeout):
             error_code = ERROR_CODE_RESOURCE_EXHAUSTED
             error_message = str(exc)
@@ -418,8 +527,17 @@ async def run_conversion(
             if first.element_id is not None:
                 details["element_id"] = first.element_id
             error_dict["details"] = details
+        audit_error = None
+        if isinstance(exc, StructuredSourceError):
+            error_dict["details"] = exc.details
+            redacted_message, redacted_details = exc.redacted()
+            audit_error = {"code": error_code, "message": redacted_message, "details": redacted_details}
+        elif isinstance(exc, DocumentLimitError):
+            audit_error = {"code": error_code, "message": exc.redacted_message}
 
-        await record_failure(state, audit, tenant_id, document_id, metadata, error_dict, error_type, validated_format)
+        await record_failure(
+            state, audit, tenant_id, document_id, metadata, error_dict, error_type, validated_format, audit_error
+        )
 
     except asyncio.CancelledError:
         # Only dispatch shutdown cancels conversions (after its grace period expires).

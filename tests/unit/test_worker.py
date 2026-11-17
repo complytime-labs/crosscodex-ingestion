@@ -2,6 +2,7 @@
 
 import asyncio
 import json
+import threading
 import time
 from pathlib import Path
 from unittest.mock import AsyncMock, Mock, patch
@@ -10,16 +11,21 @@ import pytest
 
 from crosscodex_ingestion.config import IngestionSettings
 from crosscodex_ingestion.converter import ConversionError, ConversionTimeout, DocumentLimitError
+from crosscodex_ingestion.mapping import load_registry
 from crosscodex_ingestion.output_schema import SCHEMA_VERSION
 from crosscodex_ingestion.state import DocumentRecord, MemoryStateBackend
 from crosscodex_ingestion.storage import FilesystemStorage
+from crosscodex_ingestion.structured import StructuredSourceError
 from crosscodex_ingestion.worker import (
     ERROR_CODE_UNAVAILABLE,
     JOB_STATUS_FAILED,
     SHUTDOWN_ERROR,
     run_conversion,
 )
-from tests.unit.output_samples import conforming_output
+from tests.unit.output_samples import conforming_output, structured_output
+
+REGISTRY = load_registry("")
+ASVS = REGISTRY.get("owasp-asvs-5.0.0-json")
 
 
 @pytest.fixture
@@ -87,6 +93,7 @@ async def test_run_conversion_with_bytes_successful(
             storage=storage_backend,
             attestation=None,
             audit=audit_publisher,
+            mappings=REGISTRY,
         )
 
     # Verify state transitions
@@ -148,6 +155,7 @@ async def test_run_conversion_with_url_successful(settings, state_backend, stora
                 storage=storage_backend,
                 attestation=None,
                 audit=audit_publisher,
+                mappings=REGISTRY,
             )
 
     # Verify validate_url was called
@@ -187,6 +195,7 @@ async def test_run_conversion_format_validation_failure(settings, state_backend,
             storage=storage_backend,
             attestation=None,
             audit=audit_publisher,
+            mappings=REGISTRY,
         )
 
     # Verify state is FAILED with error code 1 (INVALID_ARGUMENT)
@@ -231,6 +240,7 @@ async def test_run_conversion_timeout(settings, state_backend, storage_backend, 
             storage=storage_backend,
             attestation=None,
             audit=audit_publisher,
+            mappings=REGISTRY,
         )
 
     # Verify state is FAILED with RESOURCE_EXHAUSTED error
@@ -277,6 +287,7 @@ async def test_run_conversion_storage_failure(settings, state_backend, storage_b
             storage=storage_backend,
             attestation=None,
             audit=audit_publisher,
+            mappings=REGISTRY,
         )
 
     # Verify state is FAILED with INTERNAL error
@@ -328,6 +339,7 @@ async def test_run_conversion_with_attestation(settings, state_backend, storage_
             storage=storage_backend,
             attestation=mock_attestation,
             audit=audit_publisher,
+            mappings=REGISTRY,
         )
 
     # Verify attestation.create_link was called
@@ -380,6 +392,7 @@ async def test_run_conversion_audit_event_published(settings, state_backend, sto
             storage=storage_backend,
             attestation=None,
             audit=audit_publisher,
+            mappings=REGISTRY,
         )
 
     # Verify audit.publish was called
@@ -429,6 +442,7 @@ async def test_run_conversion_temp_files_cleaned_on_success(settings, state_back
             storage=storage_backend,
             attestation=None,
             audit=audit_publisher,
+            mappings=REGISTRY,
         )
 
     # Verify conversion succeeded
@@ -468,6 +482,7 @@ async def test_run_conversion_temp_files_cleaned_on_failure(settings, state_back
             storage=storage_backend,
             attestation=None,
             audit=audit_publisher,
+            mappings=REGISTRY,
         )
 
     # Verify state is FAILED
@@ -518,6 +533,7 @@ async def test_run_conversion_hash_validation(settings, state_backend, storage_b
             storage=storage_backend,
             attestation=None,
             audit=audit_publisher,
+            mappings=REGISTRY,
         )
 
     # Verify validate_content_hash was called
@@ -540,6 +556,7 @@ async def _run_pdf_conversion(settings, state_backend, storage_backend, audit_pu
         storage=storage_backend,
         attestation=None,
         audit=audit_publisher,
+        mappings=REGISTRY,
     )
 
 
@@ -616,7 +633,9 @@ async def test_max_redirects_setting_is_passed_to_fetch_url(state_backend, stora
             settings, state_backend, storage_backend, audit_publisher, source_uri="https://example.com/a.pdf"
         )
 
-    mock_fetch.assert_called_once_with("https://example.com/a.pdf", max_bytes=1234, timeout=7, max_redirects=2)
+    mock_fetch.assert_called_once_with(
+        "https://example.com/a.pdf", max_bytes=1234, timeout=7, max_redirects=2, expected_format=None
+    )
 
 
 async def _failed_error_with(convert_side_effect, settings, state_backend, storage_backend, audit_publisher):
@@ -797,6 +816,7 @@ async def test_non_conforming_output_is_never_attested(
             storage=storage_backend,
             attestation=attestation,
             audit=audit_publisher,
+            mappings=REGISTRY,
         )
 
     assert (await state_backend.get("tenant-t", "doc-t")).status == JOB_STATUS_FAILED
@@ -838,3 +858,236 @@ async def test_dropped_content_is_logged_and_kept_in_the_stored_output(
     assert stored["metadata"]["dropped"] == output["metadata"]["dropped"]
     warnings = [r.getMessage() for r in caplog.records if r.levelname == "WARNING"]
     assert any("doc-t" in m and "table" in m and "page 4" in m and "exported no content" in m for m in warnings)
+
+
+ASVS_JSON = b'{"Requirements": [{"Shortcode": "V1", "Description": "Verify."}]}'
+
+
+async def _run_structured(
+    state_backend,
+    storage_backend,
+    audit_publisher,
+    *,
+    content=ASVS_JSON,
+    metadata=None,
+    settings=None,
+    attestation=None,
+    source_uri=None,
+):
+    """Submit a PENDING record and run the pipeline; by default for ASVS JSON with the ASVS mapping."""
+    if metadata is None:
+        metadata = {"mapping_id": ASVS.id, "mapping_sha256": ASVS.sha256}
+    await state_backend.create(DocumentRecord(document_id="doc-s", tenant_id="tenant-s", status=1, metadata=metadata))
+    await run_conversion(
+        document_id="doc-s",
+        tenant_id="tenant-s",
+        content=None if source_uri else content,
+        source_uri=source_uri,
+        metadata=metadata,
+        settings=settings or IngestionSettings(),
+        state=state_backend,
+        storage=storage_backend,
+        attestation=attestation,
+        audit=audit_publisher,
+        mappings=REGISTRY,
+    )
+    return await state_backend.get("tenant-s", "doc-s")
+
+
+class TestStructuredConversion:
+    async def test_mapping_routes_to_the_structured_worker_and_is_attested(
+        self, state_backend, storage_backend, audit_publisher
+    ):
+        attestation = Mock()
+        attestation.create_link.return_value = {"signed": {}, "signatures": []}
+
+        with (
+            patch("crosscodex_ingestion.worker.convert_structured", return_value=structured_output()) as structured,
+            patch("crosscodex_ingestion.worker.convert_document") as document,
+        ):
+            record = await _run_structured(state_backend, storage_backend, audit_publisher, attestation=attestation)
+
+        assert record.status == 3
+        assert structured.call_args.args[1] is ASVS
+        document.assert_not_called()
+        byproducts = attestation.create_link.call_args.kwargs["byproducts"]
+        assert (byproducts["format"], byproducts["mapping_id"], byproducts["mapping_sha256"]) == (
+            "json",
+            ASVS.id,
+            ASVS.sha256,
+        )
+
+    async def test_documents_are_attested_without_mapping_fields(self, state_backend, storage_backend, audit_publisher):
+        attestation = Mock()
+        attestation.create_link.return_value = {"signed": {}, "signatures": []}
+
+        with patch("crosscodex_ingestion.worker.convert_document", return_value=conforming_output()):
+            await _run_structured(
+                state_backend,
+                storage_backend,
+                audit_publisher,
+                content=b"%PDF-1.4",
+                metadata={},
+                attestation=attestation,
+            )
+
+        assert "mapping_id" not in attestation.create_link.call_args.kwargs["byproducts"]
+
+    @pytest.mark.parametrize(
+        "metadata",
+        [
+            {"mapping_id": ASVS.id, "mapping_sha256": "0" * 64},
+            {"mapping_id": "retired-mapping", "mapping_sha256": "0" * 64},
+        ],
+    )
+    async def test_mapping_this_worker_lacks_or_hashes_differently_fails_retryable(
+        self, state_backend, storage_backend, audit_publisher, metadata
+    ):
+        with patch("crosscodex_ingestion.worker.convert_structured") as structured:
+            record = await _run_structured(state_backend, storage_backend, audit_publisher, metadata=metadata)
+
+        structured.assert_not_called()
+        assert record.error["code"] == ERROR_CODE_UNAVAILABLE
+        assert metadata["mapping_id"] in record.error["message"]
+        assert "resubmit" in record.error["message"]
+
+    async def test_structured_input_without_mapping_fails_listing_the_mappings(
+        self, state_backend, storage_backend, audit_publisher
+    ):
+        with patch("crosscodex_ingestion.worker.convert_document") as document:
+            record = await _run_structured(
+                state_backend, storage_backend, audit_publisher, metadata={"mime_type": "application/json"}
+            )
+
+        document.assert_not_called()
+        assert record.error["code"] == 1
+        assert record.error["message"] == (
+            "The input is json, which is read through a mapping: set ConvertDocumentRequest.mapping to the ID of a "
+            "registered mapping. Registered mappings: mitre-attack-enterprise-17.1-techniques-xlsx, "
+            "nist-sp800-53r5-catalog-xlsx, owasp-asvs-5.0.0-json."
+        )
+
+    async def test_input_of_another_format_than_the_mapping_reads_fails(
+        self, state_backend, storage_backend, audit_publisher
+    ):
+        attack = REGISTRY.get("mitre-attack-enterprise-17.1-techniques-xlsx")
+        metadata = {"mapping_id": attack.id, "mapping_sha256": attack.sha256}
+
+        record = await _run_structured(state_backend, storage_backend, audit_publisher, metadata=metadata)
+
+        assert record.error == {"code": 1, "message": f"Mapping '{attack.id}' reads xlsx, but the input is json."}
+
+    async def test_structured_format_not_allowed_fails(self, state_backend, storage_backend, audit_publisher):
+        record = await _run_structured(
+            state_backend, storage_backend, audit_publisher, settings=IngestionSettings(allowed_formats="pdf")
+        )
+
+        assert record.error["code"] == 1
+        assert "'json' is not in allowed formats" in record.error["message"]
+
+    async def test_source_problems_reach_the_client_with_details(self, state_backend, storage_backend, audit_publisher):
+        error = StructuredSourceError(ASVS.id, ["Node at Requirements[0] has no ID."], ["Requirements[0]"], 1)
+
+        with patch("crosscodex_ingestion.worker.convert_structured", side_effect=error):
+            record = await _run_structured(state_backend, storage_backend, audit_publisher)
+
+        assert record.error == {
+            "code": 1,
+            "message": str(error),
+            "details": {
+                "mapping": ASVS.id,
+                "count": "1",
+                "problem.1": "Node at Requirements[0] has no ID.",
+                "location.1": "Requirements[0]",
+            },
+        }
+
+    async def test_audit_and_logs_get_the_problems_without_source_values(
+        self, state_backend, storage_backend, audit_publisher, caplog
+    ):
+        """Problems quote the caller's data: only the caller (the state record) gets them in full."""
+        error = StructuredSourceError(
+            ASVS.id, ["Duplicate ID 'tenant-secret' at Requirements[0] and Requirements[1]."], ["Requirements[1]"], 1
+        )
+
+        with (
+            patch("crosscodex_ingestion.worker.convert_structured", side_effect=error),
+            caplog.at_level("DEBUG"),
+        ):
+            record = await _run_structured(state_backend, storage_backend, audit_publisher)
+
+        assert "tenant-secret" in record.error["message"]
+        audit_error = audit_publisher.publish.call_args.kwargs["event"]["error"]
+        message, details = error.redacted()
+        assert audit_error == {"code": 1, "message": message, "details": details}
+        assert "tenant-secret" not in str(audit_error)
+        assert not any("tenant-secret" in r.getMessage() or r.exc_info for r in caplog.records)
+        assert any("doc-s" in r.getMessage() and "Requirements[1]" in r.getMessage() for r in caplog.records)
+
+    async def test_limit_error_values_stay_out_of_audit_and_logs(
+        self, state_backend, storage_backend, audit_publisher, caplog
+    ):
+        error = DocumentLimitError(
+            "ZIP entry 'tenant-secret' expands 9 bytes from 1, more than MAX_XLSX_COMPRESSION_RATIO (2) times.",
+            redacted_message="A ZIP entry expands 9 bytes from 1, more than MAX_XLSX_COMPRESSION_RATIO (2) times.",
+        )
+
+        with (
+            patch("crosscodex_ingestion.worker.convert_structured", side_effect=error),
+            caplog.at_level("DEBUG"),
+        ):
+            record = await _run_structured(state_backend, storage_backend, audit_publisher)
+
+        assert record.error == {"code": 5, "message": str(error)}
+        audit_error = audit_publisher.publish.call_args.kwargs["event"]["error"]
+        assert audit_error == {"code": 5, "message": error.redacted_message}
+        assert not any("tenant-secret" in r.getMessage() or r.exc_info for r in caplog.records)
+        assert any("doc-s" in r.getMessage() and "MAX_XLSX_COMPRESSION_RATIO" in r.getMessage() for r in caplog.records)
+
+    async def test_format_checks_run_off_the_event_loop(self, state_backend, storage_backend, audit_publisher):
+        """They read untrusted bytes in the service process; the event loop must keep serving RPCs."""
+        threads = []
+
+        def confirm(*args):
+            threads.append(threading.current_thread())
+            return "json"
+
+        with (
+            patch("crosscodex_ingestion.worker.confirm_structured_format", side_effect=confirm),
+            patch("crosscodex_ingestion.worker.convert_structured", return_value=structured_output()),
+        ):
+            await _run_structured(state_backend, storage_backend, audit_publisher)
+
+        assert threads
+        assert threads[0] is not threading.main_thread()
+
+    async def test_document_format_checks_run_off_the_event_loop(self, state_backend, storage_backend, audit_publisher):
+        threads = []
+
+        def validate(*args):
+            threads.append(threading.current_thread())
+            return "pdf"
+
+        with (
+            patch("crosscodex_ingestion.worker.validate_format", side_effect=validate),
+            patch("crosscodex_ingestion.worker.convert_document", return_value=conforming_output()),
+        ):
+            await _run_structured(state_backend, storage_backend, audit_publisher, content=b"%PDF-1.4", metadata={})
+
+        assert threads[0] is not threading.main_thread()
+
+    async def test_url_source_is_fetched_as_the_mapping_format(self, state_backend, storage_backend, audit_publisher):
+        with (
+            patch("crosscodex_ingestion.worker.validate_url"),
+            patch("crosscodex_ingestion.worker.fetch_url") as mock_fetch,
+            patch("crosscodex_ingestion.worker.convert_structured", return_value=structured_output()),
+            patch("pathlib.Path.read_bytes", return_value=ASVS_JSON),
+        ):
+            mock_fetch.return_value.__enter__ = Mock(return_value=("/tmp/x.json", "json"))
+            mock_fetch.return_value.__exit__ = Mock(return_value=False)
+            record = await _run_structured(
+                state_backend, storage_backend, audit_publisher, source_uri="https://example.org/download/1"
+            )
+
+        assert record.status == 3
+        assert mock_fetch.call_args.kwargs["expected_format"] == "json"
