@@ -1,0 +1,45 @@
+tests/fixtures/structured/NOTICE
+  s_3dc2ccefed391b::t_6e4c41ed202a0b 15-17
+tests/unit/test_mapping.py
+  s_3dc2ccefed391b::t_ac52b3aac0d43c 13-18,212
+  s_3dc2ccefed391b::t_5b36b0e0b4bec6 209-211,213-237
+tests/fixtures/structured/owasp-asvs-5.0.0-csv/expected.json
+  s_3dc2ccefed391b::t_1082d809a0f7cb 1-780
+tests/fixtures/structured/owasp-asvs-5.0.0-csv/input.csv
+  s_3dc2ccefed391b::t_55b5e428458b7c 1-50
+src/crosscodex_ingestion/structured.py
+  s_3dc2ccefed391b::t_7db3c2f80a1fbe 210-212,595,633-703,717-719,727,773,775-776,779-781,790,925-928
+src/crosscodex_ingestion/schemas/mapping-v1.schema.json
+  s_3dc2ccefed391b::t_7db3c2f80a1fbe 55-56,59-73
+docs/structured-sources.md
+  s_3dc2ccefed391b::t_6e4c41ed202a0b 30-40
+tests/unit/test_structured.py
+  s_3dc2ccefed391b::t_1082d809a0f7cb 1029
+  s_3dc2ccefed391b::t_ac52b3aac0d43c 1081,1106-1108
+  s_3dc2ccefed391b::t_5b36b0e0b4bec6 37,44,61-78,999-1028,1030-1080,1082-1105,1109-1120,1123-1136
+  s_3dc2ccefed391b::t_819e7a670328c1 1121-1122
+tests/integration/test_structured_e2e.py
+  s_3dc2ccefed391b::t_6e4c41ed202a0b 28
+tests/fixtures/structured/owasp-asvs-5.0.0-csv/PROVENANCE.md
+  s_3dc2ccefed391b::t_6e4c41ed202a0b 1-32
+README.md
+  s_3dc2ccefed391b::t_6e4c41ed202a0b 307-324,334,353-356
+src/crosscodex_ingestion/mappings/owasp-asvs-5.0.0-csv.yaml
+  s_3dc2ccefed391b::t_7db3c2f80a1fbe 1-20
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "08b87dd19502cb7bf4cc9886fb71ec0ea2b1f40c",
+  "prompts": {},
+  "sessions": {
+    "s_3dc2ccefed391b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8b71c523-057f-4aca-b595-80cb94dd7dda",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "LLM (riotbox) <llm@riotbox>"
+    }
+  }
+}
