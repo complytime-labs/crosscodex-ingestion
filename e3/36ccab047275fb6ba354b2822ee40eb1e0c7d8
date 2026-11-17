@@ -1,0 +1,25 @@
+tests/unit/test_security.py
+  s_bab5e8a23d9431::t_83d678bdbb0477 143,149,152
+  s_bab5e8a23d9431::t_65f185ab176fdc 130-142,144-148,150-151,153-154
+tests/unit/test_worker.py
+  s_bab5e8a23d9431::t_bf22f3c3e3a733 210
+  s_bab5e8a23d9431::t_793583a0a1d53a 211-244
+src/crosscodex_ingestion/security.py
+  s_bab5e8a23d9431::t_10c8d38d6192c4 311-312,314-315
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e336ccab047275fb6ba354b2822ee40eb1e0c7d8",
+  "prompts": {},
+  "sessions": {
+    "s_bab5e8a23d9431": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f4065acc-b4b8-41b8-b640-b895c147073e",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "LLM (riotbox) <llm@riotbox>"
+    }
+  }
+}
