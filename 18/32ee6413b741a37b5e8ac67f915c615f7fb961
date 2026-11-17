@@ -1,0 +1,25 @@
+docs/output-schema.md
+  s_a0bde113947a57::t_6c00073aa43579 64-66
+tests/unit/test_extractor.py
+  s_a0bde113947a57::t_1880d645cd38a4 557-594,596
+  s_a0bde113947a57::t_6c00073aa43579 595,597-608
+src/crosscodex_ingestion/extractor.py
+  s_a0bde113947a57::t_9fdbcbf546e501 491
+  s_a0bde113947a57::t_1a7b38a5104523 267,295,308-321,360,432-443
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "1832ee6413b741a37b5e8ac67f915c615f7fb961",
+  "prompts": {},
+  "sessions": {
+    "s_a0bde113947a57": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7cb8c2bb-7524-48f8-bfac-e8006c073f78",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "LLM (riotbox) <llm@riotbox>"
+    }
+  }
+}
