@@ -554,3 +554,55 @@ class TestExtractionConformsToSchema:
         }
 
         validate_output(output)
+
+
+class TestMarkdownPreamble:
+    """Text before the first heading must reach the output (issue #24)."""
+
+    def test_text_before_first_heading_is_top_level(self):
+        result = extract_elements(None, "Lead-in text.\n\nMore lead-in.\n\n# Intro\n\nBody.", "md")
+
+        assert [(e["type"], e["content"], e["parent_id"]) for e in result.elements][:2] == [
+            ("paragraph", "Lead-in text.", None),
+            ("paragraph", "More lead-in.", None),
+        ]
+        heading = next(e for e in result.elements if e["type"] == "heading")
+        body = next(e for e in result.elements if e["content"] == "Body.")
+        assert result.elements.index(heading) == 2
+        assert body["parent_id"] == heading["element_id"]
+        assert len({e["element_id"] for e in result.elements}) == len(result.elements)
+
+    def test_no_preamble_when_text_starts_with_heading(self):
+        result = extract_elements(None, "# Intro\n\nBody.", "md")
+
+        assert [e["type"] for e in result.elements] == ["heading", "paragraph"]
+
+    def test_text_before_first_section_in_pattern_tier_is_kept(self):
+        text = (
+            "Preface text.\n\n"
+            "Section 1. Introduction\n\nIntro body.\n\n"
+            "Section 2. Access Control\n\nAccess body.\n\n"
+            "Section 3. Audit Logging\n\nAudit body.\n"
+        )
+        result = extract_elements(None, text, "txt")
+
+        assert result.elements[0]["content"] == "Preface text."
+        assert result.elements[0]["type"] == "paragraph"
+        assert result.elements[0]["parent_id"] is None
+        assert sum(e["type"] == "heading" for e in result.elements) == 3
+
+    def test_headingless_text_is_still_fully_extracted(self):
+        result = extract_elements(None, "Only prose, but long enough.\n\nMore prose, also long enough.", "txt")
+
+        assert [e["content"] for e in result.elements] == [
+            "Only prose, but long enough.",
+            "More prose, also long enough.",
+        ]
+
+    def test_short_paragraphs_skipped_by_last_tier_are_recorded(self):
+        result = extract_elements(None, "Too short.\n\nThis paragraph has enough words to keep.", "txt")
+
+        assert [e["content"] for e in result.elements] == ["This paragraph has enough words to keep."]
+        assert result.metadata["dropped"] == [
+            {"type": "paragraph", "page": None, "reason": "paragraph has fewer than 5 words"}
+        ]

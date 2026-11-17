@@ -61,7 +61,9 @@ a trailing newline. The first violation is also returned as `Error.details` (`sc
 `location`, `element_index`, `element_id`).
 
 **Nothing is dropped silently.** The extractor lists what it doesn't emit in `metadata.dropped`:
-blank headings and tables whose Markdown export raised or came out empty. `run_conversion` logs each
+blank headings, tables whose Markdown export raised or came out empty, and paragraphs the plain-text
+fallback skips for having fewer than 5 words. Text before the first heading or section is emitted as
+top-level paragraphs (`parent_id: null`), not dropped. `run_conversion` logs each
 entry at WARNING with the document id; the subprocess can't log usefully, because its stderr is read
 only when it fails. A drop's `reason` names only the exception type, since exception messages may
 quote document text.

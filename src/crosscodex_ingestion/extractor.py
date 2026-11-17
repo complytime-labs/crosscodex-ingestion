@@ -65,7 +65,6 @@ class DocumentExtractor:
 
     def __init__(self) -> None:
         self.elements: list[dict] = []
-        self.discarded_content: list[str] = []
         self.dropped: list[dict] = []
         self.title: str | None = None
         self._element_counter = 0
@@ -265,15 +264,13 @@ class DocumentExtractor:
         stripped = re.sub(r"^#+\s*", "", text, flags=re.MULTILINE)
 
         # Tier 2: repeating-pattern auto-detection
-        if not self.elements and self.discarded_content:
+        if not self.elements:
             detected = self._detect_section_pattern(stripped)
             if detected:
-                self.discarded_content.clear()
                 self._parse_with_pattern(stripped, detected)
 
         # Tier 3: paragraph splitting fallback
         if not self.elements:
-            self.discarded_content.clear()
             self._parse_paragraphs(stripped)
 
     def _parse_headings(self, text: str) -> None:
@@ -295,6 +292,7 @@ class DocumentExtractor:
 
         current_heading_id = None  # Current heading for text content parent
         heading_stack: list[tuple[int, str]] = []  # (level, element_id)
+        preamble: list[str] = []  # Text before the first heading; emitted once a heading exists
 
         for line in lines:
             stripped = line.strip()
@@ -306,6 +304,20 @@ class DocumentExtractor:
                 title = match.group(2).strip()
                 if title in spurious_titles:
                     continue  # page artifact
+
+                for preamble_line in preamble:
+                    self.elements.append(
+                        {
+                            "element_id": self._next_element_id(),
+                            "type": "paragraph",
+                            "content": preamble_line,
+                            "page": None,
+                            "level": None,
+                            "parent_id": None,
+                            "style": {},
+                        }
+                    )
+                preamble.clear()
 
                 level = len(match.group(1))  # number of # chars
                 element_id = self._next_element_id()
@@ -345,7 +357,7 @@ class DocumentExtractor:
                     }
                 )
             else:
-                self.discarded_content.append(f"PREAMBLE: {stripped}")
+                preamble.append(stripped)
 
     def _detect_section_pattern(self, text: str) -> re.Pattern | None:
         """Auto-detect repeating section numbering pattern.
@@ -417,7 +429,18 @@ class DocumentExtractor:
             elif current_id:
                 current_text.append(line)
             else:
-                self.discarded_content.append(f"PREAMBLE: {line}")
+                # Text before the first section is kept as top-level paragraphs.
+                self.elements.append(
+                    {
+                        "element_id": self._next_element_id(),
+                        "type": "paragraph",
+                        "content": line,
+                        "page": None,
+                        "level": None,
+                        "parent_id": None,
+                        "style": {},
+                    }
+                )
 
         # Save final section
         if current_id:
@@ -465,6 +488,7 @@ class DocumentExtractor:
 
         for para in merged:
             if len(para.split()) < 5:
+                self.dropped.append({"type": "paragraph", "page": None, "reason": "paragraph has fewer than 5 words"})
                 continue
             element_id = self._next_element_id()
             self.elements.append(
@@ -529,8 +553,6 @@ def extract_elements(
 
     # Fallback: markdown pattern cascade
     if not extractor.elements:
-        if extractor.discarded_content:
-            extractor.discarded_content.clear()
         if markdown is None:
             # Exported only here: Docling renders tables in it with the serializer the typed pass
             # uses, so one unexportable table would otherwise fail a conversion the typed pass
