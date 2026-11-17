@@ -1,0 +1,21 @@
+README.md
+  s_4adc9dbe8d486a::t_d3272b6b8a8923 21,106,116,133-151,155-156,189-418,452-453,612,620-621
+docs/structured-sources.md
+  s_4adc9dbe8d486a::t_621d126cc621c6 1-183
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "ed58ee2f4bb340cdfc6abdcf4f5c9795bbe74b21",
+  "prompts": {},
+  "sessions": {
+    "s_4adc9dbe8d486a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4f6cdd22-c6b7-4995-b091-5578b9b8f0aa",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "LLM (riotbox) <llm@riotbox>"
+    }
+  }
+}
