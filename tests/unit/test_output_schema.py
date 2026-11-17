@@ -7,7 +7,7 @@ import pytest
 from jsonschema import Draft202012Validator
 
 from crosscodex_ingestion.output_schema import SCHEMA_VERSION, OutputSchemaError, validate_output
-from tests.unit.output_samples import conforming_output
+from tests.unit.output_samples import conforming_output, structured_output
 
 
 def _violation(output: dict) -> OutputSchemaError:
@@ -247,3 +247,73 @@ class TestReferenceViolations:
         assert error.violations[0].location == "metadata.element_count"
         assert error.violations[0].element_index is None
         assert "2" in error.violations[0].reason
+
+
+class TestStructuredSourceFields:
+    """Schema 1.1 adds source ids, titles, properties and metadata.source, all optional."""
+
+    def test_this_service_emits_1_1(self):
+        assert SCHEMA_VERSION == "1.1"
+
+    def test_structured_output_passes(self):
+        validate_output(structured_output())
+
+    def test_an_output_without_the_new_fields_still_passes(self):
+        output = conforming_output()
+        assert "id" not in output["elements"][0]
+
+        validate_output(output)
+
+    def test_heading_cannot_carry_a_title(self):
+        output = structured_output()
+        output["elements"][0]["title"] = "Password Security"
+
+        assert _violation(output).violations[0].element_index == 0
+
+    @pytest.mark.parametrize("blank", ["", "   "])
+    def test_blank_source_id_is_rejected(self, blank):
+        output = structured_output()
+        output["elements"][2]["id"] = blank
+
+        assert _violation(output).violations[0].location.startswith("elements[2]")
+
+    def test_property_values_must_be_strings(self):
+        output = structured_output()
+        output["elements"][2]["properties"]["level"] = 1
+
+        assert _violation(output).violations[0].element_index == 2
+
+    def test_property_names_must_be_identifiers(self):
+        output = structured_output()
+        output["elements"][2]["properties"] = {"Level 1": "x"}
+
+        assert _violation(output).violations[0].element_index == 2
+
+    def test_metadata_source_kind_must_be_structured(self):
+        output = structured_output()
+        output["metadata"]["source"]["kind"] = "document"
+
+        assert _violation(output).violations[0].location.startswith("metadata.source")
+
+    def test_mapping_sha256_must_be_a_hex_digest(self):
+        output = structured_output()
+        output["metadata"]["source"]["mapping"]["sha256"] = "not-a-digest"
+
+        assert _violation(output).violations[0].location == "metadata.source.mapping.sha256"
+
+    def test_duplicate_source_id_is_rejected_without_quoting_it(self):
+        output = structured_output()
+        output["elements"][2]["id"] = "V6.2"
+
+        error = _violation(output)
+
+        assert error.violations[0].element_index == 2
+        assert error.violations[0].location == "elements[2] (element_id 'e-003').id"
+        assert "elements[0]" in error.violations[0].reason
+        assert "V6.2" not in str(error)
+
+    def test_null_source_ids_may_repeat(self):
+        output = structured_output()
+        output["elements"][2]["id"] = None
+
+        validate_output(output)

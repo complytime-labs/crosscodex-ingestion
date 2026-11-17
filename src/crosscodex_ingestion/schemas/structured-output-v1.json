@@ -2,14 +2,14 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "urn:crosscodex-ingestion:structured-output:v1",
   "title": "CrossCodex Ingestion structured output",
-  "description": "The document stored at structured_json_uri. Three rules are outside JSON Schema and are checked by the service in code: element_id values are unique, a non-null parent_id names an earlier element, and metadata.element_count equals the number of elements.",
+  "description": "The document stored at structured_json_uri. Four rules are outside JSON Schema and are checked by the service in code: element_id values are unique, non-null id values are unique, a non-null parent_id names an earlier element, and metadata.element_count equals the number of elements.",
   "type": "object",
   "required": ["schema_version", "elements", "metadata"],
   "additionalProperties": false,
   "properties": {
     "schema_version": {
       "description": "MAJOR.MINOR version the output conforms to. This file validates every released 1.x: minors only add optional fields.",
-      "enum": ["1.0"]
+      "enum": ["1.0", "1.1"]
     },
     "elements": {
       "description": "Document content in reading order.",
@@ -56,6 +56,20 @@
           "description": "Reserved; always empty.",
           "type": "object",
           "additionalProperties": false
+        },
+        "id": {
+          "description": "Since 1.1. The element's ID in the source (a structured source's node ID), unique among non-null ids; null on an element that has no source ID of its own. Absent when the source has no IDs.",
+          "oneOf": [{ "$ref": "#/$defs/nonBlankString" }, { "type": "null" }]
+        },
+        "title": {
+          "description": "Since 1.1. The source node's title, on a non-heading element whose content is not the title. A heading's title is its content.",
+          "$ref": "#/$defs/nonBlankString"
+        },
+        "properties": {
+          "description": "Since 1.1. Extra source fields the mapping names: lowercase identifier -> non-blank string.",
+          "type": "object",
+          "propertyNames": { "pattern": "^[a-z][a-z0-9_]{0,63}(?![\\s\\S])" },
+          "additionalProperties": { "$ref": "#/$defs/nonBlankString" }
         }
       },
       "if": { "properties": { "type": { "const": "heading" } } },
@@ -66,7 +80,8 @@
             "type": "integer",
             "minimum": 1,
             "maximum": 100
-          }
+          },
+          "title": false
         }
       },
       "else": {
@@ -92,14 +107,14 @@
       "additionalProperties": false,
       "properties": {
         "element_count": { "description": "Length of elements.", "type": "integer", "minimum": 0 },
-        "detected_format": { "description": "Validated input format, e.g. pdf, html, docx, txt.", "type": "string" },
+        "detected_format": { "description": "Validated input format, e.g. pdf, html, docx, txt, json, csv, xlsx.", "type": "string" },
         "page_count": {
-          "description": "Pages in the source; null for unpaginated formats (HTML, DOCX, text).",
+          "description": "Pages in the source; null for unpaginated formats (HTML, DOCX, text, structured sources).",
           "type": ["integer", "null"],
           "minimum": 1
         },
         "title": {
-          "description": "The document's title as Docling labelled it, or null.",
+          "description": "The document's title as Docling labelled it, or a structured source's mapping title; or null.",
           "oneOf": [{ "$ref": "#/$defs/nonBlankString" }, { "type": "null" }]
         },
         "processing_time_ms": {
@@ -107,7 +122,38 @@
           "type": "number",
           "minimum": 0
         },
-        "dropped": { "type": "array", "items": { "$ref": "#/$defs/dropped" } }
+        "dropped": { "type": "array", "items": { "$ref": "#/$defs/dropped" } },
+        "source": { "$ref": "#/$defs/structuredSource" }
+      }
+    },
+    "structuredSource": {
+      "description": "Since 1.1. Present when the input was a structured source read through a mapping.",
+      "type": "object",
+      "required": ["kind", "format", "mapping", "node_count", "unmapped_fields"],
+      "additionalProperties": false,
+      "properties": {
+        "kind": { "const": "structured" },
+        "format": { "enum": ["json", "csv", "xlsx"] },
+        "mapping": {
+          "type": "object",
+          "required": ["id", "sha256", "mapping_version"],
+          "additionalProperties": false,
+          "properties": {
+            "id": { "description": "ID of the registered mapping.", "$ref": "#/$defs/nonBlankString" },
+            "sha256": {
+              "description": "SHA-256 of the mapping file the conversion used.",
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}(?![\\s\\S])"
+            },
+            "mapping_version": { "type": "integer", "minimum": 1 }
+          }
+        },
+        "node_count": { "description": "Source nodes (or rows) converted.", "type": "integer", "minimum": 0 },
+        "unmapped_fields": {
+          "description": "Source fields (JSON keys on nodes, or column headers) the mapping did not use, in first-seen order.",
+          "type": "array",
+          "items": { "type": "string" }
+        }
       }
     }
   }

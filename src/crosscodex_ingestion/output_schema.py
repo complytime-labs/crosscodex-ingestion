@@ -3,8 +3,8 @@ Structured output contract — the versioned JSON Schema and the rules it can't 
 
 The schema ships as package data (schemas/structured-output-v1.json, one file per major version)
 and is compiled once at import. validate_output() is the last check before an output is stored:
-it applies the schema, then the rules JSON Schema has no keyword for (unique element_id, parent_id
-naming an earlier element, element_count matching the elements).
+it applies the schema, then the rules JSON Schema has no keyword for (unique element_id, unique
+non-null source id, parent_id naming an earlier element, element_count matching the elements).
 
 Violation messages name where the output is wrong but never echo its values: element content
 is tenant data, and these messages reach the client, the logs and the audit stream. The only
@@ -22,7 +22,7 @@ from jsonschema import Draft202012Validator
 from jsonschema.exceptions import ValidationError
 
 # The version this service emits. The schema file lists every released 1.x it validates.
-SCHEMA_VERSION = "1.0"
+SCHEMA_VERSION = "1.1"
 
 _SCHEMA: dict[str, Any] = json.loads(
     files("crosscodex_ingestion").joinpath("schemas/structured-output-v1.json").read_text(encoding="utf-8")
@@ -112,15 +112,29 @@ def _schema_violation(output: dict[str, Any], error: ValidationError) -> Violati
 
 
 def _reference_violations(output: dict[str, Any]) -> list[Violation]:
-    """Check element_id uniqueness, that each parent_id names an earlier element, and element_count.
+    """Check element_id and source id uniqueness, that each parent_id names an earlier element, and element_count.
 
-    Runs only on schema-valid output, so every field is present, typed and every id has the
-    generated form (safe to quote).
+    Runs only on schema-valid output, so every field is present, typed and every element_id has the
+    generated form (safe to quote). Source ids are tenant data and are never quoted.
     """
     elements = output["elements"]
     violations = []
     seen: set[str] = set()
+    source_ids: dict[str, int] = {}
     for index, element in enumerate(elements):
+        source_id = element.get("id")
+        if source_id is not None:
+            if source_id in source_ids:
+                violations.append(
+                    Violation(
+                        f"{_element_location(index, element['element_id'])}.id",
+                        f"duplicates the id of elements[{source_ids[source_id]}]",
+                        index,
+                        element["element_id"],
+                    )
+                )
+            else:
+                source_ids[source_id] = index
         element_id = element["element_id"]
         parent_id = element["parent_id"]
         location = _element_location(index, element_id)
