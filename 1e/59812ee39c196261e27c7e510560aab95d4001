@@ -1,0 +1,43 @@
+src/crosscodex_ingestion/converter.py
+  s_4adc9dbe8d486a::t_02e35441183847 2,4-8,20,25,27-38,61-62,65-68,145-170,196-230,233-235,237,239,243,250,264,271-272,274,285-306,309-331,333-337,340-347,349-350,352-479
+src/crosscodex_ingestion/dispatch.py
+  s_4adc9dbe8d486a::t_2ae739b86c9f97 25,86,96,103,179,244-246,345,355,371
+src/crosscodex_ingestion/server.py
+  s_4adc9dbe8d486a::t_1ae5481211f438 22,49-51,72,91,99
+src/crosscodex_ingestion/service.py
+  s_4adc9dbe8d486a::t_1d5923016a25f6 11,31,39,44,99-114
+src/crosscodex_ingestion/worker.py
+  s_4adc9dbe8d486a::t_7b65954ee21373 5,7,28-35,39-40,49,75-83,86,95,100-151,161,163-167,184,202,209,212-213,244-246,265-266,278-280,288,291-295,312-314,316,321,348-354,415-417,474-482,502-505,530-536,538-540
+tests/conftest.py
+  s_4adc9dbe8d486a::t_dfe358df7fa665 13,95,107,114
+tests/integration/test_structured_e2e.py
+  s_4adc9dbe8d486a::t_2639363d54f3cc 1-140
+tests/unit/test_converter.py
+  s_4adc9dbe8d486a::t_e8ccbd0880eeab 15,23,26,28-29,86,580-776
+tests/unit/test_dispatch.py
+  s_4adc9dbe8d486a::t_becff6e9d4833b 18,22-23,74,105,132,149,192,233,291-307,369,386,403
+tests/unit/test_server.py
+  s_4adc9dbe8d486a::t_8d023b06019a94 54-75
+tests/unit/test_service.py
+  s_4adc9dbe8d486a::t_2a571165d1f6f6 10,17,66,175-255
+tests/unit/test_shutdown.py
+  s_4adc9dbe8d486a::t_0ed09c1215113f 12,60
+tests/unit/test_worker.py
+  s_4adc9dbe8d486a::t_01fac06c989b39 5,14,18,25-28,96,158,198,243,290,342,395,445,485,536,559,636-638,819,861-1093
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "1e59812ee39c196261e27c7e510560aab95d4001",
+  "prompts": {},
+  "sessions": {
+    "s_4adc9dbe8d486a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4f6cdd22-c6b7-4995-b091-5578b9b8f0aa",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "LLM (riotbox) <llm@riotbox>"
+    }
+  }
+}
