@@ -1,0 +1,37 @@
+pyproject.toml
+  s_4adc9dbe8d486a::t_fc7be633ddcdcd 25-27
+src/crosscodex_ingestion/config.py
+  s_4adc9dbe8d486a::t_8d5399f1d9848c 34-54
+src/crosscodex_ingestion/mapping.py
+  s_4adc9dbe8d486a::t_d6067cc3cc0d09 1-150
+src/crosscodex_ingestion/mappings/mitre-attack-enterprise-17.1-techniques-xlsx.yaml
+  s_4adc9dbe8d486a::t_f85262c0e134d2 1-21
+src/crosscodex_ingestion/mappings/nist-sp800-53r5-catalog-xlsx.yaml
+  s_4adc9dbe8d486a::t_cb444dce0a293c 1-20
+src/crosscodex_ingestion/mappings/owasp-asvs-5.0.0-json.yaml
+  s_4adc9dbe8d486a::t_b188a0c625167b 1-18
+src/crosscodex_ingestion/schemas/mapping-v1.schema.json
+  s_4adc9dbe8d486a::t_af3e6526795e25 1-156
+tests/unit/test_config.py
+  s_4adc9dbe8d486a::t_093408046e92e9 21
+tests/unit/test_mapping.py
+  s_4adc9dbe8d486a::t_ffe011b70e3dba 1-203
+uv.lock
+  s_4adc9dbe8d486a::t_9dd6072490033d 554,560,569,592,598,607
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "8f6b6717ffd9bbc05d7bd2d6274ab5a6bc3e5dc8",
+  "prompts": {},
+  "sessions": {
+    "s_4adc9dbe8d486a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4f6cdd22-c6b7-4995-b091-5578b9b8f0aa",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "LLM (riotbox) <llm@riotbox>"
+    }
+  }
+}
