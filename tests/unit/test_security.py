@@ -127,6 +127,31 @@ class TestSniffFormat:
         assert "JSON, CSV and XLSX are read through a mapping" in str(exc_info.value)
         assert "ConvertDocumentRequest.mapping" in str(exc_info.value)
 
+    def test_unknown_format_message_does_not_quote_input_bytes(self):
+        content = b"SECRET-TENANT-PREFIX and the rest of the document"
+
+        with pytest.raises(ValueError, match="Cannot determine file type") as exc_info:
+            security.sniff_format(content, "application/x-weird", "https://example.org/doc")
+
+        message = str(exc_info.value)
+        assert "SECRET" not in message
+        assert "application/x-weird" in message
+        assert f"{len(content)} bytes" in message
+        assert "https://example.org/doc" in message
+
+    def test_unknown_format_message_classifies_the_input(self):
+        with pytest.raises(ValueError, match="Cannot determine file type") as exc_info:
+            security.sniff_format(b"\x00\x01\x02 binary", "", "")
+
+        assert "binary data" in str(exc_info.value)
+
+    def test_unknown_format_message_omits_empty_filename(self):
+        with pytest.raises(ValueError, match="Cannot determine file type") as exc_info:
+            security.sniff_format(b"random unknown content", "", "")
+
+        assert "from ''" not in str(exc_info.value)
+        assert "Content-Type" in str(exc_info.value)
+
 
 FIXTURES = Path(__file__).parent.parent / "fixtures"
 
