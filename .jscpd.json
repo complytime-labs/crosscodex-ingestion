@@ -1,0 +1,17 @@
+{
+  "threshold": 5,
+  "reporters": ["console"],
+  "ignore": [
+    "**/.git/**",
+    "vendor/**",
+    "**/api/gen/**",
+    "**/.build/**",
+    "**/.claude/**",
+    "**/.opencode/**",
+    "**/.test-output/**",
+    "**/megalinter-reports/**",
+    "**/.mega-linter.d/**",
+    "**/.mega-linter.shared.yml",
+    "tests/fixtures/**"
+  ]
+}
