@@ -1,0 +1,19 @@
+.jscpd.json
+  s_4966ffb115e1a8::t_980956153fbe57 1-17
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c47cffe7d697eaf97bbce9f0ef8cfc76f81ebf15",
+  "prompts": {},
+  "sessions": {
+    "s_4966ffb115e1a8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8f554319-24e6-41b9-a5c9-f33673806629",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "LLM (riotbox) <llm@riotbox>"
+    }
+  }
+}
