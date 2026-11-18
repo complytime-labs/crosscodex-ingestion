@@ -1,0 +1,58 @@
+tests/conftest.py
+  s_5ae6c7c9c87bd8::t_a570b1fb3ec7d6 13,109
+tests/integration/test_structured_e2e.py
+  s_5ae6c7c9c87bd8::t_e2f4c95d1b5b58 77-78
+  s_5ae6c7c9c87bd8::t_c23c181ffb2bd6 20
+README.md
+  s_d397e38a4b0997::t_3d91f0d8690a77 128-130,155,178-180,198-239,577,743,745-746
+src/crosscodex_ingestion/converter.py
+  s_d397e38a4b0997::t_4bf0ce9233c998 25,109-113,121,145-148,355-357,362,377-378,383-384,410
+src/crosscodex_ingestion/dispatch.py
+  s_d397e38a4b0997::t_8723745a6f0753 25,88,99,107,184,351,362,379
+src/crosscodex_ingestion/server.py
+  s_d397e38a4b0997::t_f2d2789d81bdff 22,52-54,76,96
+src/crosscodex_ingestion/worker.py
+  s_d397e38a4b0997::t_34da087bf22ed3 36,229,274-275,383-385
+tests/integration/test_limits_e2e.py
+  s_d397e38a4b0997::t_d5c95b55a045f8 11,14,39-41,47-49,60-62,68,76
+tests/integration/test_output_schema_e2e.py
+  s_d397e38a4b0997::t_3b7d833944c076 10,12,15,31-36
+tests/integration/test_reproducibility_e2e.py
+  s_d397e38a4b0997::t_c43c7c239caf8f 11,14,28-29,37
+tests/unit/test_converter.py
+  s_d397e38a4b0997::t_dafe98075d9faa 26,32-33,70,98,113,129,161,188,213,253,283,375,387,402,414,446,458,470,483,495,506,517,531-533,547,552-569,584,600,800-823
+tests/unit/test_dispatch.py
+  s_d397e38a4b0997::t_4263f1d069438d 18,24,77,109,137,155,199,241,378,396,414
+tests/unit/test_html_backend.py
+  s_d397e38a4b0997::t_ea897bc4e1b61a 259-261
+tests/unit/test_server.py
+  s_d397e38a4b0997::t_2509bc9588a73b 76-87
+tests/unit/test_shutdown.py
+  s_d397e38a4b0997::t_00c34e0ec91779 12,62
+tests/unit/test_worker.py
+  s_d397e38a4b0997::t_720e784c526ee5 15,30,100,163,204,239,286,334,387,441,492,533,585,609,870,1004,1091,1300-1323
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "fc845fcd69bc7a6764c3d75e4b50e86d97a5c6ee",
+  "prompts": {},
+  "sessions": {
+    "s_5ae6c7c9c87bd8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "75f0ccc2-5303-4d33-a782-67784141a5e3",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "LLM (riotbox) <llm@riotbox>"
+    },
+    "s_d397e38a4b0997": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-adbc3e71d19ca56d2",
+        "model": "unknown"
+      },
+      "human_author": "LLM (riotbox) <llm@riotbox>"
+    }
+  }
+}
