@@ -1,0 +1,45 @@
+tests/fixtures/documents/NOTICE
+  s_a7916e6376992b::t_e52cbcc56f7b6f 8
+  s_a7916e6376992b::t_003d677d46a557 10-12
+  s_a7916e6376992b::t_e525f155d865c2 5-7
+  s_a7916e6376992b::t_6d8188fadd492f 9
+  s_a7916e6376992b::t_174d3a5dcf984b 13
+  s_a7916e6376992b::t_20b101f3858241 1-4
+tests/unit/test_html_backend.py
+  s_a7916e6376992b::t_8e9b875d74c8a7 80
+  s_a7916e6376992b::t_797b10feccbd0c 102,107-112
+  s_a7916e6376992b::t_5a1e1566d264cb 1-52,54-79,81-82,85-94,97-101,103-106,113,120-128
+  s_a7916e6376992b::t_34f6b34c934126 53,83-84,95-96
+  s_a7916e6376992b::t_a8299b5ef6c2ea 114-119
+README.md
+  s_a7916e6376992b::t_7dcc6c7621d116 153-160,662
+src/crosscodex_ingestion/converter.py
+  s_a7916e6376992b::t_6bbde9ffce39bc 107-108,113-118
+src/crosscodex_ingestion/html_backend.py
+  s_a7916e6376992b::t_6bbde9ffce39bc 1-9,13-19,24-29,31-34,36-46,57-58
+  s_a7916e6376992b::t_81559eda52fce0 30
+  s_a7916e6376992b::t_4370c7d3b3d043 48-53
+  s_a7916e6376992b::t_797b10feccbd0c 10-12,20-23,35,47,54-56
+pyproject.toml
+  s_a7916e6376992b::t_6062de990affc9 28
+tests/fixtures/documents/ncsc-caf-objective-a.html
+  s_a7916e6376992b::t_32341d8f764b75 1-105
+uv.lock
+  s_a7916e6376992b::t_927c08d5940606 553,592
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "6ca086e316e4b65583b142e903ea221e27de16a5",
+  "prompts": {},
+  "sessions": {
+    "s_a7916e6376992b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4c11dada-380e-48f4-a8fe-afa67a62829d",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "LLM (riotbox) <llm@riotbox>"
+    }
+  }
+}
