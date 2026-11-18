@@ -304,6 +304,48 @@ or with the parent derived from the ID: `parent: {id_prefix: {separator: "("}}` 
 separator (`AC-2(1)` -> `AC-2`); an ID without the separator is top-level. A derived parent that no row has
 is an error, never a silent top-level row. Without `parent`, every row is top-level.
 
+A **denormalized table**, where every row repeats its chapter and section in their own columns, uses
+`levels` instead of `parent` (they cannot be combined). List one `id`/`title` column pair per level,
+outermost first; each distinct level ID becomes one heading, nested in that order, and each row nests under
+its last level. Level nodes appear before the first row that uses them. The OWASP ASVS 5.0.0 CSV
+(`owasp-asvs-5.0.0-csv`) is mapped this way:
+
+```yaml
+rows:
+  levels:
+    - {id: chapter_id, title: chapter_name}
+    - {id: section_id, title: section_name}
+  id: req_id
+  text: req_description
+```
+
+Every row must fill every level column. A level ID must always have the same title, parent and level,
+and must not equal a row's `id`; otherwise the error names both rows. `title` is optional when `levels` is set.
+
+A **one-column-per-level table**, where each row fills exactly one level column and the ID is inside the
+cell, uses `level_cells` (the NIST CSF 2.0 Core spreadsheet, `nist-csf-2.0-core-xlsx`, is mapped this way). It
+replaces `id`, `title`, `text`, `levels` and `parent`:
+
+```yaml
+rows:
+  level_cells:
+    columns: [Function, Category, Subcategory]   # outermost first
+    separator: ":"                               # fixed text, cut at its first occurrence
+    id_brackets: {open: "(", close: ")"}         # optional
+  properties:
+    informative_references: Informative References
+```
+
+A cell is `LABEL<separator>TEXT`. Without `id_brackets` the label is the ID, so `GV.OC-01: The mission…` is
+ID `GV.OC-01` with that text. With them, a label that ends with the closing text holds its ID between the
+last opening text and that closing text, and the rest of the label is the title, so `GOVERN (GV): The…` is ID
+`GV`, title `GOVERN`, text `The…`. A cell without the separator is a label with no text. A row's depth is the
+column it fills, and it nests under the nearest earlier row of the level above; it is an error if there is
+none, or if a row fills zero or several level columns. A row that repeats an earlier node of the same level
+(same ID, same title, no text, same parent) re-enters that node rather than adding one, because the CSF
+spreadsheet closes each Function's group with its bare label; any other repeated ID is a duplicate. No
+pattern matching is involved: only the fixed separator and bracket text.
+
 | Key | Meaning |
 |---|---|
 | `mapping_version` | `1`. |
@@ -313,6 +355,8 @@ is an error, never a silent top-level row. Without `parent`, every row is top-le
 | `source.delimiter` | CSV only: one character other than `"` or a line break, default `,`. CSV must be UTF-8 (a BOM is allowed); the header is row 1. |
 | `source.sheet`, `source.header_row` | XLSX only: worksheet name (required; not a chart sheet) and header row (default 1). CSV has no `header_row`; its header is row 1. |
 | `id`, `title`, `text` | Source field (JSON key or column header, matched exactly) for each. `id` is required, and `title` or `text`. Each is one whole value or cell: nothing is extracted from part of a cell. |
+| `levels` | Tables only, not with `parent`: 1 to 16 `{id, title}` column pairs, outermost first (see above). |
+| `level_cells` | Tables only, instead of `id`, `title`, `text`, `levels` and `parent`: `columns` (1 to 16), `separator`, optional `id_brackets` `{open, close}` (see above). |
 | `properties` | Up to 64 `name: field` pairs; names match `^[a-z][a-z0-9_]{0,63}$`. |
 
 Values must be strings or numbers. They are trimmed; an integral number loses its fraction (`5.0` -> `"5"`)
@@ -328,15 +372,6 @@ uv run python -m crosscodex_ingestion.structured --mapping my-source-1.0-json.ya
 
 It applies the same input limits (from the same environment variables) but not the worker's resource
 limits.
-
-### Known limitations
-
-Mapping version 1 can't express a table with **one column per hierarchy level**, where each row fills
-exactly one of several level columns and the ID is only a prefix inside the cell: for example the ASVS
-CSV, or the NIST CSF 2.0 Core spreadsheet, whose rows fill one of Function, Category or Subcategory with
-text like `GV.OC-01: The organizational mission is…`. Use the publisher's JSON when there is one, or
-preprocess the table into one ID column and one parent column; support for such tables is a planned
-follow-up.
 
 ### Registering a mapping
 

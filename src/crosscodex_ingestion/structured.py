@@ -207,6 +207,10 @@ class SourceNode:
     location: str
     fields: dict[str, Any]
     parent: int | None = None
+    # Set on nodes built from level columns or level cells, whose fields are not the mapping's id/title/text.
+    id_field: str | None = None
+    title_field: str | None = None
+    text_field: str | None = None
 
 
 @dataclass
@@ -589,6 +593,8 @@ _READERS = {"json": read_json, "csv": read_csv, "xlsx": read_xlsx}
 def _mapped_fields(spec: dict[str, Any]) -> list[str]:
     """Source fields the mapping uses, in a stable order."""
     names = [spec[role] for role in ("id", "title", "text", "children") if role in spec]
+    names += [column for level in spec.get("levels", []) for column in (level["id"], level["title"])]
+    names += spec.get("level_cells", {}).get("columns", [])
     names += [column for column in [spec.get("parent", {}).get("column")] if column]
     names += list(spec.get("properties", {}).values())
     return list(dict.fromkeys(names))
@@ -626,12 +632,168 @@ def _field(node: SourceNode, name: str | None, limits: StructuredLimits, problem
     return coerced
 
 
+def expand_levels(
+    source_nodes: list[SourceNode], spec: dict[str, Any], limits: StructuredLimits, problems: _Problems
+) -> list[SourceNode]:
+    """Insert, before the first row that uses it, one node per distinct level ID; rows nest under their last level.
+
+    Level nodes are keyed by ID alone, so one ID must always have the same title, parent and level.
+    """
+    levels: list[dict[str, str]] = spec["levels"]
+    out: list[SourceNode] = []
+    seen: dict[str, tuple[int, int | None, str | None, int]] = {}  # ID -> (level, parent index, title, node index)
+    for row in source_nodes:
+        parent: int | None = None
+        parent_id: str | None = None
+        complete = True
+        for depth, level in enumerate(levels, start=1):
+            problems.at(len(out), row.location)
+            level_id = _field(row, level["id"], limits, problems)
+            title = _field(row, level["title"], limits, problems)
+            for column, value in ((level["id"], level_id), (level["title"], title)):
+                if value is None:
+                    problems.add(
+                        f"{_capitalized(row.location)} has no value in level column {_echo(column)}; "
+                        "every row must fill every level."
+                    )
+            if not isinstance(level_id, str) or not isinstance(title, str):
+                complete = False
+                break
+            known = seen.get(level_id)
+            if known is None:
+                if len(out) >= limits.max_structured_nodes:
+                    raise StructuredLimitError(_NODE_LIMIT.format(limits.max_structured_nodes))
+                seen[level_id] = (depth, parent, title, len(out))
+                out.append(
+                    SourceNode(
+                        row.location,
+                        {level["id"]: level_id, level["title"]: title},
+                        parent,
+                        level["id"],
+                        level["title"],
+                    )
+                )
+                parent = len(out) - 1
+            else:
+                known_depth, known_parent, known_title, known_index = known
+                where = out[known_index].location
+                prefix = f"Conflicting level nodes: ID {_echo(level_id)} "
+                if known_depth != depth:
+                    problems.add(
+                        f"{prefix}is at level {known_depth} at {where} and at level {depth} at {row.location}. "
+                        "A level ID must have one level."
+                    )
+                elif known_title != title:
+                    problems.add(
+                        f"{prefix}is titled {_echo(known_title or '')} at {where} and {_echo(title)} at "
+                        f"{row.location}. A level ID must have one title."
+                    )
+                elif known_parent != parent:
+                    before = out[known_parent].fields[levels[depth - 2]["id"]] if known_parent is not None else None
+                    problems.add(
+                        f"{prefix}is under {_echo(before or '')} at {where} and under {_echo(parent_id or '')} at "
+                        f"{row.location}. A level ID must have one parent."
+                    )
+                parent = known_index
+            parent_id = level_id
+        problems.at(len(out), row.location)
+        if len(out) >= limits.max_structured_nodes:
+            raise StructuredLimitError(_NODE_LIMIT.format(limits.max_structured_nodes))
+        out.append(SourceNode(row.location, row.fields, parent if complete else None))
+    return out
+
+
+def _split_cell(label_and_text: str, cells: dict[str, Any]) -> tuple[str, str | None, str | None] | str:
+    """Cut one level cell into (ID, title, text); return a problem message (no location) if it has no ID."""
+    separator: str = cells["separator"]
+    label, found, rest = label_and_text.partition(separator)
+    label = label.strip()
+    text = (rest.strip() or None) if found else None
+    title: str | None = None
+    brackets = cells.get("id_brackets")
+    if brackets and label.endswith(brackets["close"]) and brackets["open"] in label:
+        head, _, tail = label[: -len(brackets["close"])].rpartition(brackets["open"])
+        if not tail.strip():
+            return f"the ID between {_echo(brackets['open'])} and {_echo(brackets['close'])} is empty."
+        title = head.strip() or None
+        label = tail.strip()
+    if not label:
+        return f"the cell has no ID before {_echo(separator)}."
+    return label, title, text
+
+
+def expand_level_cells(
+    source_nodes: list[SourceNode], spec: dict[str, Any], limits: StructuredLimits, problems: _Problems
+) -> list[SourceNode]:
+    """Turn each row into the node its filled level column names, nested under the nearest earlier row above it.
+
+    A row that only repeats an earlier level node (same ID, same title, no text) re-enters that node instead
+    of adding one: some publishers close each group with its bare label.
+    """
+    cells: dict[str, Any] = spec["level_cells"]
+    columns: list[str] = cells["columns"]
+    out: list[SourceNode] = []
+    latest: list[int | None] = [None] * len(columns)  # newest node index at each level
+    seen: dict[str, tuple[int, int]] = {}  # ID -> (node index, level index) of its first node
+    for row in source_nodes:
+        problems.at(len(out), row.location)
+        values = [_field(row, column, limits, problems) for column in columns]
+        if any(isinstance(value, _Invalid) for value in values):
+            continue  # reported by _field
+        filled = [depth for depth, value in enumerate(values) if value is not None]
+        if len(filled) != 1:
+            names = ", ".join(_echo(columns[depth]) for depth in filled)
+            problems.add(
+                f"{_capitalized(row.location)} fills {len(filled)} level columns ({names}); exactly one is allowed."
+                if filled
+                else f"{_capitalized(row.location)} fills none of the level columns "
+                f"({', '.join(_echo(c) for c in columns)})."
+            )
+            continue
+        depth = filled[0]
+        parsed = _split_cell(str(values[depth]), cells)
+        if isinstance(parsed, str):
+            problems.add(f"{_capitalized(row.location)}: {parsed}")
+            continue
+        node_id, title, text = parsed
+        parent = latest[depth - 1] if depth else None
+        if depth and parent is None:
+            problems.add(
+                f"{_capitalized(row.location)} fills level column {_echo(columns[depth])} (level {depth + 1}), "
+                f"but no row at level {depth} precedes it."
+            )
+            continue
+        known = seen.get(node_id)
+        if known is not None and text is None and known[1] == depth and out[known[0]].parent == parent:
+            known_index = known[0]
+            known_title = out[known_index].fields[f"{columns[depth]} (title)"]
+            if known_title != title:
+                problems.add(
+                    f"Conflicting level nodes: ID {_echo(node_id)} is titled {_echo(known_title or '')} at "
+                    f"{out[known_index].location} and {_echo(title or '')} at {row.location}. "
+                    "A level ID must have one title."
+                )
+                continue
+            latest[depth] = known_index
+            latest[depth + 1 :] = [None] * (len(columns) - depth - 1)
+            continue
+        if len(out) >= limits.max_structured_nodes:
+            raise StructuredLimitError(_NODE_LIMIT.format(limits.max_structured_nodes))
+        id_key, title_key, text_key = (f"{columns[depth]} ({part})" for part in ("ID", "title", "text"))
+        node_fields = {**row.fields, id_key: node_id, title_key: title, text_key: text}
+        out.append(SourceNode(row.location, node_fields, parent, id_key, title_key, text_key))
+        seen.setdefault(node_id, (len(out) - 1, depth))
+        latest[depth] = len(out) - 1
+        latest[depth + 1 :] = [None] * (len(columns) - depth - 1)
+    return out
+
+
 def build_tree(
     source_nodes: list[SourceNode], mapping: Mapping, limits: StructuredLimits, problems: _Problems
 ) -> list[TreeNode]:
     """Apply the mapping to *source_nodes*; return the roots in source order. Records every problem found."""
     spec = mapping.document["nodes" if mapping.format == "json" else "rows"]
-    id_field: str = spec["id"]
+    id_field: str = spec.get("id", "")  # absent only with level_cells, where every node names its own field
     title_field: str | None = spec.get("title")
     text_field: str | None = spec.get("text")
 
@@ -639,16 +801,17 @@ def build_tree(
     by_id: dict[str, int] = {}
     for index, source in enumerate(source_nodes):
         problems.at(index, source.location)
-        node_id = _field(source, id_field, limits, problems)
-        title = _field(source, title_field, limits, problems)
-        text = _field(source, text_field, limits, problems)
+        node_id_field = source.id_field or id_field
+        node_id = _field(source, node_id_field, limits, problems)
+        title = _field(source, source.title_field or title_field, limits, problems)
+        text = _field(source, source.text_field or text_field, limits, problems)
         properties: dict[str, str] = {}
         for name, source_field in spec.get("properties", {}).items():
             value = _field(source, source_field, limits, problems)
             if isinstance(value, str):
                 properties[name] = value
         if node_id is None:
-            problems.add(f"Node at {source.location} has no ID: field {_echo(id_field)} is missing or blank.")
+            problems.add(f"Node at {source.location} has no ID: field {_echo(node_id_field)} is missing or blank.")
         if not isinstance(node_id, str):
             tree.append(None)
             continue
@@ -694,12 +857,18 @@ def build_tree(
             continue
         problems.at(node.index, node.location)
         values = source_nodes[node.index].fields
+        node_title_field = source_nodes[node.index].title_field or title_field
         # A title or text of the wrong type is already reported; don't also call it missing.
-        wrong_type = {f for f in (title_field, text_field) if f and isinstance(_coerce(values.get(f)), _Invalid)}
-        if node.children and node.title is None and title_field not in wrong_type:
+        node_text_field = source_nodes[node.index].text_field or text_field
+        wrong_type = {
+            f for f in (node_title_field, node_text_field) if f and isinstance(_coerce(values.get(f)), _Invalid)
+        }
+        if node.children and node.title is None and node_title_field not in wrong_type:
             count = len(node.children)
             reason = (
-                f"field {_echo(title_field)} is missing or blank" if title_field else "the mapping names no title field"
+                f"field {_echo(node_title_field)} is missing or blank"
+                if node_title_field
+                else "the mapping names no title field"
             )
             problems.add(
                 f"Node {_echo(node.id)} (at {node.location}) has {count} {'child' if count == 1 else 'children'} "
@@ -708,8 +877,8 @@ def build_tree(
         elif not node.children and node.title is None and node.text is None and not wrong_type:
             problems.add(
                 f"Node {_echo(node.id)} (at {node.location}) has neither a title "
-                f"({_echo(title_field) if title_field else 'not mapped'}) "
-                f"nor text ({_echo(text_field) if text_field else 'not mapped'})."
+                f"({_echo(node_title_field) if node_title_field else 'not mapped'}) "
+                f"nor text ({_echo(node_text_field) if node_text_field else 'not mapped'})."
             )
 
     stack = [(root, 1) for root in reversed(roots)]
@@ -843,10 +1012,16 @@ def convert_source(data: bytes, mapping: Mapping, limits: StructuredLimits) -> d
     """Read *data* through *mapping*; return {"elements", "metadata"} (without processing_time_ms)."""
     problems = _Problems(mapping.id)
     source_nodes, field_names = _READERS[mapping.format](data, mapping, limits, problems)
+    spec = mapping.document["nodes" if mapping.format == "json" else "rows"]
+    if "levels" in spec:
+        source_nodes = expand_levels(source_nodes, spec, limits, problems)
+        problems.raise_if_any()
+    elif "level_cells" in spec:
+        source_nodes = expand_level_cells(source_nodes, spec, limits, problems)
+        problems.raise_if_any()
     roots = build_tree(source_nodes, mapping, limits, problems)
     problems.raise_if_any()
     elements = emit_elements(roots)
-    spec = mapping.document["nodes" if mapping.format == "json" else "rows"]
     used = set(_mapped_fields(spec))
     return {
         "elements": elements,

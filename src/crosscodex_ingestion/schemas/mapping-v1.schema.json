@@ -51,10 +51,69 @@
     "rows": {
       "description": "Table sources: which columns carry what, and how a row finds its parent.",
       "type": "object",
-      "required": ["id"],
-      "anyOf": [{ "required": ["title"] }, { "required": ["text"] }],
+      "anyOf": [
+        { "required": ["id"], "anyOf": [{ "required": ["title"] }, { "required": ["text"] }, { "required": ["levels"] }] },
+        { "required": ["level_cells"] }
+      ],
+      "not": {
+        "anyOf": [
+          { "required": ["levels", "parent"] },
+          { "required": ["level_cells", "id"] },
+          { "required": ["level_cells", "title"] },
+          { "required": ["level_cells", "text"] },
+          { "required": ["level_cells", "levels"] },
+          { "required": ["level_cells", "parent"] }
+        ]
+      },
       "additionalProperties": false,
       "properties": {
+        "levels": {
+          "description": "Denormalized tables: one column pair per hierarchy level, outermost first, filled on every row. Each distinct level ID becomes one heading, nested in the order listed; the row itself nests under the last level. Cannot be combined with 'parent'.",
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 16,
+          "items": {
+            "type": "object",
+            "required": ["id", "title"],
+            "additionalProperties": false,
+            "properties": {
+              "id": { "description": "Column holding the level node's ID.", "$ref": "#/$defs/field" },
+              "title": { "description": "Column holding the level node's title.", "$ref": "#/$defs/field" }
+            }
+          }
+        },
+        "level_cells": {
+          "description": "Tables with one column per hierarchy level, exactly one filled on each row, the ID inside the cell. A cell is 'LABEL<separator>TEXT'; the label is the ID, or, if it ends with the closing bracket, the ID is what sits between the last opening bracket and it and the rest of the label is the title. A row nests under the nearest preceding row of the previous level. Cannot be combined with id, title, text, levels or parent.",
+          "type": "object",
+          "required": ["columns", "separator"],
+          "additionalProperties": false,
+          "properties": {
+            "columns": {
+              "description": "The level columns, outermost first.",
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 16,
+              "uniqueItems": true,
+              "items": { "$ref": "#/$defs/field" }
+            },
+            "separator": {
+              "description": "Fixed text between the label and the text; the cell is cut at its first occurrence.",
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 8
+            },
+            "id_brackets": {
+              "description": "Fixed opening and closing text around the ID inside the label.",
+              "type": "object",
+              "required": ["open", "close"],
+              "additionalProperties": false,
+              "properties": {
+                "open": { "type": "string", "minLength": 1, "maxLength": 8 },
+                "close": { "type": "string", "minLength": 1, "maxLength": 8 }
+              }
+            }
+          }
+        },
         "id": { "$ref": "#/$defs/field" },
         "title": { "$ref": "#/$defs/field" },
         "text": { "$ref": "#/$defs/field" },

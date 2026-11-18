@@ -10,7 +10,13 @@ import pytest
 from crosscodex_ingestion.mapping import Mapping, MappingError, MappingRegistry, load_mapping_file, load_registry
 
 PACKAGED = Path(str(files("crosscodex_ingestion").joinpath("mappings")))
-PACKAGED_IDS = ["mitre-attack-enterprise-17.1-techniques-xlsx", "nist-sp800-53r5-catalog-xlsx", "owasp-asvs-5.0.0-json"]
+PACKAGED_IDS = [
+    "mitre-attack-enterprise-17.1-techniques-xlsx",
+    "nist-csf-2.0-core-xlsx",
+    "nist-sp800-53r5-catalog-xlsx",
+    "owasp-asvs-5.0.0-csv",
+    "owasp-asvs-5.0.0-json",
+]
 
 TREE = """\
 mapping_version: 1
@@ -201,3 +207,67 @@ class TestRegistry:
 
         assert registry.ids() == []
         assert registry.get("owasp-asvs-5.0.0-json") is None
+
+
+LEVELS = TABLE.replace(
+    'rows: {id: ID, text: Text, parent: {id_prefix: {separator: "("}}}',
+    "rows: {levels: [{id: Chap, title: ChapName}], id: ID, text: Text}",
+)
+
+
+class TestLevels:
+    def test_levels_are_accepted_and_kept(self, tmp_path):
+        mapping = load_mapping_file(_write(tmp_path, "example-1.0-csv.yaml", LEVELS))
+
+        assert mapping.document["rows"]["levels"] == [{"id": "Chap", "title": "ChapName"}]
+
+    @pytest.mark.parametrize(
+        "levels",
+        ["[]", "[{id: Chap}]", "[{title: ChapName}]", "[{id: Chap, title: N, text: X}]", "[Chap]"],
+    )
+    def test_malformed_levels_are_rejected(self, tmp_path, levels):
+        text = LEVELS.replace("[{id: Chap, title: ChapName}]", levels)
+
+        with pytest.raises(MappingError, match="levels"):
+            load_mapping_file(_write(tmp_path, "example-1.0-csv.yaml", text))
+
+    def test_levels_with_a_parent_rule_are_rejected(self, tmp_path):
+        text = LEVELS.replace("text: Text}", "text: Text, parent: {column: P}}")
+
+        with pytest.raises(MappingError):
+            load_mapping_file(_write(tmp_path, "example-1.0-csv.yaml", text))
+
+
+CELLS = TABLE.replace(
+    'rows: {id: ID, text: Text, parent: {id_prefix: {separator: "("}}}',
+    'rows: {level_cells: {columns: [F, C, S], separator: ":"}}',
+)
+
+
+class TestLevelCells:
+    def test_level_cells_are_accepted(self, tmp_path):
+        mapping = load_mapping_file(_write(tmp_path, "example-1.0-csv.yaml", CELLS))
+
+        assert mapping.document["rows"]["level_cells"]["columns"] == ["F", "C", "S"]
+
+    def test_brackets_are_accepted(self, tmp_path):
+        text = CELLS.replace('separator: ":"}', 'separator: ":", id_brackets: {open: "(", close: ")"}}')
+
+        load_mapping_file(_write(tmp_path, "example-1.0-csv.yaml", text))
+
+    @pytest.mark.parametrize(
+        "change",
+        [
+            ("columns: [F, C, S]", "columns: []"),
+            ("columns: [F, C, S]", "columns: [F, F]"),
+            ('separator: ":"', 'separator: ""'),
+            ('separator: ":"}', 'separator: ":", id_brackets: {open: "("}}'),
+            ('separator: ":"}', 'separator: ":", pattern: x}'),
+            ("level_cells: {", "id: ID, level_cells: {"),
+            ("level_cells: {", "levels: [{id: A, title: B}], level_cells: {"),
+            ("level_cells: {", "parent: {column: P}, level_cells: {"),
+        ],
+    )
+    def test_malformed_level_cells_are_rejected(self, tmp_path, change):
+        with pytest.raises(MappingError):
+            load_mapping_file(_write(tmp_path, "example-1.0-csv.yaml", CELLS.replace(*change)))

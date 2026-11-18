@@ -34,14 +34,18 @@ from crosscodex_ingestion.zipdir import ZipDirectory
 FIXTURES = Path(__file__).parent.parent / "fixtures" / "structured"
 REGISTRY = load_registry("")
 ASVS = REGISTRY.get("owasp-asvs-5.0.0-json")
+ASVS_CSV = REGISTRY.get("owasp-asvs-5.0.0-csv")
 ATTACK = REGISTRY.get("mitre-attack-enterprise-17.1-techniques-xlsx")
 NIST = REGISTRY.get("nist-sp800-53r5-catalog-xlsx")
+NIST_CSF = REGISTRY.get("nist-csf-2.0-core-xlsx")
 LIMITS = StructuredLimits.from_settings(IngestionSettings())
 
 GOLDEN = [
     ("owasp-asvs-5.0.0", "input.json", ASVS),
+    ("owasp-asvs-5.0.0-csv", "input.csv", ASVS_CSV),
     ("mitre-attack-enterprise-17.1", "input.xlsx", ATTACK),
     ("nist-sp800-53r5", "input.xlsx", NIST),
+    ("nist-csf-2.0", "input.xlsx", NIST_CSF),
 ]
 
 CSV_MAPPING = Mapping.from_document(
@@ -55,6 +59,43 @@ CSV_MAPPING = Mapping.from_document(
     "c" * 64,
     "test",
 )
+
+LEVELS_MAPPING = Mapping.from_document(
+    {
+        "mapping_version": 1,
+        "id": "levels-1.0-csv",
+        "title": "Levels",
+        "source": {"format": "csv", "release": "https://example.org/levels.csv"},
+        "rows": {
+            "levels": [{"id": "ch_id", "title": "ch_name"}, {"id": "sec_id", "title": "sec_name"}],
+            "id": "req_id",
+            "text": "req_text",
+            "properties": {"level": "L"},
+        },
+    },
+    "d" * 64,
+    "test",
+)
+CELLS_MAPPING = Mapping.from_document(
+    {
+        "mapping_version": 1,
+        "id": "cells-1.0-csv",
+        "title": "Cells",
+        "source": {"format": "csv", "release": "https://example.org/cells.csv"},
+        "rows": {
+            "level_cells": {
+                "columns": ["Function", "Category", "Sub"],
+                "separator": ":",
+                "id_brackets": {"open": "(", "close": ")"},
+            },
+            "properties": {"examples": "Examples"},
+        },
+    },
+    "f" * 64,
+    "test",
+)
+CELLS_HEADER = "Function,Category,Sub,Examples\n"
+LEVELS_HEADER = "ch_id,ch_name,sec_id,sec_name,req_id,req_text,L\n"
 
 
 def _limits(**overrides: int) -> StructuredLimits:
@@ -976,3 +1017,267 @@ def test_limits_are_read_from_settings():
 
     assert (limits.max_json_depth, limits.max_table_rows) == (7, 9)
     assert copy.copy(limits) == limits
+
+
+class TestLevelColumns:
+    """rows.levels: a table with one column pair per hierarchy level, every row complete."""
+
+    def _tree(self, output: dict) -> list[tuple]:
+        return [(e["type"], e["id"], e["content"], e["level"], e["parent_id"]) for e in output["elements"]]
+
+    def test_levels_become_nested_headings_above_the_requirement(self):
+        data = _csv(LEVELS_HEADER + "C1,Chap,C1.1,Sect,R1,Text one,1\n")
+
+        output = convert_source(data, LEVELS_MAPPING, LIMITS)
+
+        assert self._tree(output) == [
+            ("heading", "C1", "Chap", 1, None),
+            ("heading", "C1.1", "Sect", 2, "e-001"),
+            ("paragraph", "R1", "Text one", None, "e-002"),
+        ]
+
+    def test_repeated_level_values_are_one_node(self):
+        data = _csv(
+            LEVELS_HEADER + "C1,Chap,C1.1,Sect,R1,One,1\nC1,Chap,C1.1,Sect,R2,Two,1\nC1,Chap,C1.2,Other,R3,Three,2\n"
+        )
+
+        output = convert_source(data, LEVELS_MAPPING, LIMITS)
+
+        assert [e["id"] for e in output["elements"] if e["type"] == "heading"] == ["C1", "C1.1", "C1.2"]
+        assert [e["parent_id"] for e in output["elements"] if e["id"] in {"R1", "R2", "R3"}] == [
+            "e-002",
+            "e-002",
+            "e-005",
+        ]
+
+    def test_node_order_is_first_appearance(self):
+        data = _csv(LEVELS_HEADER + "C2,B,C2.1,S,R1,t,1\nC1,A,C1.1,S,R2,t,1\nC2,B,C2.1,S,R3,t,1\n")
+
+        output = convert_source(data, LEVELS_MAPPING, LIMITS)
+
+        assert [e["id"] for e in output["elements"] if e["id"]] == ["C2", "C2.1", "R1", "R3", "C1", "C1.1", "R2"]
+
+    def test_level_columns_are_mapped_fields_not_unmapped(self):
+        data = _csv(LEVELS_HEADER.rstrip() + ",extra\n" + "C1,Chap,C1.1,Sect,R1,Text,1,x\n")
+
+        source = convert_source(data, LEVELS_MAPPING, LIMITS)["metadata"]["source"]
+
+        assert source["unmapped_fields"] == ["extra"]
+
+    def test_same_id_with_two_titles_names_both_rows(self):
+        data = _csv(LEVELS_HEADER + "C1,Chap,C1.1,S,R1,t,1\nC1,Other,C1.1,S,R2,t,1\n")
+
+        problems = _problems(data, LEVELS_MAPPING)
+
+        assert problems == [
+            "Conflicting level nodes: ID 'C1' is titled 'Chap' at row 2 and 'Other' at row 3. "
+            "A level ID must have one title."
+        ]
+
+    def test_same_id_under_two_parents_names_both_rows(self):
+        data = _csv(LEVELS_HEADER + "C1,A,S1,S,R1,t,1\nC2,B,S1,S,R2,t,1\n")
+
+        problems = _problems(data, LEVELS_MAPPING)
+
+        assert problems == [
+            "Conflicting level nodes: ID 'S1' is under 'C1' at row 2 and under 'C2' at row 3. "
+            "A level ID must have one parent."
+        ]
+
+    def test_same_id_at_two_levels_names_both_rows(self):
+        data = _csv(LEVELS_HEADER + "C1,A,S1,S,R1,t,1\nX,B,C1,S,R2,t,1\n")
+
+        problems = _problems(data, LEVELS_MAPPING)
+
+        assert problems == [
+            "Conflicting level nodes: ID 'C1' is at level 1 at row 2 and at level 2 at row 3. "
+            "A level ID must have one level."
+        ]
+
+    def test_requirement_id_equal_to_a_level_id_is_a_duplicate(self):
+        data = _csv(LEVELS_HEADER + "C1,A,S1,S,C1,t,1\n")
+
+        problems = _problems(data, LEVELS_MAPPING)
+
+        assert problems == ["Duplicate ID 'C1' at row 2 and row 2. IDs must be unique across the source."]
+
+    @pytest.mark.parametrize(
+        ("row", "column"),
+        [(",Chap,S1,S,R1,t,1", "ch_id"), ("C1,,S1,S,R1,t,1", "ch_name"), ("C1,A,,S,R1,t,1", "sec_id")],
+    )
+    def test_blank_level_cell_names_the_row_and_column(self, row, column):
+        problems = _problems(_csv(LEVELS_HEADER + row + "\n"), LEVELS_MAPPING)
+
+        assert problems == [f"Row 2 has no value in level column {column!r}; every row must fill every level."]
+
+    def test_missing_level_column_is_reported_with_the_header_check(self):
+        data = _csv("ch_id,ch_name,req_id,req_text,L\nC1,A,R1,t,1\n")
+
+        problems = _problems(data, LEVELS_MAPPING)
+
+        assert problems[0].startswith("Column 'sec_id' not found in the header row.")
+
+    def test_synthesised_nodes_count_against_the_node_limit(self):
+        data = _csv(LEVELS_HEADER + "C1,A,S1,S,R1,t,1\n")  # 1 row -> 3 nodes
+
+        with pytest.raises(StructuredLimitError, match="MAX_STRUCTURED_NODES"):
+            convert_source(data, LEVELS_MAPPING, _limits(max_structured_nodes=2))
+
+    def test_level_cell_of_the_wrong_type_is_reported(self):
+        data = _xlsx(
+            [["ch_id", "ch_name", "sec_id", "sec_name", "req_id", "req_text", "L"], [True, "A", "S", "S", "R", "t", 1]]
+        )
+        mapping = Mapping.from_document(
+            {
+                **LEVELS_MAPPING.document,
+                "source": {"format": "xlsx", "release": "https://example.org/l.xlsx", "sheet": "techniques"},
+            },
+            "e" * 64,
+            "test",
+        )
+
+        problems = _problems(data, mapping)
+
+        assert problems == [
+            "Field 'ch_id' at sheet \"techniques\" row 2 is a boolean; "
+            "IDs, titles, text and properties must be strings or numbers."
+        ]
+
+
+class TestAsvsCsv:
+    """The ASVS CSV release must give the same tree as the ASVS JSON release."""
+
+    def _tree(self, mapping: Mapping, name: str) -> list[dict]:
+        directory = FIXTURES / ("owasp-asvs-5.0.0" if mapping is ASVS else "owasp-asvs-5.0.0-csv")
+        elements = convert_source((directory / name).read_bytes(), mapping, LIMITS)["elements"]
+        # Chapter short names exist only in the JSON release.
+        return [{k: v for k, v in e.items() if not (e["type"] == "heading" and k == "properties")} for e in elements]
+
+    def test_csv_tree_matches_the_json_tree(self):
+        assert self._tree(ASVS_CSV, "input.csv") == self._tree(ASVS, "input.json")
+
+
+class TestLevelCells:
+    """rows.level_cells: one column per level, exactly one filled per row, the ID inside the cell."""
+
+    def _tree(self, text: str) -> list[tuple]:
+        elements = convert_source(_csv(CELLS_HEADER + text), CELLS_MAPPING, LIMITS)["elements"]
+        return [(e["type"], e["id"], e["content"], e["level"], e["parent_id"]) for e in elements]
+
+    def test_rows_nest_by_their_level_column(self):
+        tree = self._tree(
+            "GOVERN (GV): Strategy.,,,\n"
+            ",Context (GV.OC): Circumstances.,,\n"
+            ",,GV.OC-01: Mission is understood.,Ex1\n"
+            ",,GV.OC-02: Stakeholders are understood.,Ex2\n"
+            ",Risk (GV.RM): Priorities.,,\n"
+            ",,GV.RM-01: Objectives.,\n"
+        )
+
+        assert tree == [
+            ("heading", "GV", "GOVERN", 1, None),
+            ("paragraph", None, "Strategy.", None, "e-001"),
+            ("heading", "GV.OC", "Context", 2, "e-001"),
+            ("paragraph", None, "Circumstances.", None, "e-003"),
+            ("paragraph", "GV.OC-01", "Mission is understood.", None, "e-003"),
+            ("paragraph", "GV.OC-02", "Stakeholders are understood.", None, "e-003"),
+            ("heading", "GV.RM", "Risk", 2, "e-001"),
+            ("paragraph", None, "Priorities.", None, "e-007"),
+            ("paragraph", "GV.RM-01", "Objectives.", None, "e-007"),
+        ]
+
+    def test_other_columns_become_properties(self):
+        elements = convert_source(
+            _csv(CELLS_HEADER + "A (A): t,,,\n,C (A.C): c,,\n,,A-1: x,Ex1\n"), CELLS_MAPPING, LIMITS
+        )["elements"]
+
+        assert elements[-1]["properties"] == {"examples": "Ex1"}
+
+    def test_level_columns_are_mapped_fields_not_unmapped(self):
+        data = _csv("Function,Category,Sub,Examples,Other\nA (A): t,,,,o\n")
+
+        source = convert_source(data, CELLS_MAPPING, LIMITS)["metadata"]["source"]
+
+        assert source["unmapped_fields"] == ["Other"]
+
+    def test_cell_without_brackets_is_the_id_before_the_separator(self):
+        tree = self._tree("A (A): t,,,\n,C (A.C): c,,\n,,A-1: x,\n")
+
+        assert tree[-1] == ("paragraph", "A-1", "x", None, "e-003")
+
+    def test_bare_leaf_has_neither_title_nor_text(self):
+        problems = _problems(_csv(CELLS_HEADER + "A (A): t,,,\n,C (A.C): c,,\n,,A-1,\n"), CELLS_MAPPING)
+
+        assert problems == ["Node 'A-1' (at row 4) has neither a title ('Sub (title)') nor text ('Sub (text)')."]
+
+    def test_only_the_first_separator_splits(self):
+        tree = self._tree("A (A): one: two,,,\n")
+
+        assert tree == [("paragraph", "A", "one: two", None, None)]
+
+    def test_bare_repeat_of_a_level_row_re_enters_it(self):
+        tree = self._tree("A (A): t,,,\n,B (A.B): u,,\n,,A.B-1: x,\nA (A),,,\n,C (A.C): v,,\n,,A.C-1: y,\n")
+
+        assert [(t[1], t[4]) for t in tree if t[0] == "heading"] == [("A", None), ("A.B", "e-001"), ("A.C", "e-001")]
+
+    def test_repeat_that_carries_text_is_a_duplicate_id(self):
+        problems = _problems(_csv(CELLS_HEADER + "A (A): t,,,\nA (A): again,,,\n"), CELLS_MAPPING)
+
+        assert problems == ["Duplicate ID 'A' at row 2 and row 3. IDs must be unique across the source."]
+
+    def test_repeat_with_another_title_is_a_conflict_naming_both_rows(self):
+        problems = _problems(_csv(CELLS_HEADER + "A (A): t,,,\nOther (A),,,\n"), CELLS_MAPPING)
+
+        assert problems == [
+            "Conflicting level nodes: ID 'A' is titled 'A' at row 2 and 'Other' at row 3. "
+            "A level ID must have one title."
+        ]
+
+    @pytest.mark.parametrize(
+        ("row", "problem"),
+        [
+            ("A (A): t,B (B): u,,", "Row 2 fills 2 level columns ('Function', 'Category'); exactly one is allowed."),
+            (",,,Ex1", "Row 2 fills none of the level columns ('Function', 'Category', 'Sub')."),
+            (",,A-1: x,", "Row 2 fills level column 'Sub' (level 3), but no row at level 2 precedes it."),
+            (",B (B): u,,", "Row 2 fills level column 'Category' (level 2), but no row at level 1 precedes it."),
+        ],
+    )
+    def test_misplaced_rows_are_reported(self, row, problem):
+        assert _problems(_csv(CELLS_HEADER + row + "\n"), CELLS_MAPPING) == [problem]
+
+    def test_a_row_cannot_skip_the_level_above_it_after_a_new_parent(self):
+        data = _csv(CELLS_HEADER + "A (A): t,,,\n,B (A.B): u,,\nC (C): v,,,\n,,C-1: x,\n")
+
+        problems = _problems(data, CELLS_MAPPING)
+
+        assert problems == ["Row 5 fills level column 'Sub' (level 3), but no row at level 2 precedes it."]
+
+    def test_missing_level_column_is_reported_with_the_header_check(self):
+        problems = _problems(_csv("Function,Sub,Examples\nA (A): t,,\n"), CELLS_MAPPING)
+
+        assert problems[0].startswith("Column 'Category' not found in the header row.")
+
+    def test_empty_id_between_brackets_is_reported(self):
+        assert _problems(_csv(CELLS_HEADER + "Name (): t,,,\n"), CELLS_MAPPING) == [
+            "Row 2: the ID between '(' and ')' is empty."
+        ]
+
+    def test_empty_id_before_the_separator_is_reported(self):
+        assert _problems(_csv(CELLS_HEADER + ": t,,,\n"), CELLS_MAPPING) == ["Row 2: the cell has no ID before ':'."]
+
+
+class TestNistCsf:
+    def test_function_category_and_subcategory_nest(self):
+        data = (FIXTURES / "nist-csf-2.0" / "input.xlsx").read_bytes()
+
+        elements = convert_source(data, NIST_CSF, LIMITS)["elements"]
+
+        headings = [(e["id"], e["content"], e["level"]) for e in elements if e["type"] == "heading"]
+        assert headings[:3] == [
+            ("GV", "GOVERN", 1),
+            ("GV.OC", "Organizational Context", 2),
+            ("GV.RM", "Risk Management Strategy", 2),
+        ]
+        by_id = _by_id({"elements": elements})
+        assert by_id["GV.OC-01"]["parent_id"] == by_id["GV.OC"]["element_id"]
+        assert by_id["GV.OC-01"]["content"].startswith("The organizational mission is understood")

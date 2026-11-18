@@ -27,6 +27,27 @@ Inside the structured worker (`structured.convert_source`):
 
 ## Decisions
 
+- **Level columns (`rows.levels`) are additive within mapping version 1.** `expand_levels` runs between
+  reading and `build_tree`: it inserts one synthetic `SourceNode` per distinct level ID (keyed by ID alone,
+  so a conflicting title, parent or level is an error naming both rows) and points each row at its last
+  level through `SourceNode.parent`, the same channel JSON nesting uses. Synthetic nodes carry their own
+  `id_field`/`title_field` because their fields are keyed by the level columns' names. A server that
+  predates this addition rejects such a mapping at startup (the schema forbids unknown keys).
+- **Known publisher formats are declarative mappings, not per-publisher code.** A processor per format would
+  sit outside the validate-at-startup model; new needs become mapping primitives once two publishers share
+  them. `level_cells` below is an exception: only NIST CSF 2.0 uses it, and its re-entry rule exists for a
+  quirk of that export. If another single-publisher primitive is needed, or primitives must combine in one
+  mapping, revisit this decision (for example, named row transforms registered in code and referenced from
+  the mapping, which keeps startup validation).
+- **Level cells (`rows.level_cells`) cover the one-level-per-row shape** (NIST CSF 2.0). `expand_level_cells`
+  turns each row into one node whose depth is its filled column, with the parent taken positionally from
+  the newest node at the level above. IDs come from fixed separator and bracket text, never a regex, so the
+  parsing stays bounded and reviewable. A bare repeat of an earlier node (the CSF closes each Function with
+  one) re-enters that node; anything else repeated is left to `build_tree`'s duplicate-ID check. Synthesised
+  field names read `<column> (ID|title|text)` and sit beside the row's own columns, which stay available as
+  properties. Found by running the real file: the reference tool's export has a banner above the header
+  (`header_row: 2`), brackets only on Function and Category cells, and the bare closing rows.
+
 **Mappings are reviewed files, named by ID.** No inline mappings and no mapping URLs: a mapping decides
 what the service extracts and stores, so it gets the review that code gets, and fetching one would be
 another SSRF surface. The registry is fixed at startup, so a request can only name a mapping that was valid

@@ -12,6 +12,9 @@ owasp-asvs-5.0.0/
   (CC BY-SA 4.0), https://creativecommons.org/licenses/by-sa/4.0/. The excerpt is a modified
   version (chapters and sections removed) and is shared under the same license.
 
+owasp-asvs-5.0.0-csv/
+  The same standard, release CSV: same authors, license and modification statement as above.
+
 mitre-attack-enterprise-17.1/
   MITRE ATT&CK Enterprise v17.1, techniques spreadsheet.
   https://attack.mitre.org/resources/attack-data-and-tools/
@@ -29,5 +32,11 @@ nist-sp800-53r5/
   NIST Special Publication 800-53 Revision 5, Security and Privacy Controls for Information
   Systems and Organizations, control catalog spreadsheet. National Institute of Standards and
   Technology, https://csrc.nist.gov/pubs/sp/800/53/r5/upd1/final
+  A work of the United States Government, not subject to copyright in the United States
+  (17 U.S.C. 105).
+
+nist-csf-2.0/
+  The NIST Cybersecurity Framework (CSF) 2.0 Core, spreadsheet from the CSF 2.0 Reference Tool.
+  National Institute of Standards and Technology, https://www.nist.gov/cyberframework
   A work of the United States Government, not subject to copyright in the United States
   (17 U.S.C. 105).

@@ -1,0 +1,20 @@
+# OWASP Application Security Verification Standard 5.0.0, release CSV.
+# One row per requirement, every row complete: chapter_id, chapter_name, section_id, section_name, req_id,
+# req_description, L. Chapters and sections have no rows of their own; levels synthesises them, so the tree
+# matches owasp-asvs-5.0.0-json (which also carries each chapter's ShortName; the CSV has no such column).
+mapping_version: 1
+id: owasp-asvs-5.0.0-csv
+title: OWASP Application Security Verification Standard 5.0.0
+source:
+  format: csv
+  release: https://github.com/OWASP/ASVS/releases/download/v5.0.0_release/OWASP_Application_Security_Verification_Standard_5.0.0_en.csv
+rows:
+  levels:
+    - id: chapter_id
+      title: chapter_name
+    - id: section_id
+      title: section_name
+  id: req_id
+  text: req_description
+  properties:
+    level: L
