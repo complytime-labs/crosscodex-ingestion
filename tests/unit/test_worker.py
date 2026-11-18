@@ -999,7 +999,7 @@ class TestStructuredConversion:
         assert record.error["message"] == (
             "The input is json, which is read through a mapping: set ConvertDocumentRequest.mapping to the ID of a "
             "registered mapping. Registered mappings: mitre-attack-enterprise-17.1-techniques-xlsx, "
-            "nist-sp800-53r5-catalog-xlsx, owasp-asvs-5.0.0-json."
+            "nist-csf-2.0-core-xlsx, nist-sp800-53r5-catalog-xlsx, owasp-asvs-5.0.0-csv, owasp-asvs-5.0.0-json."
         )
 
     async def test_input_of_another_format_than_the_mapping_reads_fails(

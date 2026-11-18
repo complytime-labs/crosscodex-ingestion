@@ -220,7 +220,7 @@ class TestConvertWithMapping:
         assert context.abort_code == grpc.StatusCode.INVALID_ARGUMENT
         assert context.abort_details == (
             "Unknown mapping 'owasp-asvs-4.0'. Registered mappings: mitre-attack-enterprise-17.1-techniques-xlsx, "
-            "nist-sp800-53r5-catalog-xlsx, owasp-asvs-5.0.0-json."
+            "nist-csf-2.0-core-xlsx, nist-sp800-53r5-catalog-xlsx, owasp-asvs-5.0.0-csv, owasp-asvs-5.0.0-json."
         )
         mock_dispatch.dispatch.assert_not_called()
         assert (await state_backend.list_documents("tenant-a", 10, ""))[0] == []
