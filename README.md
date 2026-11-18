@@ -150,6 +150,14 @@ which is also installed with the package (`crosscodex_ingestion/schemas/structur
 | `properties` (1.1)            | Extra source fields the mapping names, as `name: string`.                                                                                                 |
 | `metadata.source` (1.1)       | Present for structured sources: `kind` (`structured`), `format`, `mapping` (`id`, `sha256`, `mapping_version`), `node_count`, `unmapped_fields`.          |
 
+### What HTML conversion leaves out
+
+For HTML input, site chrome is not emitted: every `<nav>` element (anywhere, including inside
+`<main>` or `<article>`) together with the heading placed directly before it, and `<header>` and
+`<footer>` elements that are not inside `<main>`, `<article>`, `<section>` or `<aside>`. Content
+in `<main>` and `<article>` is otherwise unchanged. Chrome built from plain `<div>`s is not
+recognised and is still emitted.
+
 ### What version 1.0 guarantees
 
 These hold for every 1.x output, and version 1.1 adds the guarantees in "Structured sources".
@@ -651,6 +659,7 @@ gRPC Request → Dispatch → Worker → [Converter → Extractor | Structured] 
 - `security.py`: SSRF prevention, URL validation, content type detection, resource limit enforcement. URL fetches connect directly and ignore `HTTP_PROXY`/`HTTPS_PROXY`/`ALL_PROXY`: the address actually connected to is checked against the blocked ranges, and through a proxy that check would only see the proxy.
 - `converter.py`: Async subprocess-based Docling execution with rlimits and timeout; the subprocess's process group is killed on timeout or cancellation
 - `extractor.py`: Structured element extraction from Docling output
+- `html_backend.py`: Docling HTML backend that drops `<nav>` and page-level `<header>`/`<footer>` before conversion (rule in its docstring)
 - `output_schema.py`: Validates every output against the versioned output schema before it is stored (design: [docs/output-schema.md](docs/output-schema.md))
 - `mapping.py`: Loads, validates and registers structured-source mappings at startup
 - `structured.py`: Reads JSON, CSV and XLSX through a mapping into elements, in the structured worker subprocess (design: [docs/structured-sources.md](docs/structured-sources.md))

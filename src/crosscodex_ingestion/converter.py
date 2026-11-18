@@ -104,12 +104,18 @@ def main():
     from crosscodex_ingestion.extractor import extract_elements
     from docling.datamodel.base_models import ConversionStatus, InputFormat
     from docling.datamodel.pipeline_options import PdfPipelineOptions
-    from docling.document_converter import DocumentConverter, PdfFormatOption
+    from docling.document_converter import DocumentConverter, HTMLFormatOption, PdfFormatOption
+    from crosscodex_ingestion.html_backend import SiteChromeStrippingHTMLBackend
 
     # Models come from the pre-downloaded artifacts directory; HF_HUB_OFFLINE=1 in the
     # environment guarantees nothing is fetched from the network.
     pdf_options = PdfPipelineOptions(artifacts_path=artifacts_path)
-    converter = DocumentConverter(format_options={InputFormat.PDF: PdfFormatOption(pipeline_options=pdf_options)})
+    converter = DocumentConverter(
+        format_options={
+            InputFormat.PDF: PdfFormatOption(pipeline_options=pdf_options),
+            InputFormat.HTML: HTMLFormatOption(backend=SiteChromeStrippingHTMLBackend),
+        }
+    )
     # Docling fails (rather than truncates) a document longer than max_num_pages. Any status
     # other than SUCCESS is a failure: a PARTIAL_SUCCESS would silently drop pages.
     result = converter.convert(input_path, max_num_pages=max_pages, raises_on_error=False)

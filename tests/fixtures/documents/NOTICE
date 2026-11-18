@@ -1,0 +1,13 @@
+Third-party data in tests/fixtures/documents/
+
+ncsc-caf-objective-a.html
+  Trimmed excerpt of "CAF Objective A - Managing Security Risk", UK National Cyber Security Centre.
+  https://www.ncsc.gov.uk/collection/cyber-assessment-framework/caf-objective-a-managing-security-risk
+  Retrieved 2026-11-18. Contains public sector information licensed under the Open Government
+  Licence v3.0, https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/.
+  The excerpt is a modified version: scripts, styles, class lists, the SVG icon sprite (one symbol is kept) and most
+  navigation entries were removed, and the page text was shortened. The element structure of the
+  page header, main and page footer (what the navigation test exercises) is kept. The article
+  footer inside main is empty in the original; the "Reviewed" heading and date, which the
+  original places in a sibling <div>, were moved into it so the fixture covers a nested footer.
+  The remaining text is unchanged from the original.
