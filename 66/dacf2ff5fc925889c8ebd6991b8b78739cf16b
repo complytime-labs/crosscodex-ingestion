@@ -1,0 +1,80 @@
+tests/fixtures/structured/NOTICE
+  s_3dc2ccefed391b::t_6e4c41ed202a0b 15-17
+  s_3dc2ccefed391b::t_921d915360d01c 37-42
+tests/unit/test_mapping.py
+  s_3dc2ccefed391b::t_ac52b3aac0d43c 13-14,16-19,213
+  s_3dc2ccefed391b::t_5b36b0e0b4bec6 210-212,214-238
+  s_3dc2ccefed391b::t_5cc0add7754548 239-241,244-273
+  s_3dc2ccefed391b::t_6ffbf15c770ea1 15
+  s_3dc2ccefed391b::t_d5f4044914ce1b 242-243
+tests/fixtures/structured/owasp-asvs-5.0.0-csv/expected.json
+  s_3dc2ccefed391b::t_1082d809a0f7cb 1-780
+tests/fixtures/structured/owasp-asvs-5.0.0-csv/input.csv
+  s_3dc2ccefed391b::t_55b5e428458b7c 1-50
+src/crosscodex_ingestion/structured.py
+  s_3dc2ccefed391b::t_7db3c2f80a1fbe 211-212,596,635-705,804-806,814,860,866,869-871,880,1015-1018
+  s_3dc2ccefed391b::t_645238077d21b6 711,737,767,769-770,777-779
+  s_3dc2ccefed391b::t_fc609b4d62b2d6 1021
+  s_3dc2ccefed391b::t_d5f4044914ce1b 863-865
+  s_3dc2ccefed391b::t_86aa951e163198 210,213,597,706-710,712-736,738-766,768,771-776,780-790,796,807,862,881,1019-1020
+src/crosscodex_ingestion/schemas/mapping-v1.schema.json
+  s_3dc2ccefed391b::t_7db3c2f80a1fbe 70-84
+  s_3dc2ccefed391b::t_6ffbf15c770ea1 54-67,85-113
+  s_3dc2ccefed391b::t_be62fd03a40f9d 114-116
+docs/structured-sources.md
+  s_3dc2ccefed391b::t_6e4c41ed202a0b 30-37,50
+  s_3dc2ccefed391b::t_921d915360d01c 42-49
+  s_d10012ef6b19d0::t_f33efdc6d84e87 38-41
+tests/unit/test_structured.py
+  s_3dc2ccefed391b::t_1082d809a0f7cb 1050
+  s_3dc2ccefed391b::t_ac52b3aac0d43c 1102,1127-1129
+  s_3dc2ccefed391b::t_5b36b0e0b4bec6 37,45,63-78,98-99,1020-1049,1051-1101,1103-1126,1130-1141,1144-1157
+  s_3dc2ccefed391b::t_819e7a670328c1 1142-1143
+  s_3dc2ccefed391b::t_22fcb6558a2506 40,48,1272
+  s_3dc2ccefed391b::t_0c2e5ded8510b6 1185-1186
+  s_3dc2ccefed391b::t_d5f4044914ce1b 1190-1192,1219,1275-1279
+  s_3dc2ccefed391b::t_5cc0add7754548 79-97,1158-1184,1187-1189,1193-1202,1205,1212-1218,1220-1271,1273-1274,1280-1282
+  s_3dc2ccefed391b::t_02003921e9aa69 1283
+  s_3dc2ccefed391b::t_9996118e7e2e78 1203-1204,1206-1211
+tests/integration/test_structured_e2e.py
+  s_3dc2ccefed391b::t_6e4c41ed202a0b 28
+  s_3dc2ccefed391b::t_22fcb6558a2506 31
+tests/fixtures/structured/owasp-asvs-5.0.0-csv/PROVENANCE.md
+  s_3dc2ccefed391b::t_6e4c41ed202a0b 1-32
+README.md
+  s_3dc2ccefed391b::t_6e4c41ed202a0b 307-324,358
+  s_3dc2ccefed391b::t_921d915360d01c 325-348,359
+src/crosscodex_ingestion/mappings/owasp-asvs-5.0.0-csv.yaml
+  s_3dc2ccefed391b::t_7db3c2f80a1fbe 1-20
+tests/fixtures/structured/nist-csf-2.0/expected.json
+  s_3dc2ccefed391b::t_c1cc890070331c 1-333
+tests/fixtures/structured/nist-csf-2.0/PROVENANCE.md
+  s_3dc2ccefed391b::t_d5f4044914ce1b 29-39
+  s_3dc2ccefed391b::t_921d915360d01c 1-28,40-50
+src/crosscodex_ingestion/mappings/nist-csf-2.0-core-xlsx.yaml
+  s_3dc2ccefed391b::t_c1cc890070331c 1-23
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "66dacf2ff5fc925889c8ebd6991b8b78739cf16b",
+  "prompts": {},
+  "sessions": {
+    "s_3dc2ccefed391b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8b71c523-057f-4aca-b595-80cb94dd7dda",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "LLM (riotbox) <llm@riotbox>"
+    },
+    "s_d10012ef6b19d0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "77d46495-5da8-4e15-a428-050e1689c2e8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "LLM (riotbox) <llm@riotbox>"
+    }
+  }
+}
