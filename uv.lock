@@ -550,6 +550,7 @@ name = "crosscodex-ingestion"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
+    { name = "beautifulsoup4" },
     { name = "boto3" },
     { name = "defusedxml" },
     { name = "docling" },
@@ -588,6 +589,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "beautifulsoup4", specifier = ">=4.12.0,<5" },
     { name = "boto3", specifier = ">=1.34.0,<2" },
     { name = "defusedxml", specifier = ">=0.7.1,<1" },
     { name = "docling", specifier = ">=2.0.0" },
