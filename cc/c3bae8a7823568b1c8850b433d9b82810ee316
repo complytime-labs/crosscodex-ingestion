@@ -1,0 +1,21 @@
+tests/unit/test_converter.py
+  s_5ae6c7c9c87bd8::t_52ee0732013257 26,807,810,824-834
+README.md
+  s_5ae6c7c9c87bd8::t_52ee0732013257 135-140
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "ccc3bae8a7823568b1c8850b433d9b82810ee316",
+  "prompts": {},
+  "sessions": {
+    "s_5ae6c7c9c87bd8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "75f0ccc2-5303-4d33-a782-67784141a5e3",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "LLM (riotbox) <llm@riotbox>"
+    }
+  }
+}
