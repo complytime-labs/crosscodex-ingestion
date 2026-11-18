@@ -1,0 +1,30 @@
+docs/output-schema.md
+  s_5ae6c7c9c87bd8::t_34474385b7af82 104-107,110-117
+  s_5ae6c7c9c87bd8::t_575cf0006bd852 108-109
+src/crosscodex_ingestion/output_schema.py
+  s_5ae6c7c9c87bd8::t_c3b66571d83f08 25
+src/crosscodex_ingestion/schemas/structured-output-v1.json
+  s_5ae6c7c9c87bd8::t_c3b66571d83f08 12,126-128,160-169,172-191
+  s_5ae6c7c9c87bd8::t_34474385b7af82 170-171
+tests/unit/test_output_schema.py
+  s_5ae6c7c9c87bd8::t_c3b66571d83f08 256
+  s_5ae6c7c9c87bd8::t_5733a663a83387 10,257,321-360
+README.md
+  s_5ae6c7c9c87bd8::t_575cf0006bd852 116,152-153,234
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "36054abd917c17f3419f04e8bf18baa9f8d5ea0b",
+  "prompts": {},
+  "sessions": {
+    "s_5ae6c7c9c87bd8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "75f0ccc2-5303-4d33-a782-67784141a5e3",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "LLM (riotbox) <llm@riotbox>"
+    }
+  }
+}
