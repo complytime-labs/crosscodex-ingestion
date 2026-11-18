@@ -1,0 +1,30 @@
+tests/unit/test_html_backend.py
+  s_5ae6c7c9c87bd8::t_fb0cff10e92475 15-16,27,30,45
+  s_5ae6c7c9c87bd8::t_aa35bb29a19b57 431-443,446-447,449-505,508,510-511
+  s_5ae6c7c9c87bd8::t_3d871bea1d8271 444-445,448,506-507,509
+src/crosscodex_ingestion/html_backend.py
+  s_5ae6c7c9c87bd8::t_2228133a46a70d 120-122,124,132-138,153-155,168
+  s_5ae6c7c9c87bd8::t_e557db147e785e 40-41,45,48,54-55,97-100,102-103,108-118,123,125-131,139-152,156-167,169-173,179-183,192-193,222-228,230-238
+  s_5ae6c7c9c87bd8::t_86d60bd350d1ed 119
+docs/html-profiles.md
+  s_5ae6c7c9c87bd8::t_f9f8ae4af02a0b 4
+  s_5ae6c7c9c87bd8::t_4968d61cd05aa3 54
+  s_5ae6c7c9c87bd8::t_92e22a4483bbb8 20
+  s_5ae6c7c9c87bd8::t_64855860c7e0be 1-3,5-19,21-53,55-76
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "13020ff831a1ae3124d2e737cbb0da44c39ef62c",
+  "prompts": {},
+  "sessions": {
+    "s_5ae6c7c9c87bd8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "75f0ccc2-5303-4d33-a782-67784141a5e3",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "LLM (riotbox) <llm@riotbox>"
+    }
+  }
+}
