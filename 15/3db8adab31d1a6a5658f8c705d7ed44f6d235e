@@ -1,0 +1,52 @@
+tests/integration/test_structured_e2e.py
+  s_3dc2ccefed391b::t_22fcb6558a2506 31
+tests/unit/test_structured.py
+  s_3dc2ccefed391b::t_0c2e5ded8510b6 1185-1186
+  s_3dc2ccefed391b::t_9996118e7e2e78 1203-1204,1206-1211
+  s_3dc2ccefed391b::t_22fcb6558a2506 40,48,1272
+  s_3dc2ccefed391b::t_5cc0add7754548 79-97,1158-1184,1187-1189,1193-1202,1205,1212-1218,1220-1271,1273-1274,1280-1282
+  s_3dc2ccefed391b::t_d5f4044914ce1b 1190-1192,1219,1275-1279
+  s_3dc2ccefed391b::t_02003921e9aa69 1283
+README.md
+  s_3dc2ccefed391b::t_921d915360d01c 325-348,359
+tests/fixtures/structured/nist-csf-2.0/expected.json
+  s_3dc2ccefed391b::t_c1cc890070331c 1-333
+docs/structured-sources.md
+  s_3dc2ccefed391b::t_5bd35a3ff77189 38
+  s_3dc2ccefed391b::t_921d915360d01c 39-46
+tests/fixtures/structured/NOTICE
+  s_3dc2ccefed391b::t_921d915360d01c 37-42
+src/crosscodex_ingestion/mappings/nist-csf-2.0-core-xlsx.yaml
+  s_3dc2ccefed391b::t_c1cc890070331c 1-23
+tests/unit/test_mapping.py
+  s_3dc2ccefed391b::t_6ffbf15c770ea1 15
+  s_3dc2ccefed391b::t_5cc0add7754548 239-241,244-273
+  s_3dc2ccefed391b::t_d5f4044914ce1b 242-243
+src/crosscodex_ingestion/schemas/mapping-v1.schema.json
+  s_3dc2ccefed391b::t_6ffbf15c770ea1 54-67,85-113
+  s_3dc2ccefed391b::t_be62fd03a40f9d 114-116
+src/crosscodex_ingestion/structured.py
+  s_3dc2ccefed391b::t_86aa951e163198 210,213,597,706-710,712-736,738-766,768,771-776,780-790,796,807,862,881,1019-1020
+  s_3dc2ccefed391b::t_645238077d21b6 711,737,767,769-770,777-779
+  s_3dc2ccefed391b::t_d5f4044914ce1b 863-865
+  s_3dc2ccefed391b::t_fc609b4d62b2d6 1021
+tests/fixtures/structured/nist-csf-2.0/PROVENANCE.md
+  s_3dc2ccefed391b::t_d5f4044914ce1b 29-39
+  s_3dc2ccefed391b::t_921d915360d01c 1-28,40-50
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "153db8adab31d1a6a5658f8c705d7ed44f6d235e",
+  "prompts": {},
+  "sessions": {
+    "s_3dc2ccefed391b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8b71c523-057f-4aca-b595-80cb94dd7dda",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "LLM (riotbox) <llm@riotbox>"
+    }
+  }
+}
