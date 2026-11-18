@@ -1,0 +1,333 @@
+{
+  "elements": [
+    {
+      "element_id": "e-001",
+      "type": "heading",
+      "content": "GOVERN",
+      "page": null,
+      "level": 1,
+      "parent_id": null,
+      "style": {},
+      "id": "GV",
+      "properties": {
+        "informative_references": "CRI Profile v2.0: GV\nCSF v1.1: ID.GV\nISO/IEC 27001:2022: Mandatory Clause: 6.1\nISO/IEC 27001:2022: Mandatory Clause: 8.1\nISO/IEC 27001:2022: Mandatory Clause: 8.2\nISO/IEC 27001:2022: Mandatory Clause: 8.3\nISO/IEC 27001:2022: Annex A Controls: 5.1\nSCF: GOV-01\nSCF: GOV-05\nSCF: RSK-01\nSP 800-221A: GV.PO"
+      }
+    },
+    {
+      "element_id": "e-002",
+      "type": "paragraph",
+      "content": "The organization's cybersecurity risk management strategy, expectations, and policy are established, communicated, and monitored",
+      "page": null,
+      "level": null,
+      "parent_id": "e-001",
+      "style": {},
+      "id": null
+    },
+    {
+      "element_id": "e-003",
+      "type": "heading",
+      "content": "Organizational Context",
+      "page": null,
+      "level": 2,
+      "parent_id": "e-001",
+      "style": {},
+      "id": "GV.OC",
+      "properties": {
+        "informative_references": "CRI Profile v2.0: GV.OC\nCSF v1.1: ID.BE\nISO/IEC 27001:2022: Mandatory Clause: 4.2(a)\nISO/IEC 27001:2022: Mandatory Clause: 4.4\nISO/IEC 27001:2022: Mandatory Clause: 6.1\nISO/IEC 27001:2022: Mandatory Clause: 8.1\nISO/IEC 27001:2022: Mandatory Clause: 8.2\nISO/IEC 27001:2022: Mandatory Clause: 8.3\nISO/IEC 27001:2022: Annex A Controls: 5.20\nISO/IEC 27001:2022: Annex A Controls: 5.31\nNICE Framework: OG-WRL-002\nNICE Framework: OG-WRL-006\nNICE Framework: OG-WRL-007\nNICE Framework: OG-WRL-008\nNICE Framework: OG-WRL-010\nNICE Framework: OG-WRL-014\nNICE Framework: OG-WRL-015\nSCF: CPL-01\nSCF: TPM-05.4\nSP 800-221A: GV.CT\nSP 800-221A: GV.CT-5\nSP-800-37 Rev 2: RMF Prepare Step (Organization & Mission/Business Levels): TASK P-2 Risk Management Strategy\nSP-800-37 Rev 2: RMF Prepare Step (Organization & Mission/Business Levels): TASK P-3 Risk Assessment—Organization\nSP-800-37 Rev 2: RMF Prepare Step (System Level): TASK P-8 Mission or Business Focus\nSP-800-37 Rev 2: RMF Prepare Step (System Level): TASK P-9 System Stakeholders\nSP-800-37 Rev 2: RMF Prepare Step (System Level): TASK P-14 Risk Assessment—System\nSP-800-37 Rev 2: RMF Prepare Step (System Level): TASK P-15 Requirements Definition"
+      }
+    },
+    {
+      "element_id": "e-004",
+      "type": "paragraph",
+      "content": "The circumstances - mission, stakeholder expectations, dependencies, and legal, regulatory, and contractual requirements - surrounding the organization's cybersecurity risk management decisions are understood",
+      "page": null,
+      "level": null,
+      "parent_id": "e-003",
+      "style": {},
+      "id": null
+    },
+    {
+      "element_id": "e-005",
+      "type": "paragraph",
+      "content": "The organizational mission is understood and informs cybersecurity risk management",
+      "page": null,
+      "level": null,
+      "parent_id": "e-003",
+      "style": {},
+      "id": "GV.OC-01",
+      "properties": {
+        "implementation_examples": "Ex1: Share the organization's mission (e.g., through vision and mission statements, marketing, and service strategies) to provide a basis for identifying risks that may impede that mission",
+        "informative_references": "BXAIOS: Chapter 2 - Unify the Vision\nCCMv4.0: BCR-01\nCCMv4.0: BCR-07\nCRI Profile v2.0: GV.OC-01\nCRI Profile v2.0: GV.OC-01.01\nCSF v1.1: ID.BE-2\nCSF v1.1: ID.BE-3\nCoP: A3\nIRP: IRP-Sec-1\nISO/IEC 27001:2022: Mandatory Clause:  4.1\nISO/IEC 27001:2022: Mandatory Clause:  6.1,\nISO/IEC 27001:2022: Mandatory Clause: 8.1\nISO/IEC 27001:2022: Mandatory Clause: 8.2\nISO/IEC 27001:2022: Mandatory Clause: 8.3\nISO/IEC 27001:2022: Annex A Controls:\nNICE Framework: OG-WRL-002\nNICE Framework: OG-WRL-006\nNICE Framework: OG-WRL-007\nNICE Framework: OG-WRL-010\nNICE Framework: OG-WRL-015\nOWASP Top 10 LLM Applications: LLM06-2025\nOWASP Top 10 LLM Applications: LLM09-2025\nPCI DSS: 12.1.1\nSCF: RSK-01.1\nSCF: TDA-06.2\nSP 800-221A: GV.CT-5\nSP 800-221A: GV.CT-3\nSP 800-53 Rev 5.1.1: PM-11\nSP 800-53 Rev 5.2.0: PM-11\nSP-800-37 Rev 2: RMF Prepare Step (Organization & Mission/Business Levels): TASK P-2 Risk Management Strategy\nSP-800-37 Rev 2: RMF Prepare Step (Organization & Mission/Business Levels): TASK P-3 Risk Assessment—Organization\nSP-800-37 Rev 2: RMF Prepare Step (System Level): TASK P-8 Mission or Business Focus"
+      }
+    },
+    {
+      "element_id": "e-006",
+      "type": "paragraph",
+      "content": "Internal and external stakeholders are understood, and their needs and expectations regarding cybersecurity risk management are understood and considered",
+      "page": null,
+      "level": null,
+      "parent_id": "e-003",
+      "style": {},
+      "id": "GV.OC-02",
+      "properties": {
+        "implementation_examples": "Ex1: Identify relevant internal stakeholders and their cybersecurity-related expectations (e.g., performance and risk expectations of officers, directors, and advisors; cultural expectations of employees)\nEx2: Identify relevant external stakeholders and their cybersecurity-related expectations (e.g., privacy expectations of customers, business expectations of partnerships, compliance expectations of regulators, ethics expectations of society)",
+        "informative_references": "CCMv4.0: STA-08\nCCMv4.0: STA-13\nCRI Profile v2.0: GV.OC-02\nCRI Profile v2.0: GV.OC-02.01\nCRI Profile v2.0: GV.OC-02.02\nCRI Profile v2.0: GV.OC-02.03\nCSF v1.1: ID.SC-2\nCSF v1.1: ID.GV-2\nCoP: A1\nCoP: E2\nCoP: E3\nISO/IEC 27001:2022: Mandatory Clause: 4.1\nISO/IEC 27001:2022: Mandatory Clause: 4.2\nISO/IEC 27001:2022: Mandatory Clause: 4.4\nISO/IEC 27001:2022: Mandatory Clause: 6.1\nISO/IEC 27001:2022: Mandatory Clause: 8.1\nISO/IEC 27001:2022: Mandatory Clause: 8.2\nISO/IEC 27001:2022: Mandatory Clause: 8.3\nISO/IEC 27001:2022: Annex A Controls:\nNICE Framework: OG-WRL-002\nNICE Framework: OG-WRL-006\nNICE Framework: OG-WRL-007\nNICE Framework: OG-WRL-010\nNICE Framework: OG-WRL-014\nOWASP Top 10 LLM Applications: LLM02-2025\nOWASP Top 10 LLM Applications: LLM09-2025\nPCI DSS: 12.8.1\nPCI DSS: 12.8.5\nPCI DSS: 12.9.1\nPCI DSS: 12.9.2\nPCI DSS: 12.1.4\nSCF: TPM-05\nSCF: TPM-05.4\nSP 800-171 Rev 3: 03.11.01\nSP 800-171 Rev 3: 03.17.02\nSP 800-171 Rev 3: 03.17.03\nSP 800-221A: GV.OV-2\nSP 800-221A: GV.CT-2\nSP 800-221A: GV.CT-3\nSP 800-53 Rev 5.1.1: PM-09\nSP 800-53 Rev 5.1.1: PM-18\nSP 800-53 Rev 5.1.1: PM-30\nSP 800-53 Rev 5.1.1: SR-03\nSP 800-53 Rev 5.1.1: SR-05\nSP 800-53 Rev 5.1.1: SR-06\nSP 800-53 Rev 5.1.1: SR-08\nSP 800-53 Rev 5.2.0: PM-09\nSP 800-53 Rev 5.2.0: PM-18\nSP 800-53 Rev 5.2.0: PM-30\nSP 800-53 Rev 5.2.0: SR-03\nSP 800-53 Rev 5.2.0: SR-05\nSP 800-53 Rev 5.2.0: SR-06\nSP 800-53 Rev 5.2.0: SR-08\nSP-800-37 Rev 2: RMF Prepare Step - Organization and Mission/Business  Level -  Task P-1: Risk Management Roles\nSP-800-37 Rev 2: RMF Prepare Step - Organization and Mission/Business  Level -  Task P-3: Risk Assessment - Organizat\nSP-800-37 Rev 2: RMF Prepare Step (System Level): TASK P-9 System Stakeholders\nSP-800-37 Rev 2: RMF Prepare Step (System Level): TASK P-15 Requirements Definition\nSSDF: PO.2.1"
+      }
+    },
+    {
+      "element_id": "e-007",
+      "type": "paragraph",
+      "content": "Legal, regulatory, and contractual requirements regarding cybersecurity - including privacy and civil liberties obligations - are understood and managed",
+      "page": null,
+      "level": null,
+      "parent_id": "e-003",
+      "style": {},
+      "id": "GV.OC-03",
+      "properties": {
+        "implementation_examples": "Ex1: Determine a process to track and manage legal and regulatory requirements regarding protection of individuals' information (e.g., Health Insurance Portability and Accountability Act, California Consumer Privacy Act, General Data Protection Regulation)\nEx2: Determine a process to track and manage contractual requirements for cybersecurity management of supplier, customer, and partner information\nEx3: Align the organization's cybersecurity strategy with legal, regulatory, and contractual requirements",
+        "informative_references": "CCMv4.0: CEK-12\nCCMv4.0: CEK-13\nCCMv4.0: CEK-14\nCCMv4.0: CEK-15\nCCMv4.0: CEK-16\nCCMv4.0: CEK-17\nCCMv4.0: CEK-18\nCCMv4.0: CEK-19\nCCMv4.0: CEK-20\nCCMv4.0: CEK-21\nCCMv4.0: DSP-01\nCCMv4.0: DSP-10\nCCMv4.0: DSP-11\nCCMv4.0: DSP-12\nCCMv4.0: DSP-16\nCCMv4.0: DSP-18\nCCMv4.0: GRC-07\nCCMv4.0: HRS-13\nCCMv4.0: STA-05\nCCMv4.0: STA-13\nCRI Profile v2.0: GV.OC-03\nCRI Profile v2.0: GV.OC-03.01\nCRI Profile v2.0: GV.OC-03.02\nCSF v1.1: ID.GV-3\nCoP: A1\nCoP: D3\nCoP: E2\nCoP: E3\nCoP: E4\nCoP: E5\nISO/IEC 27001:2022: Mandatory Clause: 4.2(a)\nISO/IEC 27001:2022: Mandatory Clause: 4.2(b)\nISO/IEC 27001:2022: Annex A Controls: 5.20\nISO/IEC 27001:2022: Annex A Controls: 5.31\nNICE Framework: OG-WRL-002\nNICE Framework: OG-WRL-006\nNICE Framework: OG-WRL-007\nNICE Framework: OG-WRL-008\nNICE Framework: OG-WRL-010\nOWASP Top 10 LLM Applications: LLM02-2025\nOWASP Top 10 LLM Applications: LLM03-2025\nOWASP Top 10 LLM Applications: LLM09-2025\nPCI DSS: 12.8.2\nPCI DSS: 12.8.4\nPCI DSS: 12.8.5\nPCI DSS: 12.8.1\nPCI DSS: 12.9.1\nPCI DSS: 12.9.2\nPCI DSS: 3.2.1\nPCI DSS: 9.4.6\nPCI DSS: 9.4.7\nSCF: CPL-01\nSCF: CPL-02\nSCF: PRI-01\nSCF: TPM-05\nSCF: TPM-05.2\nSDOS: SDOS-GV-01\nSDOS: SDOS-GV-03\nSDOS: SDOS-GV-05\nSP 800-171 Rev 3: 03.15.01\nSP 800-53 Rev 5.1.1: AC-01\nSP 800-53 Rev 5.1.1: AT-01\nSP 800-53 Rev 5.1.1: AU-01\nSP 800-53 Rev 5.1.1: CA-01\nSP 800-53 Rev 5.1.1: CM-01\nSP 800-53 Rev 5.1.1: CP-01\nSP 800-53 Rev 5.1.1: IA-01\nSP 800-53 Rev 5.1.1: IR-01\nSP 800-53 Rev 5.1.1: MA-01\nSP 800-53 Rev 5.1.1: MP-01\nSP 800-53 Rev 5.1.1: PE-01\nSP 800-53 Rev 5.1.1: PL-01\nSP 800-53 Rev 5.1.1: PM-01\nSP 800-53 Rev 5.1.1: PS-01\nSP 800-53 Rev 5.1.1: PT-01\nSP 800-53 Rev 5.1.1: RA-01\nSP 800-53 Rev 5.1.1: SA-01\nSP 800-53 Rev 5.1.1: SC-01\nSP 800-53 Rev 5.1.1: SI-01\nSP 800-53 Rev 5.1.1: SR-01\nSP 800-53 Rev 5.1.1: PM-28\nSP 800-53 Rev 5.1.1: PT\nSP 800-53 Rev 5.2.0: AC-01\nSP 800-53 Rev 5.2.0: AT-01\nSP 800-53 Rev 5.2.0: AU-01\nSP 800-53 Rev 5.2.0: CA-01\nSP 800-53 Rev 5.2.0: CM-01\nSP 800-53 Rev 5.2.0: CP-01\nSP 800-53 Rev 5.2.0: IA-01\nSP 800-53 Rev 5.2.0: IR-01\nSP 800-53 Rev 5.2.0: MA-01\nSP 800-53 Rev 5.2.0: MP-01\nSP 800-53 Rev 5.2.0: PE-01\nSP 800-53 Rev 5.2.0: PL-01\nSP 800-53 Rev 5.2.0: PM-01\nSP 800-53 Rev 5.2.0: PS-01\nSP 800-53 Rev 5.2.0: PT-01\nSP 800-53 Rev 5.2.0: RA-01\nSP 800-53 Rev 5.2.0: SA-01\nSP 800-53 Rev 5.2.0: SC-01\nSP 800-53 Rev 5.2.0: SI-01\nSP 800-53 Rev 5.2.0: SR-01\nSP 800-53 Rev 5.2.0: PM-28\nSP 800-53 Rev 5.2.0: PT\nSP-800-37 Rev 2: RMF Prepare Step (Organization & Mission/Business Levels): TASK P-2 Risk Management Strategy\nSP-800-37 Rev 2: RMF Prepare Step (System Level): TASK P-15 Requirements Definition\nSP-800-37 Rev 2: RMF Prepare Step (System Level): TASK P-17 Requirements Allocation\nSSDF: PO.1.1\nSSDF: PO.1.2"
+      }
+    },
+    {
+      "element_id": "e-008",
+      "type": "paragraph",
+      "content": "Critical objectives, capabilities, and services that external stakeholders depend on or expect from the organization are understood and communicated",
+      "page": null,
+      "level": null,
+      "parent_id": "e-003",
+      "style": {},
+      "id": "GV.OC-04",
+      "properties": {
+        "implementation_examples": "Ex1: Establish criteria for determining the criticality of capabilities and services as viewed by internal and external stakeholders\nEx2: Determine (e.g., from a business impact analysis) assets and business operations that are vital to achieving mission objectives and the potential impact of a loss (or partial loss) of such operations\nEx3: Establish and communicate resilience objectives (e.g., recovery time objectives) for delivering critical capabilities and services in various operating states (e.g., under attack, during recovery, normal operation)",
+        "informative_references": "CCMv4.0: BCR-01\nCCMv4.0: BCR-02\nCCMv4.0: BCR-03\nCCMv4.0: BCR-11\nCCMv4.0: IVS-02\nCCMv4.0: STA-05\nCRI Profile v2.0: GV.OC-04\nCRI Profile v2.0: GV.OC-04.01\nCRI Profile v2.0: GV.OC-04.02\nCRI Profile v2.0: GV.OC-04.03\nCRI Profile v2.0: GV.OC-04.04\nCSF v1.1: ID.BE-4\nCSF v1.1: ID.BE-5\nCoP: A1\nISO/IEC 27001:2022: Mandatory Clause: 4.2(a)\nISO/IEC 27001:2022: Mandatory Clause: 4.2(b)\nISO/IEC 27001:2022: Annex A Controls: 5.20\nISO/IEC 27001:2022: Annex A Controls: 5.31\nNICE Framework: OG-WRL-002\nNICE Framework: OG-WRL-006\nNICE Framework: OG-WRL-007\nNICE Framework: OG-WRL-010\nNICE Framework: OG-WRL-014\nOWASP Top 10 LLM Applications: LLM09-2025\nOWASP Top 10 LLM Applications: LLM10-2025\nPCI DSS: 12.10.1\nPCI DSS: 12.5.2\nPCI DSS: 12.5.1\nSCF: BCD-02\nSCF: TPM-02\nSP 800-221A: MA.RI-1\nSP 800-53 Rev 5.1.1: PM-08\nSP 800-53 Rev 5.1.1: PM-11\nSP 800-53 Rev 5.1.1: CP-02(08)\nSP 800-53 Rev 5.1.1: PM-30(01)\nSP 800-53 Rev 5.1.1: RA-09\nSP 800-53 Rev 5.2.0: PM-08\nSP 800-53 Rev 5.2.0: PM-11\nSP 800-53 Rev 5.2.0: CP-02(08)\nSP 800-53 Rev 5.2.0: PM-30(01)\nSP 800-53 Rev 5.2.0: RA-09\nSP-800-37 Rev 2: RMF Prepare Step (Organization & Mission/Business Levels): TASK P-2 Risk Management Strategy\nSP-800-37 Rev 2: RMF Prepare Step (System Level): TASK P-8 Mission or Business Focus\nSP-800-37 Rev 2: RMF Prepare Step (System Level): TASK P-9 System Stakeholders"
+      }
+    },
+    {
+      "element_id": "e-009",
+      "type": "paragraph",
+      "content": "Outcomes, capabilities, and services that the organization depends on are understood and communicated",
+      "page": null,
+      "level": null,
+      "parent_id": "e-003",
+      "style": {},
+      "id": "GV.OC-05",
+      "properties": {
+        "implementation_examples": "Ex1: Create an inventory of the organization's dependencies on external resources (e.g., facilities, cloud-based hosting providers) and their relationships to organizational assets and business functions\nEx2: Identify and document external dependencies that are potential points of failure for the organization's critical capabilities and services, and share that information with appropriate personnel",
+        "informative_references": "CCMv4.0: BCR-11\nCCMv4.0: STA-01\nCCMv4.0: STA-04\nCRI Profile v2.0: GV.OC-05\nCRI Profile v2.0: GV.OC-05.01\nCRI Profile v2.0: GV.OC-05.02\nCRI Profile v2.0: GV.OC-05.03\nCRI Profile v2.0: GV.OC-05.04\nCSF v1.1: ID.BE-1\nCSF v1.1: ID.BE-4\nISO/IEC 27001:2022: Mandatory Clause: None\nISO/IEC 27001:2022: Annex A Controls: 5.3\nISO/IEC 27001:2022: Control 5.8\nNICE Framework: OG-WRL-002\nNICE Framework: OG-WRL-006\nNICE Framework: OG-WRL-007\nNICE Framework: OG-WRL-010\nNICE Framework: OG-WRL-014\nOWASP Top 10 LLM Applications: LLM03-2025\nOWASP Top 10 LLM Applications: LLM10-2025\nPCI DSS: 12.8.1\nPCI DSS: 12.8.4\nPCI DSS: 12.9.1\nPCI DSS: 12.9.2\nPCI DSS: 1.2.3\nPCI DSS: 1.2.4\nPCI DSS: 12.5.2\nPCI DSS: 12.5.1\nSCF: BCD-02\nSCF: TPM-02\nSP 800-171 Rev 3: 03.11.04\nSP 800-171 Rev 3: 03.16.03\nSP 800-171 Rev 3: 03.17.02\nSP 800-221A: GV.CT-5\nSP 800-221A: MA.RI-1\nSP 800-53 Rev 5.1.1: PM-11\nSP 800-53 Rev 5.1.1: PM-30\nSP 800-53 Rev 5.1.1: RA-07\nSP 800-53 Rev 5.1.1: SA-09\nSP 800-53 Rev 5.1.1: SR-05\nSP 800-53 Rev 5.2.0: PM-11\nSP 800-53 Rev 5.2.0: PM-30\nSP 800-53 Rev 5.2.0: RA-07\nSP 800-53 Rev 5.2.0: SA-09\nSP 800-53 Rev 5.2.0: SR-05\nSP-800-37 Rev 2: RMF Prepare Step (System Level): TASK P-8 Mission or Business Focus\nSP-800-37 Rev 2: RMF Prepare Step (System Level): TASK P-10 Asset Identification"
+      }
+    },
+    {
+      "element_id": "e-010",
+      "type": "heading",
+      "content": "Risk Management Strategy",
+      "page": null,
+      "level": 2,
+      "parent_id": "e-001",
+      "style": {},
+      "id": "GV.RM",
+      "properties": {
+        "informative_references": "CRI Profile v2.0: GV.RM\nCSF v1.1: ID.RM\nISO/IEC 27001:2022: Mandatory Clause: 6.1\nISO/IEC 27001:2022: Annex A Controls: 5.1\nNICE Framework: DD-WRL-002\nNICE Framework: DD-WRL-006\nNICE Framework: IO-WRL-003\nNICE Framework: IO-WRL-006\nNICE Framework: OG-WRL-002\nNICE Framework: OG-WRL-003\nNICE Framework: OG-WRL-006\nNICE Framework: OG-WRL-007\nNICE Framework: OG-WRL-008\nNICE Framework: OG-WRL-009\nNICE Framework: OG-WRL-010\nNICE Framework: OG-WRL-011\nNICE Framework: OG-WRL-012\nNICE Framework: OG-WRL-013\nNICE Framework: OG-WRL-014\nNICE Framework: OG-WRL-015\nSCF: GOV-04\nSCF: PRM-01\nSCF: RSK-01\nSCF: RSK-01.1\nSP 800-221A: GV.BE-3\nSP-800-37 Rev 2: RMF Prepare Step (Organization & Mission/Business Levels): TASK P-2 Risk Management Strategy"
+      }
+    },
+    {
+      "element_id": "e-011",
+      "type": "paragraph",
+      "content": "The organization's priorities, constraints, risk tolerance and appetite statements, and assumptions are established, communicated, and used to support operational risk decisions",
+      "page": null,
+      "level": null,
+      "parent_id": "e-010",
+      "style": {},
+      "id": null
+    },
+    {
+      "element_id": "e-012",
+      "type": "paragraph",
+      "content": "Risk management objectives are established and agreed to by organizational stakeholders",
+      "page": null,
+      "level": null,
+      "parent_id": "e-010",
+      "style": {},
+      "id": "GV.RM-01",
+      "properties": {
+        "implementation_examples": "Ex1: Update near-term and long-term cybersecurity risk management objectives as part of annual strategic planning and when major changes occur\nEx2: Establish measurable objectives for cybersecurity risk management (e.g., manage the quality of user training, ensure adequate risk protection for industrial control systems)\nEx3: Senior leaders agree about cybersecurity objectives and use them for measuring and managing risk and performance",
+        "informative_references": "CCMv4.0: GRC-02\nCCMv4.0: CEK-07\nCRI Profile v2.0: GV.RM-01\nCRI Profile v2.0: GV.RM-01.01\nCRI Profile v2.0: GV.RM-01.02\nCRI Profile v2.0: GV.RM-01.03\nCRI Profile v2.0: GV.RM-01.04\nCRI Profile v2.0: GV.RM-01.05\nCSF v1.1: ID.RM-1\nCoP: A1\nIRP: IRP-Sec-2\nISO/IEC 27001:2022: Mandatory Clause: 6.1.1\nISO/IEC 27001:2022: Mandatory Clause: 6.1.2\nISO/IEC 27001:2022: Annex A Controls: 5.1\nNICE Framework: OG-WRL-002\nNICE Framework: OG-WRL-007\nNICE Framework: OG-WRL-008\nNICE Framework: OG-WRL-011\nNICE Framework: OG-WRL-012\nNICE Framework: OG-WRL-013\nNICE Framework: OG-WRL-014\nNICE Framework: OG-WRL-015\nPCI DSS: 12.1.4\nPCI DSS: 12.1.2\nPCI DSS: 12.1.1\nSCF: GOV-01\nSCF: RSK-01\nSP 800-171 Rev 3: 03.11.04\nSP 800-171 Rev 3: 03.17.01\nSP 800-221A: GV.RR-2\nSP 800-53 Rev 5.1.1: PM-09\nSP 800-53 Rev 5.1.1: RA-07\nSP 800-53 Rev 5.1.1: SR-02\nSP 800-53 Rev 5.2.0: PM-09\nSP 800-53 Rev 5.2.0: RA-07\nSP 800-53 Rev 5.2.0: SR-02\nSP-800-37 Rev 2: RMF Prepare Step (Organization & Mission/Business Levels): TASK P-2 Risk Management Strategy"
+      }
+    },
+    {
+      "element_id": "e-013",
+      "type": "paragraph",
+      "content": "Risk appetite and risk tolerance statements are established, communicated, and maintained",
+      "page": null,
+      "level": null,
+      "parent_id": "e-010",
+      "style": {},
+      "id": "GV.RM-02",
+      "properties": {
+        "implementation_examples": "Ex1: Determine and communicate risk appetite statements that convey expectations about the appropriate level of risk for the organization\nEx2: Translate risk appetite statements into specific, measurable, and broadly understandable risk tolerance statements\nEx3: Refine organizational objectives and risk appetite periodically based on known risk exposure and residual risk",
+        "informative_references": "CCMv4.0: GRC-02\nCCMv4.0: BCR-03\nCCMv4.0: IVS-08\nCRI Profile v2.0: GV.RM-02\nCRI Profile v2.0: GV.RM-02.01\nCRI Profile v2.0: GV.RM-02.02\nCRI Profile v2.0: GV.RM-02.03\nCSF v1.1: ID.RM-2\nCSF v1.1: ID.RM-3\nCoP: A3\nGuardian-SDK: GS-CF-01\nIRP: IRP-Sec-5\nISO/IEC 27001:2022: Mandatory Clause: 6.1.2\nISO/IEC 27001:2022: Annex A Controls: 5.1\nNICE Framework: DD-WRL-006\nNICE Framework: IO-WRL-003\nNICE Framework: OG-WRL-002\nNICE Framework: OG-WRL-006\nNICE Framework: OG-WRL-007\nNICE Framework: OG-WRL-010\nNICE Framework: OG-WRL-011\nNICE Framework: OG-WRL-013\nNICE Framework: OG-WRL-014\nNICE Framework: OG-WRL-015\nOWASP Top 10 LLM Applications: LLM06-2025\nOWASP Top 10 LLM Applications: LLM09-2025\nSDOS: SDOS-RM-01\nSDOS: SDOS-RM-02\nSDOS: SDOS-RM-03\nSP 800-221A: GV.BE-1\nSP 800-221A: GV.BE-3\nSP 800-53 Rev 5.1.1: PM-09\nSP 800-53 Rev 5.2.0: PM-09\nSP-800-37 Rev 2: RMF Prepare Step (Organization & Mission/Business Levels): TASK P-2 Risk Management Strategy"
+      }
+    },
+    {
+      "element_id": "e-014",
+      "type": "paragraph",
+      "content": "Cybersecurity risk management activities and outcomes are included in enterprise risk management processes",
+      "page": null,
+      "level": null,
+      "parent_id": "e-010",
+      "style": {},
+      "id": "GV.RM-03",
+      "properties": {
+        "implementation_examples": "Ex1: Aggregate and manage cybersecurity risks alongside other enterprise risks (e.g., compliance, financial, operational, regulatory, reputational, safety)\nEx2: Include cybersecurity risk managers in enterprise risk management planning\nEx3: Establish criteria for escalating cybersecurity risks within enterprise risk management",
+        "informative_references": "CCMv4.0: GRC-02\nCCMv4.0: A&A-03\nCRI Profile v2.0: GV.RM-03\nCRI Profile v2.0: GV.RM-03.01\nCRI Profile v2.0: GV.RM-03.02\nCRI Profile v2.0: GV.RM-03.03\nCRI Profile v2.0: GV.RM-03.04\nCSF v1.1: ID.GV-4\nCoP: A2\nISO/IEC 27001:2022: Mandatory Clause: 6.1.3\nISO/IEC 27001:2022: Annex A Controls: 5.1\nNICE Framework: DD-WRL-002\nNICE Framework: OG-WRL-002\nNICE Framework: OG-WRL-006\nNICE Framework: OG-WRL-007\nNICE Framework: OG-WRL-008\nNICE Framework: OG-WRL-010\nNICE Framework: OG-WRL-011\nNICE Framework: OG-WRL-015\nPCI DSS: 12.5.3\nPCI DSS: 10.4.2.1\nPCI DSS: 11.3.1.1\nPCI DSS: 11.6.1\nPCI DSS: 12.10.4.1\nPCI DSS: 5.2.3.1\nPCI DSS: 5.3.2.1\nPCI DSS: 7.2.5.1\nPCI DSS: 8.6.3\nPCI DSS: 6.3.1\nPCI DSS: 6.3.3\nPCI DSS: 9.5.1.2.1\nPCI DSS: 12.3.4\nPCI DSS: 12.3.3\nPCI DSS: 12.8.3\nSCF: GOV-01\nSCF: RSK-01\nSP 800-171 Rev 3: 03.11.04\nSP 800-171 Rev 3: 03.17.01\nSP 800-221A: GV.PO-2\nSP 800-221A: GV.PO-3\nSP 800-53 Rev 5.1.1: PM-03\nSP 800-53 Rev 5.1.1: PM-09\nSP 800-53 Rev 5.1.1: PM-30\nSP 800-53 Rev 5.1.1: RA-07\nSP 800-53 Rev 5.1.1: SR-02\nSP 800-53 Rev 5.2.0: PM-03\nSP 800-53 Rev 5.2.0: PM-09\nSP 800-53 Rev 5.2.0: PM-30\nSP 800-53 Rev 5.2.0: RA-07\nSP 800-53 Rev 5.2.0: SA-24\nSP 800-53 Rev 5.2.0: SR-02\nSP-800-37 Rev 2: RMF Prepare Step (Organization & Mission/Business Levels): TASK P-2 Risk Management Strategy"
+      }
+    },
+    {
+      "element_id": "e-015",
+      "type": "paragraph",
+      "content": "Strategic direction that describes appropriate risk response options is established and communicated",
+      "page": null,
+      "level": null,
+      "parent_id": "e-010",
+      "style": {},
+      "id": "GV.RM-04",
+      "properties": {
+        "implementation_examples": "Ex1: Specify criteria for accepting and avoiding cybersecurity risk for various classifications of data\nEx2: Determine whether to purchase cybersecurity insurance\nEx3: Document conditions under which shared responsibility models are acceptable (e.g., outsourcing certain cybersecurity functions, having a third party perform financial transactions on behalf of the organization, using public cloud-based services)",
+        "informative_references": "CCMv4.0: GRC-02\nCCMv4.0: BCR-03\nCCMv4.0: STA-01\nCRI Profile v2.0: GV.RM-04\nCRI Profile v2.0: GV.RM-04.01\nCSF v1.1: ID.RM-2\nCoP: B1\nCoP: B2\nISO/IEC 27001:2022: Mandatory Clause: 6.1.3\nISO/IEC 27001:2022: Annex A Controls: 5.1\nNICE Framework: OG-WRL-002\nNICE Framework: OG-WRL-007\nNICE Framework: OG-WRL-010\nNICE Framework: OG-WRL-015\nPCI DSS: 12.10.1\nPCI DSS: 12.10.2\nPCI DSS: 12.10.6\nSCF: RSK-01\nSCF: RSK-01.1\nSCF: RSK-06.1\nSDOS: SDOS-GV-02\nSDOS: SDOS-RM-01\nSP 800-171 Rev 3: 03.17.01\nSP 800-221A: GV.BE-1\nSP 800-53 Rev 5.1.1: PM-09\nSP 800-53 Rev 5.1.1: PM-28\nSP 800-53 Rev 5.1.1: PM-30\nSP 800-53 Rev 5.1.1: SR-02\nSP 800-53 Rev 5.2.0: PM-09\nSP 800-53 Rev 5.2.0: PM-28\nSP 800-53 Rev 5.2.0: PM-30\nSP 800-53 Rev 5.2.0: SR-02\nSP-800-37 Rev 2: RMF Prepare Step (Organization & Mission/Business Levels): TASK P-2 Risk Management Strategy\nSP-800-37 Rev 2: RMF Prepare Step (Organization & Mission/Business Levels): TASK P-7 Continuous Monitoring Strategy—O"
+      }
+    },
+    {
+      "element_id": "e-016",
+      "type": "paragraph",
+      "content": "Lines of communication across the organization are established for cybersecurity risks, including risks from suppliers and other third parties",
+      "page": null,
+      "level": null,
+      "parent_id": "e-010",
+      "style": {},
+      "id": "GV.RM-05",
+      "properties": {
+        "implementation_examples": "Ex1: Determine how to update senior executives, directors, and management on the organization's cybersecurity posture at agreed-upon intervals\nEx2: Identify how all departments across the organization - such as management, operations, internal auditors, legal, acquisition, physical security, and HR - will communicate with each other about cybersecurity risks",
+        "informative_references": "CCMv4.0: GRC-02\nCCMv4.0: STA-01\nCCMv4.0: STA-08\nCRI Profile v2.0: GV.RM-05\nCRI Profile v2.0: GV.RM-05.01\nCRI Profile v2.0: GV.RM-05.02\nCSF v1.1: ID.SC-1\nISO/IEC 27001:2022: Mandatory Clause: 6.1.1\nISO/IEC 27001:2022: Mandatory Clause: 6.1.3\nISO/IEC 27001:2022: Annex A Controls: 5.1\nISO/IEC 27001:2022: Annex A Controls: 5.19\nNICE Framework: DD-WRL-006\nNICE Framework: OG-WRL-002\nNICE Framework: OG-WRL-003\nNICE Framework: OG-WRL-007\nNICE Framework: OG-WRL-008\nNICE Framework: OG-WRL-009\nNICE Framework: OG-WRL-010\nNICE Framework: OG-WRL-013\nNICE Framework: OG-WRL-014\nNICE Framework: OG-WRL-015\nPCI DSS: 12.8.2\nPCI DSS: 12.8.5\nPCI DSS: 12.9.2\nPCI DSS: 12.9.1\nPCI DSS: 12.8.4\nPCI DSS: 12.5.3\nPCI DSS: 12.10.1\nPCI DSS: 10.7.1\nPCI DSS: 10.7.2\nSCF: GOV-04\nSCF: HRS-03\nSCF: TPM-05.4\nSP 800-221A: GV.PO-1\nSP 800-53 Rev 5.1.1: PM-09\nSP 800-53 Rev 5.1.1: PM-30\nSP 800-53 Rev 5.2.0: PM-09\nSP 800-53 Rev 5.2.0: PM-30\nSP-800-37 Rev 2: RMF Prepare Step (Organization & Mission/Business Levels): TASK P-1 Risk Management Roles\nSP-800-37 Rev 2: RMF Prepare Step (Organization & Mission/Business Levels): TASK P-2 Risk Management Strategy\nSP-800-37 Rev 2: RMF Prepare Step (Organization & Mission/Business Levels): TASK P-7 Continuous Monitoring Strategy—O\nSP-800-37 Rev 2: RMF Prepare Step (System Level): TASK P-9 System Stakeholders"
+      }
+    },
+    {
+      "element_id": "e-017",
+      "type": "paragraph",
+      "content": "A standardized method for calculating, documenting, categorizing, and prioritizing cybersecurity risks is established and communicated",
+      "page": null,
+      "level": null,
+      "parent_id": "e-010",
+      "style": {},
+      "id": "GV.RM-06",
+      "properties": {
+        "implementation_examples": "Ex1: Establish criteria for using a quantitative approach to cybersecurity risk analysis, and specify probability and exposure formulas\nEx2: Create and use templates (e.g., a risk register) to document cybersecurity risk information (e.g., risk description, exposure, treatment, and ownership)\nEx3: Establish criteria for risk prioritization at the appropriate levels within the enterprise\nEx4: Use a consistent list of risk categories to support integrating, aggregating, and comparing cybersecurity risks",
+        "informative_references": "CCMv4.0: GRC-02\nCCMv4.0: TVM-08\nCCMv4.0: IVS-08\nCRI Profile v2.0: GV.RM-06\nCRI Profile v2.0: GV.RM-06.01\nCSF v1.1: ID.RM-1\nIRP: IRP-Sec-2\nISO/IEC 27001:2022: Mandatory Clause: 6.1.2\nISO/IEC 27001:2022: Annex A Controls: 5.1\nNICE Framework: DD-WRL-006\nNICE Framework: IO-WRL-003\nNICE Framework: IO-WRL-006\nNICE Framework: OG-WRL-002\nNICE Framework: OG-WRL-007\nNICE Framework: OG-WRL-010\nNICE Framework: OG-WRL-012\nNICE Framework: OG-WRL-013\nNICE Framework: OG-WRL-014\nNICE Framework: OG-WRL-015\nPCI DSS: 12.3.1\nPCI DSS: 12.3.2\nPCI DSS: 10.4.2.1\nPCI DSS: 11.3.1.1\nPCI DSS: 11.6.1\nPCI DSS: 12.10.4.1\nPCI DSS: 5.2.3.1\nPCI DSS: 5.3.2.1\nPCI DSS: 7.2.5.1\nPCI DSS: 8.6.3\nPCI DSS: 6.3.1\nPCI DSS: 6.3.3\nPCI DSS: 9.5.1.2.1\nPCI DSS: 12.3.4\nPCI DSS: 12.3.3\nPCI DSS: 12.8.3\nSCF: RSK-01\nSCF: RSK-01.1\nSCF: RSK-04\nSDOS: SDOS-AU-01\nSDOS: SDOS-RM-01\nSDOS: SDOS-RM-02\nSP 800-171 Rev 3: 03.11.01\nSP 800-221A: GV.RR-2\nSP 800-53 Rev 5.1.1: PM-09\nSP 800-53 Rev 5.1.1: PM-18\nSP 800-53 Rev 5.1.1: PM-28\nSP 800-53 Rev 5.1.1: PM-30\nSP 800-53 Rev 5.1.1: RA-03\nSP 800-53 Rev 5.2.0: PM-09\nSP 800-53 Rev 5.2.0: PM-18\nSP 800-53 Rev 5.2.0: PM-28\nSP 800-53 Rev 5.2.0: PM-30\nSP 800-53 Rev 5.2.0: RA-03\nSP-800-37 Rev 2: RMF Prepare Step (Organization & Mission/Business Levels): TASK P-2 Risk Management Strategy\nSP-800-37 Rev 2: RMF Prepare Step (Organization & Mission/Business Levels): TASK P-3 Risk Assessment—Organization\nSP-800-37 Rev 2: RMF Prepare Step (Organization & Mission/Business Levels): TASK P-7 Continuous Monitoring Strategy—O"
+      }
+    },
+    {
+      "element_id": "e-018",
+      "type": "paragraph",
+      "content": "Strategic opportunities (i.e., positive risks) are characterized and are included in organizational cybersecurity risk discussions",
+      "page": null,
+      "level": null,
+      "parent_id": "e-010",
+      "style": {},
+      "id": "GV.RM-07",
+      "properties": {
+        "implementation_examples": "Ex1: Define and communicate guidance and methods for identifying opportunities and including them in risk discussions (e.g., strengths, weaknesses, opportunities, and threats [SWOT] analysis)\nEx2: Identify stretch goals and document them\nEx3: Calculate, document, and prioritize positive risks alongside negative risks",
+        "informative_references": "CCMv4.0: GRC-02\nCRI Profile v2.0: GV.RM-07\nCRI Profile v2.0: GV.RM-07.01\nISO/IEC 27001:2022: Mandatory Clause: 6.11\nISO/IEC 27001:2022: Annex A Controls: None\nNICE Framework: OG-WRL-002\nNICE Framework: OG-WRL-007\nNICE Framework: OG-WRL-015\nSCF: RSK-01.1\nSDOS: SDOS-GV-02\nSDOS: SDOS-RM-01\nSP 800-171 Rev 3: 03.11.01\nSP 800-53 Rev 5.1.1: PM-09\nSP 800-53 Rev 5.1.1: PM-18\nSP 800-53 Rev 5.1.1: PM-28\nSP 800-53 Rev 5.1.1: PM-30\nSP 800-53 Rev 5.1.1: RA-03\nSP 800-53 Rev 5.2.0: PM-09\nSP 800-53 Rev 5.2.0: PM-18\nSP 800-53 Rev 5.2.0: PM-28\nSP 800-53 Rev 5.2.0: PM-30\nSP 800-53 Rev 5.2.0: RA-03\nSP-800-37 Rev 2: RMF Prepare Step (Organization & Mission/Business Levels): TASK P-2 Risk Management Strategy"
+      }
+    },
+    {
+      "element_id": "e-019",
+      "type": "heading",
+      "content": "IDENTIFY",
+      "page": null,
+      "level": 1,
+      "parent_id": null,
+      "style": {},
+      "id": "ID",
+      "properties": {
+        "informative_references": "CRI Profile v2.0: ID\nCSF v1.1: ID\nISO/IEC 27001:2022: Mandatory Clause: 8.1\nISO/IEC 27001:2022: Mandatory Clause: 8.2\nISO/IEC 27001:2022: Mandatory Clause: 8.3\nISO/IEC 27001:2022: Mandatory Clause: 10.2\nISO/IEC 27001:2022: Annex A Controls: None\nSCF: RSK-01\nSCF: RSK-01.1\nSCF: RSK-04\nSCF: RSK-09"
+      }
+    },
+    {
+      "element_id": "e-020",
+      "type": "paragraph",
+      "content": "The organization's current cybersecurity risks are understood",
+      "page": null,
+      "level": null,
+      "parent_id": "e-019",
+      "style": {},
+      "id": null
+    },
+    {
+      "element_id": "e-021",
+      "type": "heading",
+      "content": "Asset Management",
+      "page": null,
+      "level": 2,
+      "parent_id": "e-019",
+      "style": {},
+      "id": "ID.AM",
+      "properties": {
+        "informative_references": "CRI Profile v2.0: ID.AM\nCSF v1.1: ID.AM\nISO/IEC 27001:2022: Mandatory Clause: None\nISO/IEC 27001:2022: Annex A Controls: 5.9\nISO/IEC 27001:2022: Annex A Controls: 5.12\nISO/IEC 27001:2022: Annex A Controls: 5.13\nNICE Framework: DD-WRL-001\nNICE Framework: DD-WRL-002\nNICE Framework: DD-WRL-003\nNICE Framework: DD-WRL-004\nNICE Framework: DD-WRL-005\nNICE Framework: DD-WRL-009\nNICE Framework: IO-WRL-001\nNICE Framework: IO-WRL-002\nNICE Framework: IO-WRL-003\nNICE Framework: IO-WRL-004\nNICE Framework: IO-WRL-005\nNICE Framework: OG-WRL-011\nNICE Framework: OG-WRL-015\nSCF: AST-01\nSCF: AST-02\nSCF: AST-03\nSCF: AST-03.1\nSCF: HRS-01\nSCF: HRS-03\nSCF: HRS-05\nSCF: HRS-05.1\nSCF: PES-01\nSCF: RSK-02\nSCF: TPM-01\nSCF: TPM-05.4\nSP 800-221A: MA.RI-1\nSP-800-37 Rev 2: RMF Prepare Step (System Level): TASK P-10 Asset Identification"
+      }
+    },
+    {
+      "element_id": "e-022",
+      "type": "paragraph",
+      "content": "Assets (e.g., data, hardware, software, systems, facilities, services, people) that enable the organization to achieve business purposes are identified and managed consistent with their relative importance to organizational objectives and the organization's risk strategy",
+      "page": null,
+      "level": null,
+      "parent_id": "e-021",
+      "style": {},
+      "id": null
+    },
+    {
+      "element_id": "e-023",
+      "type": "paragraph",
+      "content": "Inventories of hardware managed by the organization are maintained",
+      "page": null,
+      "level": null,
+      "parent_id": "e-021",
+      "style": {},
+      "id": "ID.AM-01",
+      "properties": {
+        "implementation_examples": "Ex1: Maintain inventories for all types of hardware, including IT, IoT, OT, and mobile devices\nEx2: Constantly monitor networks to detect new hardware and automatically update inventories",
+        "informative_references": "CCMv4.0: CCC-04\nCCMv4.0: DCS-06\nCCMv4.0: DSP-19\nCCMv4.0: UEM-04\nCIS Controls v8.0: 1.1\nCIS Controls v8.1: 1.1\nCRI Profile v2.0: ID.AM-01\nCRI Profile v2.0: ID.AM-01.01\nCSF v1.1: ID.AM-1\nISO/IEC 27001:2022: Mandatory Clause: None\nISO/IEC 27001:2022: Annex A Controls: 5.9\nISO/IEC 27001:2022: Control 5.9\nNICE Framework: DD-WRL-002\nNICE Framework: DD-WRL-009\nNICE Framework: IO-WRL-002\nNICE Framework: IO-WRL-003\nNICE Framework: IO-WRL-004\nNICE Framework: IO-WRL-005\nNICE Framework: OG-WRL-015\nPCI DSS: 12.5.1\nPCI DSS: 9.5.1.1\nPCI DSS: 1.2.3\nPCI DSS: 9.5.1.2\nSCF: AST-02\nSP 800-221A: MA.RI-1\nSP 800-53 Rev 5.1.1: CM-08\nSP 800-53 Rev 5.1.1: PM-05\nSP 800-53 Rev 5.2.0: CM-08\nSP 800-53 Rev 5.2.0: PM-05\nSP-800-37 Rev 2: RMF Prepare Step (System Level): TASK P-10 Asset Identification"
+      }
+    },
+    {
+      "element_id": "e-024",
+      "type": "paragraph",
+      "content": "Inventories of software, services, and systems managed by the organization are maintained",
+      "page": null,
+      "level": null,
+      "parent_id": "e-021",
+      "style": {},
+      "id": "ID.AM-02",
+      "properties": {
+        "implementation_examples": "Ex1: Maintain inventories for all types of software and services, including commercial-off-the-shelf, open-source, custom applications, API services, and cloud-based applications and services\nEx2: Constantly monitor all platforms, including containers and virtual machines, for software and service inventory changes\nEx3: Maintain an inventory of the organization's systems",
+        "informative_references": "AISVS, Version 1.01: v1.01-C3.1.1\nAISVS, Version 1.01: v1.01-C3.5.4\nAISVS, Version 1.01: v1.01-C6.2.1\nAISVS, Version 1.01: v1.01-C6.2.3\nBXAIOS: Chapter 5 - Blueprint the Ecosystem\nCCMv4.0: CCC-04\nCCMv4.0: DCS-06\nCCMv4.0: DSP-19\nCCMv4.0: UEM-02\nCCMv4.0: UEM-04\nCIS Controls v8.0: 2.1\nCIS Controls v8.1: 2.1\nCRI Profile v2.0: ID.AM-02\nCRI Profile v2.0: ID.AM-02.01\nCSF v1.1: ID.AM-2\nISO/IEC 27001:2022: Mandatory Clause: None\nISO/IEC 27001:2022: Annex A Controls: 5.9\nNICE Framework: DD-WRL-002\nNICE Framework: DD-WRL-005\nNICE Framework: DD-WRL-009\nNICE Framework: IO-WRL-002\nNICE Framework: IO-WRL-003\nNICE Framework: IO-WRL-004\nNICE Framework: IO-WRL-005\nNICE Framework: OG-WRL-015\nOWASP Top 10 LLM Applications: LLM03-2025\nOWASP Top 10 LLM Applications: LLM10-2025\nPCI DSS: 6.3.2\nPCI DSS: 12.5.1\nPCI DSS: 12.8.1\nPCI DSS: 6.4.3\nSCF: AST-02\nSDOS: SDOS-IA-02\nSDOS: SDOS-IN-03\nSP 800-171 Rev 3: 03.04.10\nSP 800-171 Rev 3: 03.16.03\nSP 800-221A: MA.RI-1\nSP 800-53 Rev 5.1.1: AC-20\nSP 800-53 Rev 5.1.1: CM-08\nSP 800-53 Rev 5.1.1: PM-05\nSP 800-53 Rev 5.1.1: SA-05\nSP 800-53 Rev 5.1.1: SA-09\nSP 800-53 Rev 5.2.0: AC-20\nSP 800-53 Rev 5.2.0: CM-08\nSP 800-53 Rev 5.2.0: PM-05\nSP 800-53 Rev 5.2.0: SA-05\nSP 800-53 Rev 5.2.0: SA-09\nSP-800-37 Rev 2: RMF Prepare Step (System Level): TASK P-10 Asset Identification"
+      }
+    }
+  ],
+  "metadata": {
+    "element_count": 24,
+    "detected_format": "xlsx",
+    "page_count": null,
+    "title": "NIST Cybersecurity Framework 2.0 Core",
+    "dropped": [],
+    "source": {
+      "kind": "structured",
+      "format": "xlsx",
+      "mapping": {
+        "id": "nist-csf-2.0-core-xlsx",
+        "sha256": "3a2ae83ffcd233cca9615f3436b92eac24c1869d232be2cdf3827841c3c4f3b8",
+        "mapping_version": 1
+      },
+      "node_count": 19,
+      "unmapped_fields": []
+    }
+  }
+}

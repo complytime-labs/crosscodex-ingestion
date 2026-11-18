@@ -25,8 +25,10 @@ REGISTRY = load_registry("")
 TENANT = "tenant-structured"
 GOLDEN = [
     ("owasp-asvs-5.0.0", "input.json", "owasp-asvs-5.0.0-json"),
+    ("owasp-asvs-5.0.0-csv", "input.csv", "owasp-asvs-5.0.0-csv"),
     ("mitre-attack-enterprise-17.1", "input.xlsx", "mitre-attack-enterprise-17.1-techniques-xlsx"),
     ("nist-sp800-53r5", "input.xlsx", "nist-sp800-53r5-catalog-xlsx"),
+    ("nist-csf-2.0", "input.xlsx", "nist-csf-2.0-core-xlsx"),
 ]
 
 
