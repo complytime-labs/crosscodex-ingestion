@@ -5,3 +5,8 @@ EXTENDS: .mega-linter.shared.yml
 # overrides `ignore` from .ruff.toml. Drop it so .ruff.toml is the single source of rules
 # for both `task lint` and MegaLinter.
 PYTHON_RUFF_ARGUMENTS: []
+
+# tests/fixtures/ holds captured third-party documents (e.g. saved NCSC web pages) whose
+# links belong to the original site. Root-relative hrefs there cannot resolve from a local
+# file, and the absolute ones are not this repo's links to maintain.
+SPELL_LYCHEE_FILTER_REGEX_EXCLUDE: "^tests/fixtures/"
