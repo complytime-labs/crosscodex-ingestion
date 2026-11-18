@@ -1,0 +1,41 @@
+README.md
+  s_5cf0e41ed053c4::t_d1e2bfa3335763 171-191
+  s_5cf0e41ed053c4::t_55f8fbc4fcec3e 693
+tests/fixtures/documents/eurlex-gdpr-32016R0679.html
+  s_5cf0e41ed053c4::t_120d7809647a1c 1-259,267-758,766-840,848-1046,1054-1057,1065-1206
+  s_5cf0e41ed053c4::t_833fe1ba03c940 260-266,759-765,841-847,1047-1053,1058-1064
+tests/unit/test_html_backend.py
+  s_5cf0e41ed053c4::t_fd5c1f219f0e09 330-332,362-364
+  s_5cf0e41ed053c4::t_3cd174ea2a6aee 259-262,268-270,273-326,337-349,351-357,359-361,365-428
+  s_5cf0e41ed053c4::t_d67860c0c77a7a 14,28-29,40-45,263-267,271-272,327-329,333-336,350,358
+tests/fixtures/documents/eurlex-nis2-32022L2555.html
+  s_5cf0e41ed053c4::t_120d7809647a1c 1-212,218-848
+  s_5cf0e41ed053c4::t_833fe1ba03c940 213-217
+src/crosscodex_ingestion/html_backend.py
+  s_5cf0e41ed053c4::t_fd5c1f219f0e09 66,79
+  s_5cf0e41ed053c4::t_5e5e41d98b1519 234-235
+  s_5cf0e41ed053c4::t_d884b35155aa4a 43-46,48-50
+  s_5cf0e41ed053c4::t_c699d986f1ee1c 119-145,156-194
+  s_5cf0e41ed053c4::t_9af03471753a1d 146-155
+  s_5cf0e41ed053c4::t_d4e5a7851b37f7 71
+  s_5cf0e41ed053c4::t_32a7fe35d9082e 77-78
+  s_5cf0e41ed053c4::t_07717c81aafaf1 39-42,47,51-62
+tests/fixtures/documents/NOTICE
+  s_5cf0e41ed053c4::t_55f8fbc4fcec3e 14-31
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "02703542a6d9c91663e3e758ed90b0ca2e24e7f1",
+  "prompts": {},
+  "sessions": {
+    "s_5cf0e41ed053c4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6cc33470-aff0-4a26-8054-8d917371be89",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "LLM (riotbox) <llm@riotbox>"
+    }
+  }
+}
