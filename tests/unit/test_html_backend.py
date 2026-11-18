@@ -124,5 +124,130 @@ class TestRemovalRule:
         assert "Body text" in text
 
 
+class TestNavLabelHeading:
+    def test_ncsc_style_label_heading_is_removed(self, tmp_path):
+        html = "<body><main><div><h2>Pages</h2> <nav><a>c1</a></nav></div><p>Body text</p></main></body>"
+        text = _text(_convert(html, tmp_path))
+        assert "Pages" not in text
+        assert "c1" not in text
+        assert "Body text" in text
+
+    def test_heading_followed_by_nav_and_more_content_is_kept(self, tmp_path):
+        html = "<body><main><h2>Related controls</h2><nav><a>c1</a></nav><p>para</p></main></body>"
+        text = _text(_convert(html, tmp_path))
+        assert "Related controls" in text
+        assert "c1" not in text
+        assert "para" in text
+
+    def test_annex_heading_before_nav_in_article_is_kept(self, tmp_path):
+        html = (
+            "<body><main><article><h1>Std</h1><h2>Annex A (informative)</h2>"
+            "<nav><a>c1</a></nav></article></main></body>"
+        )
+        text = _text(_convert(html, tmp_path))
+        assert "Annex A (informative)" in text
+        assert "c1" not in text
+
+    def test_label_heading_kept_when_parent_has_bare_text(self, tmp_path):
+        html = "<body><main><div><h2>Pages</h2>Some words<nav><a>c1</a></nav></div></main></body>"
+        text = _text(_convert(html, tmp_path))
+        assert "Pages" in text
+        assert "c1" not in text
+
+    def test_comments_do_not_block_label_removal(self, tmp_path):
+        html = "<body><main><div><h2>Pages</h2><!-- x --><nav><a>c1</a></nav></div><p>Body</p></main></body>"
+        text = _text(_convert(html, tmp_path))
+        assert "Pages" not in text
+        assert "c1" not in text
+
+
+class TestPageLevelHeaderFooterNeedsContentLandmark:
+    def test_pandoc_title_block_without_main_is_kept(self, tmp_path):
+        html = (
+            '<body><header id="title-block-header"><h1>Title</h1><p class="author">Ed</p>'
+            '<p class="abstract">Abstract text</p></header><h2>Intro</h2><p>Body</p></body>'
+        )
+        text = _text(_convert(html, tmp_path))
+        assert "Ed" in text
+        assert "Abstract text" in text
+
+    def test_footer_references_without_main_is_kept(self, tmp_path):
+        html = "<body><h1>Doc</h1><p>Body</p><footer><h2>References</h2><p>Ref one</p></footer></body>"
+        text = _text(_convert(html, tmp_path))
+        assert "References" in text
+        assert "Ref one" in text
+
+    def test_role_main_counts_as_content_landmark(self, tmp_path):
+        html = '<body><header><h1>Banner</h1></header><div role="main"><p>Body</p></div></body>'
+        text = _text(_convert(html, tmp_path))
+        assert "Banner" not in text
+        assert "Body" in text
+
+    def test_footer_inside_role_main_is_kept(self, tmp_path):
+        html = '<body><div role="main"><p>Body</p><footer><h3>Reviewed by Legal</h3></footer></div></body>'
+        assert "Reviewed by Legal" in _text(_convert(html, tmp_path))
+
+
+class TestAria:
+    def test_aria_landmarks(self, tmp_path):
+        html = (
+            '<body><div role="banner"><h1>Banner text</h1></div>'
+            '<div role="navigation"><p>Nav text</p></div>'
+            '<div role="main"><h2>Main text</h2></div>'
+            '<div role="contentinfo"><p>Footer text</p></div></body>'
+        )
+        text = _text(_convert(html, tmp_path))
+        assert "Main text" in text
+        for chrome in ("Banner text", "Nav text", "Footer text"):
+            assert chrome not in text
+
+    def test_role_is_case_insensitive_token(self, tmp_path):
+        html = '<body><main><p>Body</p><div ROLE="Navigation"><p>Nav text</p></div></main></body>'
+        text = _text(_convert(html, tmp_path))
+        assert "Nav text" not in text
+        assert "Body" in text
+
+    def test_role_token_among_several(self, tmp_path):
+        html = '<body><main><p>Body</p><div role="  foo NAVIGATION "><p>Nav text</p></div></main></body>'
+        assert "Nav text" not in _text(_convert(html, tmp_path))
+
+    def test_unbalanced_div_role_is_kept(self, tmp_path):
+        html = '<body><main><p>Body</p><div role="navigation"><p>Swallowed text</p></main></body>'
+        assert "Swallowed text" in _text(_convert(html, tmp_path))
+
+
+class TestBalanceGuard:
+    def test_unclosed_nav_keeps_rest_of_document(self, tmp_path):
+        html = "<h1>T</h1><nav><ul><li><a>menu</a></li></ul><h2>Real</h2><p>real text</p></body>"
+        text = _text(_convert(html, tmp_path))
+        assert "real text" in text
+        assert "Real" in text
+
+    def test_unclosed_header_with_main_keeps_content(self, tmp_path):
+        html = "<body><header><h1>Banner</h1><main><h2>Policy</h2><p>Body text</p></main></body>"
+        text = _text(_convert(html, tmp_path))
+        assert "Body text" in text
+        assert "Policy" in text
+
+    @pytest.mark.parametrize("wrapper", ["header", "div role='navigation'", "div role='banner'"])
+    def test_chrome_wrapping_the_main_landmark_is_kept(self, wrapper, tmp_path):
+        tag = wrapper.split()[0]
+        html = f"<body><{wrapper}><main><h2>Policy</h2><p>Body text</p></main></{tag}></body>"
+        text = _text(_convert(html, tmp_path))
+        assert "Body text" in text
+
+    def test_one_unclosed_nav_keeps_every_nav(self, tmp_path):
+        """Counts are per tag name, so one stray <nav> protects every <nav> on the page."""
+        html = "<body><main><nav><a>one-menu</a></nav><nav><a>two-menu</a><p>Body</p></main></body>"
+        text = _text(_convert(html, tmp_path))
+        assert "Body" in text
+
+    def test_longer_tag_names_with_nav_prefix_are_not_counted(self, tmp_path):
+        html = "<body><main><nav-x><p>Custom</p><nav><a>menu</a></nav><p>Body</p></main></body>"
+        text = _text(_convert(html, tmp_path))
+        assert "menu" not in text
+        assert "Body" in text
+
+
 def test_worker_script_registers_the_backend_for_html():
     assert "InputFormat.HTML: HTMLFormatOption(backend=SiteChromeStrippingHTMLBackend)" in converter._WORKER_SCRIPT

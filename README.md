@@ -152,10 +152,20 @@ which is also installed with the package (`crosscodex_ingestion/schemas/structur
 
 ### What HTML conversion leaves out
 
-For HTML input, site chrome is not emitted: every `<nav>` element (anywhere, including inside
-`<main>` or `<article>`) together with the heading placed directly before it, and `<header>` and
-`<footer>` elements that are not inside `<main>`, `<article>`, `<section>` or `<aside>`. Content
-in `<main>` and `<article>` is otherwise unchanged. Chrome built from plain `<div>`s is not
+For HTML input, site chrome is not emitted:
+
+- Every `<nav>` or `role="navigation"` element, wherever it is, including inside `<main>` or
+  `<article>`. Its label heading goes too, but only when the heading and the nav are the only two
+  element children of their parent and the parent has no other text (a `<div><h2>Pages</h2><nav>`
+  sidebar). A heading followed by a nav and then more content is kept.
+- `<header>`/`role="banner"` and `<footer>`/`role="contentinfo"` elements, but only when the page has
+  a `<main>` or `role="main"` and the element is not inside `<main>`, `<article>`, `<section>` or
+  `<aside>`. Pages without a main landmark keep them (a pandoc title block, a "References" footer).
+- Nothing is removed when its tag's start and end tags do not balance in the source (an unclosed
+  `<nav>` would otherwise swallow the document), and nothing that contains the `<main>` or
+  `role="main"` element is removed; that chrome is kept.
+
+Chrome that is not marked up with these elements or roles (for example `<div class="menu">`) is not
 recognised and is still emitted.
 
 ### What version 1.0 guarantees
@@ -659,7 +669,7 @@ gRPC Request → Dispatch → Worker → [Converter → Extractor | Structured] 
 - `security.py`: SSRF prevention, URL validation, content type detection, resource limit enforcement. URL fetches connect directly and ignore `HTTP_PROXY`/`HTTPS_PROXY`/`ALL_PROXY`: the address actually connected to is checked against the blocked ranges, and through a proxy that check would only see the proxy.
 - `converter.py`: Async subprocess-based Docling execution with rlimits and timeout; the subprocess's process group is killed on timeout or cancellation
 - `extractor.py`: Structured element extraction from Docling output
-- `html_backend.py`: Docling HTML backend that drops `<nav>` and page-level `<header>`/`<footer>` before conversion (rule in its docstring)
+- `html_backend.py`: Docling HTML backend that drops navigation and, on pages with a main landmark, page-level `<header>`/`<footer>` before conversion (rules in its docstring)
 - `output_schema.py`: Validates every output against the versioned output schema before it is stored (design: [docs/output-schema.md](docs/output-schema.md))
 - `mapping.py`: Loads, validates and registers structured-source mappings at startup
 - `structured.py`: Reads JSON, CSV and XLSX through a mapping into elements, in the structured worker subprocess (design: [docs/structured-sources.md](docs/structured-sources.md))
