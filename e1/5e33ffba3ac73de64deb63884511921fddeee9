@@ -1,0 +1,21 @@
+tests/unit/test_service.py
+  s_4966ffb115e1a8::t_62195fff823105 223
+tests/unit/test_worker.py
+  s_4966ffb115e1a8::t_0194c0b87b93dd 1002
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "e15e33ffba3ac73de64deb63884511921fddeee9",
+  "prompts": {},
+  "sessions": {
+    "s_4966ffb115e1a8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8f554319-24e6-41b9-a5c9-f33673806629",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "LLM (riotbox) <llm@riotbox>"
+    }
+  }
+}
