@@ -101,3 +101,17 @@ can't contain a table the typed pass dropped, so `metadata.dropped` is kept when
 on every element would only add bytes. `title` is forbidden on headings (`"title": false` in the schema's
 `then` branch), because a heading's title is its `content`. Property names follow the same identifier rule
 as mapping property names; property values are non-blank strings.
+
+## 1.2: structure signals and HTML profiles
+
+`metadata.structure` and `metadata.html_profile` are optional, so 1.0 and 1.1 outputs still validate and
+1.1 readers still work: they never read these fields. A strict copy of the 1.1 schema would reject them,
+which is why consumers must validate against a schema at least as new as the output.
+
+- `metadata.structure` holds five non-negative counts (`heading_count`, `table_count`,
+  `max_heading_depth`, `unparented_count`, `fragment_count`) and `warnings`, all required together. It is
+  measured from the emitted elements by `quality.measure_structure`. `warnings` is an array of codes
+  matching `^[a-z][a-z0-9_]*$`. It is deliberately not an enum, so adding a warning code is not a schema
+  change.
+- `metadata.html_profile` is `{id, sha256}` and is present only when an HTML profile was applied. It
+  mirrors `metadata.source.mapping`: the SHA-256 identifies the exact profile file used.

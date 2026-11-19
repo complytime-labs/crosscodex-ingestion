@@ -74,6 +74,18 @@ async def test_serve_refuses_to_start_when_the_mappings_path_is_missing(monkeypa
 
 
 @pytest.mark.asyncio
+async def test_serve_refuses_to_start_when_the_html_profiles_path_is_not_a_directory(
+    monkeypatch, startable_env, tmp_path
+):
+    not_a_directory = tmp_path / "profiles.yaml"
+    not_a_directory.write_text("not a directory")
+    monkeypatch.setenv("HTML_PROFILES_PATH", str(not_a_directory))
+
+    with pytest.raises(SystemExit, match=r"Configuration error: .*HTML_PROFILES_PATH"):
+        await serve()
+
+
+@pytest.mark.asyncio
 async def test_serve_refuses_to_start_with_mutual_tls_and_no_certs(monkeypatch, startable_env):
     monkeypatch.setenv("ATTESTATION_ENABLED", "false")
     monkeypatch.delenv("GRPC_TLS_MODE", raising=False)

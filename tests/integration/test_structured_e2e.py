@@ -17,6 +17,7 @@ import pytest
 from crosscodex_ingestion.mapping import load_registry
 from crosscodex_ingestion.output_schema import SCHEMA_VERSION, validate_output
 from crosscodex_ingestion.proto.crosscodex.v1 import common_pb2, ingestion_pb2, ingestion_pb2_grpc
+from crosscodex_ingestion.quality import measure_structure
 
 pytestmark = pytest.mark.integration
 
@@ -73,6 +74,8 @@ async def test_release_converts_to_the_golden_output_and_is_attested(
     assert stored["schema_version"] == SCHEMA_VERSION
     assert stored["elements"] == expected["elements"]
     del stored["metadata"]["processing_time_ms"]
+    # run_conversion adds metadata.structure; the golden files hold only what the converter writes.
+    assert stored["metadata"].pop("structure") == measure_structure(expected["elements"])
     assert stored["metadata"] == expected["metadata"]
 
     link = json.loads((stored_path.parent / "attestation.link").read_text())

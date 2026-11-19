@@ -95,3 +95,11 @@ def test_shutdown_grace_seconds_zero_is_allowed(monkeypatch):
 
     monkeypatch.setenv("SHUTDOWN_GRACE_SECONDS", "0")
     assert IngestionSettings().shutdown_grace_seconds == 0
+
+
+def test_html_profiles_path_env(monkeypatch):
+    from crosscodex_ingestion.config import IngestionSettings
+
+    assert IngestionSettings().html_profiles_path == ""
+    monkeypatch.setenv("HTML_PROFILES_PATH", "/etc/profiles")
+    assert IngestionSettings().html_profiles_path == "/etc/profiles"

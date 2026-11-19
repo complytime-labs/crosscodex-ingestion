@@ -22,7 +22,7 @@ from jsonschema import Draft202012Validator
 from jsonschema.exceptions import ValidationError
 
 # The version this service emits. The schema file lists every released 1.x it validates.
-SCHEMA_VERSION = "1.1"
+SCHEMA_VERSION = "1.2"
 
 _SCHEMA: dict[str, Any] = json.loads(
     files("crosscodex_ingestion").joinpath("schemas/structured-output-v1.json").read_text(encoding="utf-8")

@@ -36,6 +36,8 @@ class IngestionSettings(BaseSettings):
     # Structured sources (JSON, CSV, XLSX read through a mapping). Directory of extra mapping
     # files (*.yaml) beside the packaged ones; every mapping is validated at startup.
     mappings_path: str = ""
+    # Directory of extra HTML profile files (*.yaml) beside the packaged ones; validated at startup.
+    html_profiles_path: str = ""
     # Limits on untrusted structured input, checked by the structured worker.
     max_json_depth: int = Field(default=64, ge=1)
     max_structured_nodes: int = Field(default=100_000, ge=1)

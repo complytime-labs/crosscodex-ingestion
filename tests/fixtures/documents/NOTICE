@@ -11,3 +11,21 @@ ncsc-caf-objective-a.html
   footer inside main is empty in the original; the "Reviewed" heading and date, which the
   original places in a sibling <div>, were moved into it so the fixture covers a nested footer.
   The remaining text is unchanged from the original.
+
+eurlex-gdpr-32016R0679.html
+eurlex-nis2-32022L2555.html
+  Trimmed excerpts of Regulation (EU) 2016/679 (GDPR, CELEX 32016R0679) and Directive (EU)
+  2022/2555 (NIS2, CELEX 32022L2555), from the HTML reuse format on EUR-Lex:
+  https://eur-lex.europa.eu/legal-content/EN/TXT/HTML/?uri=CELEX:32016R0679
+  https://eur-lex.europa.eu/legal-content/EN/TXT/HTML/?uri=CELEX:32022L2555
+  Retrieved 2026-11-18. (c) European Union, https://eur-lex.europa.eu/. Reused under the
+  Commission's reuse policy, Commission Decision 2011/833/EU, which permits reuse with
+  acknowledgement of the source; only EU legislation as published in the Official Journal is
+  authentic.
+  The excerpts are modified: scripts, styles, metadata and comments were removed, the <head> was
+  replaced with a placeholder title, and whole subdivisions (citations, recitals, chapters, sections,
+  articles, annexes) were removed, along with the footnotes whose references went with them.
+  GDPR keeps citations 1 and 4, recitals 1 and 3, articles 1, 4, 12, 13 and 53 within their chapters
+  and sections, and the final provisions. NIS2 keeps citation 1, recital 1, articles 1 and 2, and
+  annexes I and III, whose data tables are cut to their first three rows. The remaining markup and
+  text are unchanged from the original.

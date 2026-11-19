@@ -9,7 +9,7 @@
   "properties": {
     "schema_version": {
       "description": "MAJOR.MINOR version the output conforms to. This file validates every released 1.x: minors only add optional fields.",
-      "enum": ["1.0", "1.1"]
+      "enum": ["1.0", "1.1", "1.2"]
     },
     "elements": {
       "description": "Document content in reading order.",
@@ -123,7 +123,9 @@
           "minimum": 0
         },
         "dropped": { "type": "array", "items": { "$ref": "#/$defs/dropped" } },
-        "source": { "$ref": "#/$defs/structuredSource" }
+        "source": { "$ref": "#/$defs/structuredSource" },
+        "structure": { "$ref": "#/$defs/structure" },
+        "html_profile": { "$ref": "#/$defs/htmlProfile" }
       }
     },
     "structuredSource": {
@@ -153,6 +155,38 @@
           "description": "Source fields (JSON keys on nodes, or column headers) the mapping did not use, in first-seen order.",
           "type": "array",
           "items": { "type": "string" }
+        }
+      }
+    },
+    "structure": {
+      "description": "Since 1.2. Structure signals measured on the emitted elements, so a consumer can judge extraction quality without re-reading them.",
+      "type": "object",
+      "required": ["heading_count", "table_count", "max_heading_depth", "unparented_count", "fragment_count", "warnings"],
+      "additionalProperties": false,
+      "properties": {
+        "heading_count": { "description": "Elements of type heading.", "type": "integer", "minimum": 0 },
+        "table_count": { "description": "Elements of type table.", "type": "integer", "minimum": 0 },
+        "max_heading_depth": { "description": "Deepest heading level; 0 when there are no headings.", "type": "integer", "minimum": 0 },
+        "unparented_count": { "description": "Non-heading elements with no parent.", "type": "integer", "minimum": 0 },
+        "fragment_count": { "description": "Paragraph and list_item elements of only a few characters, such as stray list markers.", "type": "integer", "minimum": 0 },
+        "warnings": {
+          "description": "Machine-readable codes for suspect structure. Open-ended by design: a new code is not a schema change.",
+          "type": "array",
+          "items": { "type": "string", "pattern": "^[a-z][a-z0-9_]*(?![\\s\\S])" }
+        }
+      }
+    },
+    "htmlProfile": {
+      "description": "Since 1.2. The HTML profile applied to the conversion, present only when one applied.",
+      "type": "object",
+      "required": ["id", "sha256"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "description": "ID of the applied profile.", "$ref": "#/$defs/nonBlankString" },
+        "sha256": {
+          "description": "SHA-256 of the profile file the conversion used.",
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}(?![\\s\\S])"
         }
       }
     }

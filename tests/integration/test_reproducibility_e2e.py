@@ -8,8 +8,10 @@ import pytest
 
 from crosscodex_ingestion.config import IngestionSettings
 from crosscodex_ingestion.converter import convert_document
+from crosscodex_ingestion.html_profile import load_html_profiles
 
 ARTIFACTS = os.environ.get("DOCLING_ARTIFACTS_PATH", "")
+PROFILES = load_html_profiles("")
 SAMPLE_PDF = str(Path(__file__).parent.parent / "fixtures" / "documents" / "sample.pdf")
 
 pytestmark = [
@@ -23,8 +25,8 @@ pytestmark = [
 async def test_same_pdf_converts_to_identical_elements():
     settings = IngestionSettings(docling_artifacts_path=ARTIFACTS)
 
-    first = await convert_document(SAMPLE_PDF, "pdf", settings)
-    second = await convert_document(SAMPLE_PDF, "pdf", settings)
+    first = await convert_document(SAMPLE_PDF, "pdf", settings, PROFILES)
+    second = await convert_document(SAMPLE_PDF, "pdf", settings, PROFILES)
 
     assert first["elements"]
     assert first["elements"] == second["elements"]
@@ -32,7 +34,7 @@ async def test_same_pdf_converts_to_identical_elements():
 
 async def test_pdf_metadata_reports_pages_and_conversion_time():
     started = time.monotonic()
-    result = await convert_document(SAMPLE_PDF, "pdf", IngestionSettings(docling_artifacts_path=ARTIFACTS))
+    result = await convert_document(SAMPLE_PDF, "pdf", IngestionSettings(docling_artifacts_path=ARTIFACTS), PROFILES)
     elapsed_ms = (time.monotonic() - started) * 1000
 
     assert result["metadata"]["page_count"] >= 1

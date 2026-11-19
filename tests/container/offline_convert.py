@@ -13,6 +13,7 @@ from pathlib import Path
 
 from crosscodex_ingestion.config import IngestionSettings
 from crosscodex_ingestion.converter import convert_document
+from crosscodex_ingestion.html_profile import load_html_profiles
 
 # Directories `scripts/download_models.py` must leave in the models directory.
 EXPECTED_MODEL_DIRS = [
@@ -46,7 +47,8 @@ def main() -> None:
     if missing:
         sys.exit(f"models missing from {models}: {', '.join(missing)}")
 
-    result = asyncio.run(convert_document(str(document), document.suffix.lstrip("."), settings))
+    profiles = load_html_profiles(settings.html_profiles_path)
+    result = asyncio.run(convert_document(str(document), document.suffix.lstrip("."), settings, profiles))
     elements = result["elements"]
     if not elements:
         sys.exit(f"{document.name}: conversion returned no elements")

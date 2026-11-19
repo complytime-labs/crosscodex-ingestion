@@ -113,7 +113,7 @@ which is also installed with the package (`crosscodex_ingestion/schemas/structur
 
 ```json
 {
-  "schema_version": "1.1",
+  "schema_version": "1.2",
   "elements": [
     {"element_id": "e-001", "type": "heading", "content": "Access Control", "page": 3,
      "level": 1, "parent_id": null, "style": {}},
@@ -125,9 +125,17 @@ which is also installed with the package (`crosscodex_ingestion/schemas/structur
   "metadata": {
     "element_count": 3, "detected_format": "pdf", "page_count": 12, "title": "Access Policy",
     "processing_time_ms": 8412.5,
-    "dropped": [{"type": "table", "page": 7, "reason": "table could not be exported to Markdown (ValueError)"}]
+    "dropped": [{"type": "table", "page": 7, "reason": "table could not be exported to Markdown (ValueError)"}],
+    "structure": {"heading_count": 1, "table_count": 1, "max_heading_depth": 1, "unparented_count": 0,
+                  "fragment_count": 0, "warnings": []}
   }
 }
+```
+
+For an HTML page that matched a profile, `metadata` also carries the profile that shaped it:
+
+```json
+"html_profile": {"id": "eur-lex-oj", "sha256": "<SHA-256 of the profile file>"}
 ```
 
 | Field                         | Meaning                                                                                                                                                   |
@@ -149,6 +157,8 @@ which is also installed with the package (`crosscodex_ingestion/schemas/structur
 | `title` (1.1)                 | The source node's title, on a non-heading element whose `content` is its text (a heading's title is its `content`).                                       |
 | `properties` (1.1)            | Extra source fields the mapping names, as `name: string`.                                                                                                 |
 | `metadata.source` (1.1)       | Present for structured sources: `kind` (`structured`), `format`, `mapping` (`id`, `sha256`, `mapping_version`), `node_count`, `unmapped_fields`.          |
+| `metadata.structure` (1.2)    | Structure signals: `heading_count`, `table_count`, `max_heading_depth`, `unparented_count`, `fragment_count`, and `warnings` (open-ended codes such as `no_headings`). |
+| `metadata.html_profile` (1.2) | Present when an HTML profile shaped the conversion: `id` and the `sha256` of the profile file (see "HTML profiles").                                      |
 
 ### What HTML conversion leaves out
 
@@ -167,6 +177,73 @@ For HTML input, site chrome is not emitted:
 
 Chrome that is not marked up with these elements or roles (for example `<div class="menu">`) is not
 recognised and is still emitted.
+
+### EUR-Lex pages
+
+EUR-Lex HTML (the Official Journal reuse format, recognised by its `oj-` CSS classes) has no `<h*>`
+elements and lays out numbered text as tables. The packaged profile
+[`html_profiles/eur-lex-oj.yaml`](src/crosscodex_ingestion/html_profiles/eur-lex-oj.yaml) (see "HTML
+profiles") rewrites these pages; for them only:
+
+- The act's title (for example "REGULATION (EU) 2016/679 ... (Text with EEA relevance)") becomes
+  `metadata.title`, and is not emitted as an element.
+- Chapters, sections, articles and annexes become nested headings that include their subtitle,
+  such as `CHAPTER III - Rights of the data subject` (level 1), `Section 1 - Transparency and
+  modalities` (level 2) and `Article 12 - Transparent information, ...` (level 3). Article text
+  attaches to its article. The preamble (citations and recitals) comes before the first heading
+  and has no parent.
+- Recitals and numbered points are paragraphs that keep their number, such as `(5) The economic
+  and social integration ...`, `(a) ...` or `- their parliament;`. Footnote markers stay inside their
+  paragraph (`... Social Committee (1),`). Real data tables (annex tables) are still tables.
+- The Official Journal page header (`4.5.2016 | EN | Official Journal of the European Union |
+  L 119/1`) is not emitted.
+
+The final provisions, signatures and footnotes after the last article are attached to that
+article, because the markup does not mark where the article ends.
+
+### HTML profiles
+
+A profile is a reviewed YAML file that describes how one publisher marks up document structure, so the
+HTML converter can turn that markup into headings and paragraphs. Profiles ship with the package
+(`src/crosscodex_ingestion/html_profiles/`; today only `eur-lex-oj`) and, optionally, in an operator
+directory: put `<id>.yaml` files there and point `HTML_PROFILES_PATH` at it. They are added to the packaged ones.
+Requests cannot name or supply a profile: the converter picks one from the page's content.
+
+A page matches a profile when its `detect` selector finds an element (after navigation and page header and
+footer are removed). Exactly one match applies. No match leaves the page as the converter reads it, and
+more than one match applies none and adds the `html_profile_ambiguous` warning to `metadata.structure.warnings`.
+
+A file is `profile_version: 1` with these keys. `id`, `profile_version`, `description` and `detect` are
+required; every operation section is optional.
+
+| Key                       | Meaning                                                                                                                      |
+|---------------------------|------------------------------------------------------------------------------------------------------------------------------|
+| `id`                      | `^[a-z0-9][a-z0-9-]*$`, at most 128 characters, unique; the file must be named `<id>.yaml`.                                  |
+| `description`             | Free text for reviewers.                                                                                                     |
+| `detect`                  | CSS selector. The profile matches a page when it finds an element.                                                           |
+| `unwrap`                  | List of selectors; every match is replaced by its children.                                                                  |
+| `remove`                  | List of selectors; every match is removed, unless its tag's start and end tags do not balance in the source.                 |
+| `title.container`         | Selector for the element holding the document title (first match is used).                                                   |
+| `title.lines`             | Selector, relative to the container, for the title lines. They become one `<h1>` (lines joined by a space), the document title. |
+| `divisions.title`         | Selector a `<div>`'s first element child must match for the `<div>` to be a division.                                        |
+| `divisions.exclude`       | Optional selector; a `<div>` matching it is never a division.                                                                |
+| `divisions.subtitle`      | Optional selector; consecutive following siblings of the title that match are merged into the heading and removed.           |
+| `divisions.separator`     | String joining title and subtitles; default `" - "`.                                                                         |
+| `numbered_tables.exclude` | Optional selector; matching tables are never unwrapped.                                                                      |
+| `numbered_tables.label`   | Regex the first cell's whitespace-normalized text must fully match; such one-row, two-cell tables become a numbered paragraph. |
+
+Every selector, `description` and `numbered_tables.label` is 1 to 2048 characters; `divisions.separator` is at most 64.
+
+Operations run in this order: unwrap, remove, title, divisions, numbered tables. Selectors and regexes are compiled when the
+service starts. The schema is
+[`schemas/html-profile-v1.schema.json`](src/crosscodex_ingestion/schemas/html-profile-v1.schema.json);
+how the engine works is in [docs/html-profiles.md](docs/html-profiles.md).
+
+At startup the service validates every profile and **refuses to start** if any is invalid (with the file),
+if `HTML_PROFILES_PATH` is not a directory, or if two files register the same ID. Restart the service to
+pick up changes. Each output records the profile that shaped it in `metadata.html_profile` (`id` and the
+SHA-256 of the file), so a stored output can be traced to the exact rules. A regex that runs long counts
+against the conversion's CPU limit and fails that conversion, not the service.
 
 ### What version 1.0 guarantees
 
@@ -208,6 +285,7 @@ major (`-v1`).
 |---|---|
 | 1.0 | Elements (`heading`, `paragraph`, `list_item`, `table`) with `element_id`, `parent_id`, `level`, `page`; `metadata`. |
 | 1.1 | Optional element fields `id`, `title`, `properties` and optional `metadata.source`, emitted for structured sources. Documents converted by Docling are unchanged apart from the version. |
+| 1.2 | Optional `metadata.structure` (structure signals) and `metadata.html_profile` (the HTML profile applied, with its hash). |
 
 ## Structured sources
 
@@ -504,6 +582,7 @@ Both images install exactly the versions in `uv.lock`, hash-checked, so the mode
 | `STORAGE_PATH`                                                            | `/data/documents`   | Filesystem storage root                                                                                                                                                                                                          |
 | `ALLOWED_FORMATS`                                                         | `pdf,docx,html,txt,json,csv,xlsx` | Comma-separated list of allowed formats (`json`, `csv` and `xlsx` also need a mapping)                                                                                                                             |
 | `MAPPINGS_PATH`                                                           | (empty)             | Directory of extra structured-source mappings (`*.yaml`); every mapping is validated at startup (see "Structured sources", which also lists the structured input limits)                                                         |
+| `HTML_PROFILES_PATH`                                                      | (empty)             | Directory of extra HTML profiles (`*.yaml`); every profile is validated at startup (see "HTML profiles")                                                                                                                         |
 | `MAX_DOCUMENT_SIZE`                                                       | `52428800`          | Maximum uploaded document size in bytes (50 MB)                                                                                                                                                                                  |
 | `MAX_URL_BYTES`                                                           | `104857600`         | Maximum bytes to fetch from URLs (100 MB)                                                                                                                                                                                        |
 | `URL_TIMEOUT`                                                             | `30`                | URL fetch timeout in seconds                                                                                                                                                                                                     |
@@ -669,8 +748,10 @@ gRPC Request → Dispatch → Worker → [Converter → Extractor | Structured] 
 - `security.py`: SSRF prevention, URL validation, content type detection, resource limit enforcement. URL fetches connect directly and ignore `HTTP_PROXY`/`HTTPS_PROXY`/`ALL_PROXY`: the address actually connected to is checked against the blocked ranges, and through a proxy that check would only see the proxy.
 - `converter.py`: Async subprocess-based Docling execution with rlimits and timeout; the subprocess's process group is killed on timeout or cancellation
 - `extractor.py`: Structured element extraction from Docling output
-- `html_backend.py`: Docling HTML backend that drops navigation and, on pages with a main landmark, page-level `<header>`/`<footer>` before conversion (rules in its docstring)
+- `html_backend.py`: Docling HTML backend that drops navigation and, on pages with a main landmark, page-level `<header>`/`<footer>` before conversion, and applies the HTML profile a page matches (design: [docs/html-profiles.md](docs/html-profiles.md))
 - `output_schema.py`: Validates every output against the versioned output schema before it is stored (design: [docs/output-schema.md](docs/output-schema.md))
+- `quality.py`: Measures structure signals (`metadata.structure`) from the extracted elements
+- `html_profile.py`, `html_profiles/`: Load, validate and register HTML profiles at startup; the packaged profiles are the `*.yaml` files in `html_profiles/` (maintainer notes: [docs/html-profiles.md](docs/html-profiles.md))
 - `mapping.py`: Loads, validates and registers structured-source mappings at startup
 - `structured.py`: Reads JSON, CSV and XLSX through a mapping into elements, in the structured worker subprocess (design: [docs/structured-sources.md](docs/structured-sources.md))
 

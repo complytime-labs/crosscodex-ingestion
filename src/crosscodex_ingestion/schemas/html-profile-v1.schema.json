@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:crosscodex-ingestion:html-profile:v1",
+  "title": "CrossCodex Ingestion HTML profile",
+  "description": "Declares how one publisher marks up document structure in HTML, as CSS selectors (soupsieve syntax) and one regular expression. Operations run in this order: unwrap, remove, title, divisions, numbered_tables.",
+  "type": "object",
+  "required": ["profile_version", "id", "description", "detect"],
+  "additionalProperties": false,
+  "properties": {
+    "profile_version": { "description": "Version of this profile format.", "const": 1 },
+    "id": {
+      "description": "Registered name of the profile; the file must be named <id>.yaml. Lowercase letters, digits and '-'.",
+      "type": "string",
+      "maxLength": 128,
+      "pattern": "^[a-z0-9][a-z0-9-]*(?![\\s\\S])"
+    },
+    "description": { "description": "Free text for reviewers.", "$ref": "#/$defs/text" },
+    "detect": { "description": "The profile matches a page when this selector finds an element.", "$ref": "#/$defs/text" },
+    "unwrap": { "description": "Every match is replaced by its children.", "$ref": "#/$defs/selectors" },
+    "remove": { "description": "Every match is removed, subject to the balance guard on its tag name.", "$ref": "#/$defs/selectors" },
+    "title": {
+      "type": "object",
+      "required": ["container", "lines"],
+      "additionalProperties": false,
+      "properties": {
+        "container": { "description": "Element holding the document title (first match is used).", "$ref": "#/$defs/text" },
+        "lines": { "description": "Selector, relative to the container, for the title lines.", "$ref": "#/$defs/text" }
+      }
+    },
+    "divisions": {
+      "type": "object",
+      "required": ["title"],
+      "additionalProperties": false,
+      "properties": {
+        "title": { "description": "A div whose first element child matches this is a division.", "$ref": "#/$defs/text" },
+        "exclude": { "description": "A div matching this is never a division.", "$ref": "#/$defs/text" },
+        "subtitle": { "description": "Following siblings of the title that match are merged into the heading.", "$ref": "#/$defs/text" },
+        "separator": { "description": "Joins title and subtitles; default ' - '.", "type": "string", "maxLength": 64 }
+      }
+    },
+    "numbered_tables": {
+      "type": "object",
+      "required": ["label"],
+      "additionalProperties": false,
+      "properties": {
+        "exclude": { "description": "Matching tables are never unwrapped.", "$ref": "#/$defs/text" },
+        "label": { "description": "Regular expression the first cell's whitespace-normalized text must fully match.", "$ref": "#/$defs/text" }
+      }
+    }
+  },
+  "$defs": {
+    "text": { "type": "string", "minLength": 1, "maxLength": 2048 },
+    "selectors": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/text" } }
+  }
+}

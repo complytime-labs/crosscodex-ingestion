@@ -22,6 +22,7 @@ import nats
 from crosscodex_ingestion.attestation import AttestationManager
 from crosscodex_ingestion.audit import AuditPublisher
 from crosscodex_ingestion.config import IngestionSettings
+from crosscodex_ingestion.html_profile import HtmlProfileRegistry
 from crosscodex_ingestion.mapping import MappingRegistry
 from crosscodex_ingestion.state import StateBackend
 from crosscodex_ingestion.storage import StorageBackend
@@ -84,6 +85,7 @@ class EmbeddedDispatch(DispatchBackend):
         attestation: AttestationManager | None,
         audit: AuditPublisher,
         mappings: MappingRegistry,
+        html_profiles: HtmlProfileRegistry,
     ):
         """Initialize the embedded dispatch backend.
 
@@ -94,6 +96,7 @@ class EmbeddedDispatch(DispatchBackend):
             attestation: Optional attestation manager.
             audit: Audit event publisher.
             mappings: Structured-source mappings registered at startup.
+            html_profiles: HTML profiles registered at startup.
         """
         self._settings = settings
         self._state = state
@@ -101,6 +104,7 @@ class EmbeddedDispatch(DispatchBackend):
         self._attestation = attestation
         self._audit = audit
         self._mappings = mappings
+        self._html_profiles = html_profiles
 
         # Create semaphore to limit concurrent conversions
         self._semaphore = asyncio.Semaphore(settings.max_concurrent_conversions)
@@ -177,6 +181,7 @@ class EmbeddedDispatch(DispatchBackend):
                 attestation=self._attestation,
                 audit=self._audit,
                 mappings=self._mappings,
+                html_profiles=self._html_profiles,
             )
 
     async def shutdown(self, grace_seconds: float) -> None:
@@ -343,6 +348,7 @@ def create_dispatch(
     attestation: AttestationManager | None,
     audit: AuditPublisher,
     mappings: MappingRegistry,
+    html_profiles: HtmlProfileRegistry,
 ) -> DispatchBackend:
     """Factory function to create the appropriate dispatch backend.
 
@@ -353,6 +359,7 @@ def create_dispatch(
         attestation: Optional attestation manager.
         audit: Audit event publisher.
         mappings: Structured-source mappings registered at startup (used by the embedded workers).
+        html_profiles: HTML profiles registered at startup (used by the embedded workers).
 
     Returns:
         DispatchBackend instance based on execution_mode.
@@ -369,6 +376,7 @@ def create_dispatch(
             attestation=attestation,
             audit=audit,
             mappings=mappings,
+            html_profiles=html_profiles,
         )
     if settings.execution_mode == "distributed":
         logger.info("Creating NATS dispatch backend")
