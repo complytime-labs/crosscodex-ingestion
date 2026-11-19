@@ -1,0 +1,19 @@
+docs/output-schema.md
+  s_d56cac44e1839e::t_e562fc6708b25b 76-107
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "6c5bfef18a42765c700f6eaa38b47ef1f6398ff7",
+  "prompts": {},
+  "sessions": {
+    "s_d56cac44e1839e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1c75074b-0bd4-41c7-b2c5-85468da8de67",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "LLM (riotbox) <llm@riotbox>"
+    }
+  }
+}
