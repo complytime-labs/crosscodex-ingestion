@@ -29,3 +29,16 @@ eurlex-nis2-32022L2555.html
   and sections, and the final provisions. NIS2 keeps citation 1, recital 1, articles 1 and 2, and
   annexes I and III, whose data tables are cut to their first three rows. The remaining markup and
   text are unchanged from the original.
+
+nist-sp800-171r3-excerpt.pdf
+nist-sp800-53r5-excerpt.pdf
+  Page excerpts of NIST SP 800-171 Revision 3, "Protecting Controlled Unclassified Information in
+  Nonfederal Systems and Organizations" (May 2024), and NIST SP 800-53 Revision 5, "Security and
+  Privacy Controls for Information Systems and Organizations" (September 2020):
+  https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-171r3.pdf
+  https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-53r5.pdf
+  Retrieved 2026-11-19. Works of the U.S. Government, not subject to copyright protection in the
+  United States (17 U.S.C. 105).
+  Only whole pages were kept, copied unchanged with pypdfium2 (outline and document metadata are
+  not carried over): pages 13-17 of SP 800-171r3, and pages 43, 45, 67 and 68 of SP 800-53r5 (PDF
+  page numbers, counting from 1).

@@ -402,6 +402,58 @@ class TestDoclingStructureFidelity:
         assert result.metadata["title"] is None
 
 
+class TestPdfHeadingLevels:
+    """Docling's PDF pipeline sets every SECTION_HEADER to level 1; the levels come from section numbering."""
+
+    FLAT = (
+        MockDocItem(label=DocItemLabel.SECTION_HEADER, text="3. The Security Requirements"),
+        MockDocItem(label=DocItemLabel.SECTION_HEADER, text="3.1. Access Control"),
+        MockDocItem(label=DocItemLabel.SECTION_HEADER, text="03.01.01 Account Management"),
+        MockDocItem(label=DocItemLabel.TEXT, text="Requirement text."),
+        MockDocItem(label=DocItemLabel.SECTION_HEADER, text=""),
+        MockDocItem(label=DocItemLabel.SECTION_HEADER, text="DISCUSSION"),
+        MockDocItem(label=DocItemLabel.TEXT, text="Discussion text."),
+        MockDocItem(label=DocItemLabel.SECTION_HEADER, text="3.2. Awareness and Training"),
+    )
+
+    @staticmethod
+    def _tree(result: ExtractionResult) -> list[tuple[str, int | None, str | None]]:
+        by_id = {e["element_id"]: e for e in result.elements}
+        return [
+            (e["content"], e["level"], by_id[e["parent_id"]]["content"] if e["parent_id"] else None)
+            for e in result.elements
+        ]
+
+    def test_flat_pdf_headings_nest_by_their_numbering(self):
+        result = extract_elements(MockDoclingDocument(list(self.FLAT)), None, "pdf")
+
+        assert self._tree(result) == [
+            ("3. The Security Requirements", 1, None),
+            ("3.1. Access Control", 2, "3. The Security Requirements"),
+            ("03.01.01 Account Management", 3, "3.1. Access Control"),
+            ("Requirement text.", None, "03.01.01 Account Management"),
+            ("DISCUSSION", 4, "03.01.01 Account Management"),
+            ("Discussion text.", None, "DISCUSSION"),
+            ("3.2. Awareness and Training", 2, "3. The Security Requirements"),
+        ]
+
+    @pytest.mark.parametrize("fmt", ["html", "docx"])
+    def test_other_formats_keep_docling_levels(self, fmt):
+        result = extract_elements(MockDoclingDocument(list(self.FLAT)), None, fmt)
+
+        assert {e["level"] for e in result.elements if e["type"] == "heading"} == {1}
+
+    def test_pdf_levels_docling_already_nested_are_kept(self):
+        items = [
+            MockDocItem(label=DocItemLabel.SECTION_HEADER, text="1.1 Purpose", level=1),
+            MockDocItem(label=DocItemLabel.SECTION_HEADER, text="1.1.1 Scope", level=1),
+            MockDocItem(label=DocItemLabel.SECTION_HEADER, text="Detail", level=2),
+        ]
+        result = extract_elements(MockDoclingDocument(items), None, "pdf")
+
+        assert [e["level"] for e in result.elements] == [1, 1, 2]
+
+
 class TestBlankHeadings:
     """CrossCodex turns headings into OSCAL groups, which need a title: a blank heading must never be emitted."""
 

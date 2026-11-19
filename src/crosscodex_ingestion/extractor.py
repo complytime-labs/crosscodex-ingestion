@@ -6,8 +6,9 @@ Extraction strategy (two-stage):
   Primary — _parse_docling_document():
     Iterates the DoclingDocument object using typed DocItemLabel elements.
     PAGE_HEADER/PAGE_FOOTER items are skipped. SECTION_HEADER items drive
-    hierarchy via level (1-100). No regex or heuristics required for
-    well-structured documents. Each element records the page it starts on,
+    hierarchy via level (1-100). PDF headings, which Docling leaves all at
+    level 1, get levels from their section numbering (heading_levels.py).
+    Each element records the page it starts on,
     and the first TITLE item becomes the document title in metadata.
     Blank headings and tables that can't be exported are not emitted;
     each is recorded in metadata["dropped"] with its page and the reason.
@@ -23,6 +24,8 @@ Extraction strategy (two-stage):
 import re
 from dataclasses import dataclass
 from typing import Any
+
+from crosscodex_ingestion.heading_levels import infer_heading_levels
 
 # Markdown heading pattern
 _HEADING_PATTERN = re.compile(r"^(#{1,6})\s+(.+)$")
@@ -89,7 +92,7 @@ class DocumentExtractor:
         # Collapse multiple spaces/tabs to single space (preserve newlines)
         return re.sub(r"[ \t]+", " ", text)
 
-    def _parse_docling_document(self, doc: Any) -> None:
+    def _parse_docling_document(self, doc: Any, format_hint: str) -> None:
         """Primary extraction: process DoclingDocument using typed elements.
 
         Uses DocItemLabel types to classify content. PAGE_HEADER and PAGE_FOOTER
@@ -100,6 +103,9 @@ class DocumentExtractor:
         section headings on purpose (NIST SP 800-171r3 has a DISCUSSION and a
         REFERENCES section under each of its 98 requirements). Dropping them
         merged informative discussion into the normative text above it.
+
+        Docling's PDF pipeline sets every SECTION_HEADER to level 1. When a PDF's headings are all
+        level 1, their levels are inferred from section numbering instead (see heading_levels).
         """
         try:
             from docling_core.types.doc import DocItemLabel
@@ -156,6 +162,17 @@ class DocumentExtractor:
             DocItemLabel.LIST_ITEM,
         }
 
+        # Levels of the non-blank headings, keyed by item; inferred from numbering for flat PDFs.
+        headings = [
+            item
+            for item, _depth in doc.iterate_items()
+            if getattr(item, "label", None) in HEADING_LABELS and getattr(item, "text", "").strip()
+        ]
+        heading_levels = [getattr(item, "level", 1) for item in headings]
+        if format_hint == "pdf" and set(heading_levels) == {1}:
+            heading_levels = infer_heading_levels([item.text for item in headings])
+        level_of = {id(item): level for item, level in zip(headings, heading_levels, strict=True)}
+
         # Build elements from typed items
         current_heading_id = None  # The current heading element ID (for text content parent)
         heading_stack: list[tuple] = []  # (level, element_id)
@@ -183,7 +200,7 @@ class DocumentExtractor:
                         }
                     )
                     continue
-                level = getattr(item, "level", 1)
+                level = level_of[id(item)]
                 element_id = self._next_element_id()
 
                 # Update heading stack
@@ -549,7 +566,7 @@ def extract_elements(
 
     # Primary: typed Docling document traversal
     if doc is not None:
-        extractor._parse_docling_document(doc)
+        extractor._parse_docling_document(doc, format_hint)
 
     # Fallback: markdown pattern cascade
     if not extractor.elements:
