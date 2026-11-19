@@ -1,0 +1,25 @@
+docs/structured-sources.md
+  s_d56cac44e1839e::t_40d947abd9e2d7 30-37,44-54,119-132,141-152,208-214
+docs/usage/output-format.md
+  s_d56cac44e1839e::t_d471e27e625fd1 196-202
+docs/usage/configuration.md
+  s_d56cac44e1839e::t_d471e27e625fd1 122-128
+docs/usage/structured-sources.md
+  s_d56cac44e1839e::t_d471e27e625fd1 154-156,158-160
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "5924bbdd966ee3662640faf40ee83caaf28ddb93",
+  "prompts": {},
+  "sessions": {
+    "s_d56cac44e1839e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1c75074b-0bd4-41c7-b2c5-85468da8de67",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "LLM (riotbox) <llm@riotbox>"
+    }
+  }
+}
