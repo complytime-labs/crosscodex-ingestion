@@ -1,0 +1,28 @@
+docs/usage/attestation.md
+  s_f9a2b80e7c80d9::t_3378d86aeb72b0 69-74
+src/crosscodex_ingestion/service.py
+  s_f9a2b80e7c80d9::t_3378d86aeb72b0 135
+src/crosscodex_ingestion/tls.py
+  s_f9a2b80e7c80d9::t_3378d86aeb72b0 9,30-31,33-36,39-40,130,133,135
+tests/unit/test_tls.py
+  s_f9a2b80e7c80d9::t_3378d86aeb72b0 287-318
+tests/unit/test_service.py
+  s_f9a2b80e7c80d9::t_3378d86aeb72b0 214-237
+  s_f9a2b80e7c80d9::t_822a9e3287907e 213
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "59107dcbc1394e20045435ce96156dbfa1c1ec3c",
+  "prompts": {},
+  "sessions": {
+    "s_f9a2b80e7c80d9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6ef32b60-ef82-43ba-bc6b-baaa3546e8da",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "LLM (riotbox) <llm@riotbox>"
+    }
+  }
+}
