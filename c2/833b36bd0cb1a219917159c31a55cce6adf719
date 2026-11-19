@@ -1,0 +1,31 @@
+README.md
+  s_d56cac44e1839e::t_9dd754ad9e1380 27,111
+docs/dev/architecture.md
+  s_d56cac44e1839e::t_5859a8ca2e1567 29,31-32
+docs/html-profiles.md
+  s_d56cac44e1839e::t_19a6b6c00657fe 3,30,74
+docs/output-schema.md
+  s_d56cac44e1839e::t_5e6a9fa7863a5e 3
+docs/structured-sources.md
+  s_d56cac44e1839e::t_8c8d2a6c10b122 3,185
+docs/usage/configuration.md
+  s_d56cac44e1839e::t_f3c810e106d5c8 83-85,91,99,113
+docs/usage/structured-sources.md
+  s_d56cac44e1839e::t_1902bf68e67c37 158-159,258-259
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "c2833b36bd0cb1a219917159c31a55cce6adf719",
+  "prompts": {},
+  "sessions": {
+    "s_d56cac44e1839e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1c75074b-0bd4-41c7-b2c5-85468da8de67",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "LLM (riotbox) <llm@riotbox>"
+    }
+  }
+}
