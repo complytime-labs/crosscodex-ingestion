@@ -1,0 +1,17 @@
+profile_version: 1
+id: eur-lex-oj
+description: EU Official Journal acts in the EUR-Lex HTML reuse format
+detect: "[class^='oj-'], [class*=' oj-']"
+unwrap: ["a"]
+remove: ["table:not(.oj-table):has(p[class^='oj-hd-'], p[class*=' oj-hd-'])"]
+title:
+  container: div.eli-main-title
+  lines: ":scope > p.oj-doc-ti"
+divisions:
+  title: "p.oj-ti-section-1, p.oj-ti-art, p.oj-doc-ti"
+  exclude: div.eli-main-title
+  subtitle: "div.eli-title, p.oj-ti-section-2, p.oj-sti-art, p.oj-doc-ti"
+  separator: " - "
+numbered_tables:
+  exclude: table.oj-table
+  label: '\(\w{1,6}\)|\w{1,6}\.|[—–-]'

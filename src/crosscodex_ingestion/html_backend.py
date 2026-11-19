@@ -36,16 +36,22 @@ Kept: everything else. Stock Docling keeps <footer> paragraphs, so a kept footer
 Limits: chrome not marked up with these elements or roles (for example <div class="menu">) is
 still emitted. HTMLBackendOptions.render_page re-parses the page inside super().convert(), which
 would bypass this stripping; this service does not enable it.
+
+Publisher profiles. After chrome stripping, a page matched by exactly one HTML profile is rewritten by
+that profile's declarative rules; see docs/html-profiles.md.
 """
 
 import re
+from collections.abc import Callable, Sequence
 from io import BytesIO
 from pathlib import Path
-from typing import override
+from typing import Any, override
 
-from bs4 import Comment, NavigableString, Tag
+from bs4 import BeautifulSoup, Comment, NavigableString, Tag
 from docling.backend.html_backend import HTMLDocumentBackend
 from docling.datamodel.document import DoclingDocument
+
+from crosscodex_ingestion.html_profile import HtmlProfile
 
 _SECTIONING_TAGS = ("main", "article", "section", "aside")
 _HEADINGS = ("h1", "h2", "h3", "h4", "h5", "h6")
@@ -88,8 +94,94 @@ def _is_label_heading_of(heading: Tag, nav: Tag) -> bool:
     )
 
 
+def _division_title(div: Tag, divisions: dict[str, Any]) -> Tag | None:
+    """The first element child that makes div a division under the profile's divisions rule, or None."""
+    exclude = divisions.get("exclude")
+    if exclude is not None and div.css.match(exclude):
+        return None
+    first = div.find(True, recursive=False)
+    if not isinstance(first, Tag) or not first.css.match(divisions["title"]):
+        return None
+    return first
+
+
+def _apply_profile(soup: BeautifulSoup, profile: HtmlProfile, is_balanced: Callable[[str], bool]) -> None:
+    """Run the profile's operations in the fixed order described in docs/html-profiles.md."""
+    document = profile.document
+    for selector in document.get("unwrap", []):
+        for tag in soup.select(selector):
+            tag.unwrap()
+
+    for selector in document.get("remove", []):
+        for tag in soup.select(selector):
+            if not tag.decomposed and is_balanced(tag.name):
+                tag.decompose()
+
+    title_rule = document.get("title")
+    if title_rule is not None:
+        container = soup.select_one(title_rule["container"])
+        if container is not None:
+            lines = container.select(title_rule["lines"])
+            if lines:
+                heading = soup.new_tag("h1")
+                heading.string = " ".join(" ".join(line.get_text(" ") for line in lines).split())
+                lines[0].insert_before(heading)
+                for line in lines:
+                    line.decompose()
+
+    division_rule = document.get("divisions")
+    if division_rule is not None:
+        subtitle = division_rule.get("subtitle")
+        separator = division_rule.get("separator", " - ")
+        divisions = [
+            (div, title) for div in soup.find_all("div") if (title := _division_title(div, division_rule)) is not None
+        ]
+        division_ids = {id(div) for div, _ in divisions}
+        for div, title in divisions:
+            if title.decomposed:  # consumed as the subtitle of an enclosing division
+                continue
+            depth = 1 + sum(1 for ancestor in div.parents if id(ancestor) in division_ids)
+            parts = [title.get_text(" ")]
+            sibling = title.find_next_sibling(True)
+            while subtitle is not None and isinstance(sibling, Tag) and sibling.css.match(subtitle):
+                parts.append(sibling.get_text(" "))
+                following = sibling.find_next_sibling(True)
+                sibling.decompose()
+                sibling = following
+            heading = soup.new_tag(f"h{min(depth + 1, 6)}")
+            heading.string = separator.join(text for text in (" ".join(part.split()) for part in parts) if text)
+            title.replace_with(heading)
+
+    table_rule = document.get("numbered_tables")
+    if table_rule is not None:
+        exclude = table_rule.get("exclude")
+        for table in soup.find_all("table"):
+            if table.decomposed or (exclude is not None and table.css.match(exclude)):
+                continue
+            rows = [row for row in table.find_all("tr") if row.find_parent("table") is table]
+            if len(rows) != 1:
+                continue
+            cells = rows[0].find_all(["td", "th"], recursive=False)
+            if len(cells) != 2:
+                continue
+            label = " ".join(cells[0].get_text(" ").split())
+            body = cells[1]
+            first = body.find(True, recursive=False)
+            if not re.fullmatch(table_rule["label"], label) or not isinstance(first, Tag) or first.name != "p":
+                continue
+            first.insert(0, f"{label} ")
+            for child in list(body.contents):
+                table.insert_before(child.extract())
+            table.decompose()
+
+
 class SiteChromeStrippingHTMLBackend(HTMLDocumentBackend):
     """Docling's HTML backend, minus navigation and page-level header/footer."""
+
+    profiles: tuple[HtmlProfile, ...] = ()
+    # Outcome of the last convert(); class attributes because Docling instantiates the backend itself.
+    applied: HtmlProfile | None = None
+    ambiguous: bool = False
 
     def _raw_source(self) -> bytes:
         """The page's bytes, read the way Docling's own __init__ reads them."""
@@ -99,6 +191,8 @@ class SiteChromeStrippingHTMLBackend(HTMLDocumentBackend):
 
     @override
     def convert(self) -> DoclingDocument:
+        type(self).applied = None
+        type(self).ambiguous = False
         if self.soup is None:
             return super().convert()
         raw = self._raw_source()
@@ -127,4 +221,20 @@ class SiteChromeStrippingHTMLBackend(HTMLDocumentBackend):
                 tag.decompose()
             elif has_landmark and tag.find_parent(_is_sectioning) is None:
                 tag.decompose()
+        soup = self.soup
+        matches = [profile for profile in self.profiles if soup.select_one(profile.document["detect"]) is not None]
+        if len(matches) == 1:
+            _apply_profile(soup, matches[0], is_balanced)
+            type(self).applied = matches[0]
+        elif matches:
+            type(self).ambiguous = True
         return super().convert()
+
+
+def html_backend_for(profiles: Sequence[HtmlProfile]) -> type[SiteChromeStrippingHTMLBackend]:
+    """A SiteChromeStrippingHTMLBackend subclass bound to profiles, with its own outcome attributes."""
+    return type(
+        "ProfiledHTMLBackend",
+        (SiteChromeStrippingHTMLBackend,),
+        {"profiles": tuple(profiles), "applied": None, "ambiguous": False},
+    )

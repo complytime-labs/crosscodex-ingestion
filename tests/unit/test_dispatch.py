@@ -15,11 +15,13 @@ from crosscodex_ingestion.dispatch import (
     NatsDispatch,
     create_dispatch,
 )
+from crosscodex_ingestion.html_profile import load_html_profiles
 from crosscodex_ingestion.mapping import MappingRegistry
 from crosscodex_ingestion.state import StateBackend
 from crosscodex_ingestion.storage import StorageBackend
 
 REGISTRY = MappingRegistry({})
+PROFILES = load_html_profiles("")
 
 
 @pytest.fixture
@@ -72,6 +74,7 @@ class TestEmbeddedDispatch:
             attestation=mock_attestation,
             audit=mock_audit,
             mappings=REGISTRY,
+            html_profiles=PROFILES,
         )
 
         with patch("crosscodex_ingestion.dispatch.asyncio.create_task") as mock_create_task:
@@ -103,6 +106,7 @@ class TestEmbeddedDispatch:
             attestation=mock_attestation,
             audit=mock_audit,
             mappings=REGISTRY,
+            html_profiles=PROFILES,
         )
 
         with patch("crosscodex_ingestion.dispatch.run_conversion", new_callable=AsyncMock) as mock_run:
@@ -130,6 +134,7 @@ class TestEmbeddedDispatch:
                 attestation=mock_attestation,
                 audit=mock_audit,
                 mappings=REGISTRY,
+                html_profiles=PROFILES,
             )
 
     @pytest.mark.asyncio
@@ -147,6 +152,7 @@ class TestEmbeddedDispatch:
             attestation=mock_attestation,
             audit=mock_audit,
             mappings=REGISTRY,
+            html_profiles=PROFILES,
         )
 
         # Create a flag to track how many tasks are running concurrently
@@ -190,6 +196,7 @@ class TestEmbeddedDispatch:
             attestation=mock_attestation,
             audit=mock_audit,
             mappings=REGISTRY,
+            html_profiles=PROFILES,
         )
 
         task_started = False
@@ -231,6 +238,7 @@ class TestEmbeddedDispatch:
             attestation=mock_attestation,
             audit=mock_audit,
             mappings=REGISTRY,
+            html_profiles=PROFILES,
         )
 
         with patch("crosscodex_ingestion.dispatch.run_conversion", new_callable=AsyncMock):
@@ -367,6 +375,7 @@ class TestCreateDispatch:
             attestation=mock_attestation,
             audit=mock_audit,
             mappings=REGISTRY,
+            html_profiles=PROFILES,
         )
 
         assert isinstance(dispatcher, EmbeddedDispatch)
@@ -384,6 +393,7 @@ class TestCreateDispatch:
             attestation=mock_attestation,
             audit=mock_audit,
             mappings=REGISTRY,
+            html_profiles=PROFILES,
         )
 
         assert isinstance(dispatcher, NatsDispatch)
@@ -401,4 +411,5 @@ class TestCreateDispatch:
                 attestation=mock_attestation,
                 audit=mock_audit,
                 mappings=REGISTRY,
+                html_profiles=PROFILES,
             )

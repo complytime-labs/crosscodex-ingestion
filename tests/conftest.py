@@ -10,6 +10,7 @@ from crosscodex_ingestion.attestation import create_attestation_manager
 from crosscodex_ingestion.audit import AuditPublisher
 from crosscodex_ingestion.config import IngestionSettings
 from crosscodex_ingestion.dispatch import create_dispatch
+from crosscodex_ingestion.html_profile import load_html_profiles
 from crosscodex_ingestion.mapping import load_registry
 from crosscodex_ingestion.proto.crosscodex.v1 import ingestion_pb2_grpc
 from crosscodex_ingestion.server import create_grpc_server
@@ -105,6 +106,7 @@ async def running_grpc_server(
             attestation=attestation_manager,
             audit=audit_publisher,
             mappings=mappings,
+            html_profiles=load_html_profiles(settings.html_profiles_path),
         )
 
         servicer = IngestionServiceServicer(

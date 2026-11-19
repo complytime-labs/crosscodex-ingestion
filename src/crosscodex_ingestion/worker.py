@@ -32,9 +32,17 @@ from crosscodex_ingestion.converter import (
     convert_document,
     convert_structured,
 )
+from crosscodex_ingestion.html_profile import HtmlProfileRegistry
 from crosscodex_ingestion.mapping import Mapping, MappingRegistry
-from crosscodex_ingestion.metrics import ACTIVE_CONVERSIONS, DURATION, ERRORS_TOTAL, REQUESTS_TOTAL
-from crosscodex_ingestion.output_schema import SCHEMA_VERSION, OutputSchemaError, validate_output
+from crosscodex_ingestion.metrics import (
+    ACTIVE_CONVERSIONS,
+    DURATION,
+    ERRORS_TOTAL,
+    REQUESTS_TOTAL,
+    STRUCTURE_WARNINGS,
+)
+from crosscodex_ingestion.output_schema import SCHEMA_VERSION, OutputSchemaError, Violation, validate_output
+from crosscodex_ingestion.quality import measure_structure
 from crosscodex_ingestion.security import (
     STRUCTURED_FORMATS,
     confirm_structured_format,
@@ -78,6 +86,24 @@ class MappingSkewError(Exception):
     Only possible when the service and the worker are different deployments (distributed mode, or a
     rollout in progress); the conversion fails as retryable rather than using another mapping.
     """
+
+
+# Codes the converter may report in conversion_warnings. The converter subprocess is untrusted and the code becomes
+# a Prometheus label, so anything else is rejected rather than counted.
+CONVERSION_WARNING_CODES = frozenset({"html_profile_ambiguous"})
+
+
+def _check_conversion_warnings(warnings: object) -> None:
+    """Raise OutputSchemaError unless *warnings* is a list of known warning codes; values are never quoted."""
+    if not isinstance(warnings, list):
+        raise OutputSchemaError([Violation("conversion_warnings", "is not a list")])
+    violations = [
+        Violation(f"conversion_warnings[{index}]", "is not a known warning code")
+        for index, code in enumerate(warnings)
+        if not (isinstance(code, str) and code in CONVERSION_WARNING_CODES)
+    ]
+    if violations:
+        raise OutputSchemaError(violations)
 
 
 def _fetch_source(source_uri: str, settings: IngestionSettings, expected_format: str | None) -> tuple[bytes, str]:
@@ -200,6 +226,7 @@ async def run_conversion(
     attestation: AttestationManager | None,
     audit: AuditPublisher,
     mappings: MappingRegistry,
+    html_profiles: HtmlProfileRegistry,
 ) -> None:
     """Run the document conversion pipeline.
 
@@ -244,6 +271,8 @@ async def run_conversion(
     mappings : MappingRegistry
         Mappings registered on this worker; metadata["mapping_id"] and ["mapping_sha256"] name the
         request's mapping, as validated by the service.
+    html_profiles : HtmlProfileRegistry
+        HTML profiles registered on this worker; the Docling worker applies the one an HTML document matches.
 
     Returns
     -------
@@ -351,10 +380,19 @@ async def run_conversion(
                 span.set_attribute("mapping.id", mapping.id)
                 conversion_result = await convert_structured(str(temp_file_path), mapping, settings)
             else:
-                conversion_result = await convert_document(str(temp_file_path), validated_format, settings)
+                conversion_result = await convert_document(
+                    str(temp_file_path), validated_format, settings, html_profiles
+                )
 
+        # conversion_warnings is not part of the output schema; it is checked here and folded into metadata.structure.
+        conversion_warnings = conversion_result.pop("conversion_warnings", [])
         # The output schema is the contract with consumers: nothing that breaks it is stored.
+        # The result is untrusted, so it is validated before anything walks it.
         validate_output(conversion_result)
+        _check_conversion_warnings(conversion_warnings)
+        structure = measure_structure(conversion_result["elements"])
+        structure["warnings"].extend(conversion_warnings)
+        conversion_result["metadata"]["structure"] = structure
         for dropped in conversion_result["metadata"]["dropped"]:
             logger.warning(
                 "Document %s: dropped a %s on page %s: %s",
@@ -363,6 +401,14 @@ async def run_conversion(
                 dropped["page"],
                 dropped["reason"],
             )
+        for code in structure["warnings"]:
+            logger.warning(
+                "Document %s: structure warning %s (%d elements)",
+                document_id,
+                code,
+                len(conversion_result["elements"]),
+            )
+            STRUCTURE_WARNINGS.labels(format=validated_format, warning=code).inc()
 
         # Step 7: Upload structured JSON to storage
         with tracer.start_as_current_span("ingestion.upload") as span:

@@ -23,10 +23,13 @@ from crosscodex_ingestion.converter import (
     convert_structured,
     validate_artifacts_path,
 )
+from crosscodex_ingestion.html_profile import HtmlProfile, HtmlProfileRegistry, load_html_profiles
 from crosscodex_ingestion.mapping import load_registry
 from crosscodex_ingestion.output_schema import SCHEMA_VERSION
 from crosscodex_ingestion.structured import INPUT_ERROR_EXIT_CODE, StructuredSourceError
 from tests.unit.process_helpers import SLEEPER_SCRIPT, is_running, wait_for_pids
+
+PROFILES = load_html_profiles("")
 
 
 def _proc(returncode: int, stderr: str = "") -> Mock:
@@ -64,7 +67,7 @@ class TestConvertDocument:
         settings = IngestionSettings()
 
         # Act
-        result = await convert_document("/path/to/doc.pdf", "pdf", settings)
+        result = await convert_document("/path/to/doc.pdf", "pdf", settings, PROFILES)
 
         # Assert
         assert "elements" in result
@@ -92,7 +95,7 @@ class TestConvertDocument:
 
         mock_subprocess_run.side_effect = slow_worker
 
-        result = await convert_document("/path/to/doc.pdf", "pdf", IngestionSettings())
+        result = await convert_document("/path/to/doc.pdf", "pdf", IngestionSettings(), PROFILES)
 
         assert result["metadata"]["processing_time_ms"] >= worker_seconds * 1000
 
@@ -107,7 +110,7 @@ class TestConvertDocument:
 
         mock_subprocess_run.side_effect = worker
 
-        result = await convert_document("/path/to/doc.pdf", "pdf", IngestionSettings())
+        result = await convert_document("/path/to/doc.pdf", "pdf", IngestionSettings(), PROFILES)
 
         assert next(iter(result)) == "schema_version"
         assert result["schema_version"] == SCHEMA_VERSION
@@ -123,7 +126,7 @@ class TestConvertDocument:
 
         # Act & Assert
         with pytest.raises(ConversionError) as exc_info:
-            await convert_document("/path/to/doc.pdf", "pdf", settings)
+            await convert_document("/path/to/doc.pdf", "pdf", settings, PROFILES)
 
         assert "exit code 137" in str(exc_info.value).lower()
 
@@ -155,7 +158,7 @@ class TestConvertDocument:
             settings = IngestionSettings()
 
             # Act
-            await convert_document("/path/to/doc.pdf", "pdf", settings)
+            await convert_document("/path/to/doc.pdf", "pdf", settings, PROFILES)
 
         # Assert - temp directory should not exist
         assert len(temp_dirs_created) == 1
@@ -182,7 +185,7 @@ class TestConvertDocument:
 
             # Act & Assert
             with pytest.raises(ConversionError):
-                await convert_document("/path/to/doc.pdf", "pdf", settings)
+                await convert_document("/path/to/doc.pdf", "pdf", settings, PROFILES)
 
         # Assert - temp directory should not exist
         assert len(temp_dirs_created) == 1
@@ -207,7 +210,7 @@ class TestConvertDocument:
         settings = IngestionSettings(rlimit_as_mb=2048, rlimit_cpu=120, rlimit_fsize_mb=50)
 
         # Act
-        await convert_document("/path/to/doc.pdf", "pdf", settings)
+        await convert_document("/path/to/doc.pdf", "pdf", settings, PROFILES)
 
         # Assert
         mock_subprocess_run.assert_called_once()
@@ -247,7 +250,7 @@ class TestConvertDocument:
         settings = IngestionSettings(rlimit_as_mb=0, rlimit_cpu=0, rlimit_fsize_mb=0)
 
         # Act
-        await convert_document("/path/to/doc.pdf", "pdf", settings)
+        await convert_document("/path/to/doc.pdf", "pdf", settings, PROFILES)
 
         # Assert
         mock_subprocess_run.assert_called_once()
@@ -277,7 +280,7 @@ class TestConvertDocument:
         settings = IngestionSettings()
 
         # Act
-        await convert_document("/path/to/doc.pdf", "pdf", settings)
+        await convert_document("/path/to/doc.pdf", "pdf", settings, PROFILES)
 
         # Assert
         mock_subprocess_run.assert_called_once()
@@ -369,7 +372,7 @@ class TestOfflineModels:
         _capture_cmd_and_env(mock_subprocess_run)
         settings = IngestionSettings(docling_artifacts_path="/opt/docling-models")
 
-        await convert_document("/path/to/doc.pdf", "pdf", settings)
+        await convert_document("/path/to/doc.pdf", "pdf", settings, PROFILES)
 
         assert "/opt/docling-models" in mock_subprocess_run.call_args[0]
 
@@ -381,7 +384,7 @@ class TestOfflineModels:
         monkeypatch.setenv("AWS_SECRET_ACCESS_KEY", "should-not-leak")
         _capture_cmd_and_env(mock_subprocess_run)
 
-        await convert_document("/path/to/doc.pdf", "pdf", IngestionSettings(docling_artifacts_path="/m"))
+        await convert_document("/path/to/doc.pdf", "pdf", IngestionSettings(docling_artifacts_path="/m"), PROFILES)
 
         env = mock_subprocess_run.call_args.kwargs["env"]
         assert env["HF_HUB_OFFLINE"] == "1"
@@ -396,7 +399,7 @@ class TestOfflineModels:
         monkeypatch.setenv("PYTHONPATH", "/opt/app-root/lib/python3.12/site-packages")
         _capture_cmd_and_env(mock_subprocess_run)
 
-        await convert_document("/path/to/doc.pdf", "pdf", IngestionSettings(docling_artifacts_path="/m"))
+        await convert_document("/path/to/doc.pdf", "pdf", IngestionSettings(docling_artifacts_path="/m"), PROFILES)
 
         assert mock_subprocess_run.call_args.kwargs["env"]["PYTHONPATH"] == "/opt/app-root/lib/python3.12/site-packages"
 
@@ -408,7 +411,7 @@ class TestOfflineModels:
         monkeypatch.delenv("PYTHONPATH", raising=False)
         _capture_cmd_and_env(mock_subprocess_run)
 
-        await convert_document("/path/to/doc.pdf", "pdf", IngestionSettings(docling_artifacts_path="/m"))
+        await convert_document("/path/to/doc.pdf", "pdf", IngestionSettings(docling_artifacts_path="/m"), PROFILES)
 
         assert "PYTHONPATH" not in mock_subprocess_run.call_args.kwargs["env"]
 
@@ -440,7 +443,7 @@ class TestDocumentLimits:
     async def test_max_pages_passed_to_worker(self, mock_copy2, mock_subprocess_run):
         _capture_cmd_and_env(mock_subprocess_run)
 
-        await convert_document("/path/to/doc.pdf", "pdf", IngestionSettings(max_pages=42))
+        await convert_document("/path/to/doc.pdf", "pdf", IngestionSettings(max_pages=42), PROFILES)
 
         assert mock_subprocess_run.call_args[0][-1] == "42"
 
@@ -452,7 +455,7 @@ class TestDocumentLimits:
         mock_subprocess_run.return_value = _proc(returncode=PAGE_LIMIT_EXIT_CODE, stderr="Traceback /srv/secret/path")
 
         with pytest.raises(DocumentLimitError) as exc_info:
-            await convert_document("/path/to/doc.pdf", "pdf", IngestionSettings(max_pages=10))
+            await convert_document("/path/to/doc.pdf", "pdf", IngestionSettings(max_pages=10), PROFILES)
 
         assert "10 pages" in str(exc_info.value)
         assert "/srv/secret" not in str(exc_info.value)
@@ -464,7 +467,7 @@ class TestDocumentLimits:
         mock_subprocess_run.return_value = _proc(returncode=-signal.SIGXCPU)
 
         with pytest.raises(DocumentLimitError) as exc_info:
-            await convert_document("/path/to/doc.pdf", "pdf", IngestionSettings(rlimit_cpu=600))
+            await convert_document("/path/to/doc.pdf", "pdf", IngestionSettings(rlimit_cpu=600), PROFILES)
 
         assert "CPU limit" in str(exc_info.value)
         assert "RLIMIT_CPU" in str(exc_info.value)
@@ -477,7 +480,7 @@ class TestDocumentLimits:
         mock_subprocess_run.return_value = _proc(returncode=-signal.SIGKILL)
 
         with pytest.raises(ConversionError) as exc_info:
-            await convert_document("/path/to/doc.pdf", "pdf", IngestionSettings())
+            await convert_document("/path/to/doc.pdf", "pdf", IngestionSettings(), PROFILES)
 
         assert not isinstance(exc_info.value, DocumentLimitError)
         assert "SIGKILL" in str(exc_info.value)
@@ -489,7 +492,7 @@ class TestDocumentLimits:
         mock_subprocess_run.return_value = _proc(returncode=-signal.SIGSEGV)
 
         with pytest.raises(ConversionError) as exc_info:
-            await convert_document("/path/to/doc.pdf", "pdf", IngestionSettings())
+            await convert_document("/path/to/doc.pdf", "pdf", IngestionSettings(), PROFILES)
 
         assert "SIGSEGV" in str(exc_info.value)
         assert "RLIMIT_AS_MB" in str(exc_info.value)
@@ -500,7 +503,7 @@ class TestDocumentLimits:
         mock_subprocess_run.return_value = _proc(returncode=-signal.SIGSEGV)
 
         with pytest.raises(ConversionError) as exc_info:
-            await convert_document("/path/to/doc.pdf", "pdf", IngestionSettings(rlimit_as_mb=0))
+            await convert_document("/path/to/doc.pdf", "pdf", IngestionSettings(rlimit_as_mb=0), PROFILES)
 
         assert "SIGSEGV" in str(exc_info.value)
         assert "RLIMIT_AS_MB" not in str(exc_info.value)
@@ -511,7 +514,7 @@ class TestDocumentLimits:
         mock_subprocess_run.return_value = _proc(returncode=1, stderr="boom")
 
         with pytest.raises(ConversionError):
-            await convert_document("/path/to/doc.pdf", "pdf", IngestionSettings())
+            await convert_document("/path/to/doc.pdf", "pdf", IngestionSettings(), PROFILES)
 
     @patch("crosscodex_ingestion.converter.asyncio.create_subprocess_exec", new_callable=AsyncMock)
     @patch("crosscodex_ingestion.converter.shutil.copy2")
@@ -525,7 +528,9 @@ class TestDocumentLimits:
         mock_subprocess_run.side_effect = write_output
 
         with pytest.raises(DocumentLimitError, match="exceeds the maximum of"):
-            await convert_document("/path/to/doc.pdf", "pdf", IngestionSettings(max_extraction_length=len(payload) - 1))
+            await convert_document(
+                "/path/to/doc.pdf", "pdf", IngestionSettings(max_extraction_length=len(payload) - 1), PROFILES
+            )
 
     @patch("crosscodex_ingestion.converter.asyncio.create_subprocess_exec", new_callable=AsyncMock)
     @patch("crosscodex_ingestion.converter.shutil.copy2")
@@ -539,10 +544,28 @@ class TestDocumentLimits:
         mock_subprocess_run.side_effect = write_output
 
         result = await convert_document(
-            "/path/to/doc.pdf", "pdf", IngestionSettings(max_extraction_length=len(payload))
+            "/path/to/doc.pdf", "pdf", IngestionSettings(max_extraction_length=len(payload)), PROFILES
         )
 
         assert result["elements"] == []
+
+    @patch("crosscodex_ingestion.converter.asyncio.create_subprocess_exec", new_callable=AsyncMock)
+    @patch("crosscodex_ingestion.converter.shutil.copy2")
+    async def test_profiles_sent_on_stdin(self, mock_copy2, mock_subprocess_run):
+        """The worker gets the registry's profiles as JSON on stdin, not on the command line."""
+        proc = _proc(returncode=0)
+
+        async def write_output_file(*cmd, **kwargs):
+            Path(cmd[3]).write_text(json.dumps({"elements": [], "metadata": {}}))
+            return proc
+
+        mock_subprocess_run.side_effect = write_output_file
+
+        await convert_document("/path/to/doc.html", "html", IngestionSettings(), PROFILES)
+
+        sent = json.loads(proc.communicate.call_args.kwargs["input"])
+        assert [(p["id"], p["sha256"]) for p in sent] == [(p.id, p.sha256) for p in PROFILES.profiles]
+        assert [p["id"] for p in sent] == ["eur-lex-oj"]
 
 
 class TestWorkerLifecycle:
@@ -558,7 +581,7 @@ class TestWorkerLifecycle:
             return created[-1]
 
         with patch("crosscodex_ingestion.converter.tempfile.mkdtemp", side_effect=tracking_mkdtemp):
-            task = asyncio.create_task(convert_document(str(input_path), "pdf", IngestionSettings()))
+            task = asyncio.create_task(convert_document(str(input_path), "pdf", IngestionSettings(), PROFILES))
             pids = await wait_for_pids(pidfile)
             assert all(is_running(p) for p in pids)
 
@@ -574,7 +597,7 @@ class TestWorkerLifecycle:
         input_path, pidfile = sleeper_worker
 
         with pytest.raises(ConversionTimeout, match="timed out after 1 seconds"):
-            await convert_document(str(input_path), "pdf", IngestionSettings(max_processing_time=1))
+            await convert_document(str(input_path), "pdf", IngestionSettings(max_processing_time=1), PROFILES)
 
         assert not any(is_running(p) for p in await wait_for_pids(pidfile))
 
@@ -774,3 +797,38 @@ class TestConvertStructured:
             await convert_structured(str(source), ASVS, IngestionSettings(structured_max_processing_time=1))
 
         assert not any(is_running(p) for p in await wait_for_pids(pidfile))
+
+
+class TestRealWorkerProfileProvenance:
+    """The real Docling worker subprocess applies a profile and says so; no models are needed for HTML."""
+
+    SETTINGS_ARTIFACTS = "/nonexistent-models"
+
+    async def _convert(self, fixture: str, profiles: HtmlProfileRegistry = PROFILES):
+        path = Path(__file__).parent.parent / "fixtures" / "documents" / fixture
+        return await convert_document(
+            str(path), "html", IngestionSettings(docling_artifacts_path=self.SETTINGS_ARTIFACTS), profiles
+        )
+
+    async def test_real_worker_reports_profile_provenance(self):
+        result = await self._convert("eurlex-gdpr-32016R0679.html")
+
+        assert result["metadata"]["html_profile"] == {"id": "eur-lex-oj", "sha256": PROFILES.profiles[0].sha256}
+        assert "conversion_warnings" not in result
+
+    async def test_real_worker_reports_no_profile_for_plain_html(self):
+        result = await self._convert("sample.html")
+
+        assert "html_profile" not in result["metadata"]
+        assert "conversion_warnings" not in result
+
+    async def test_real_worker_reports_ambiguity_and_applies_no_profile(self):
+        eur_lex = PROFILES.profiles[0]
+        twin = HtmlProfile(id="eur-lex-twin", sha256="0" * 64, document={**eur_lex.document, "id": "eur-lex-twin"})
+
+        result = await self._convert(
+            "eurlex-gdpr-32016R0679.html", HtmlProfileRegistry({eur_lex.id: eur_lex, twin.id: twin})
+        )
+
+        assert result["conversion_warnings"] == ["html_profile_ambiguous"]
+        assert "html_profile" not in result["metadata"]

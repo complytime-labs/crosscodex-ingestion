@@ -8,9 +8,11 @@ from pathlib import Path
 from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
+from prometheus_client import REGISTRY as PROMETHEUS
 
 from crosscodex_ingestion.config import IngestionSettings
 from crosscodex_ingestion.converter import ConversionError, ConversionTimeout, DocumentLimitError
+from crosscodex_ingestion.html_profile import load_html_profiles
 from crosscodex_ingestion.mapping import load_registry
 from crosscodex_ingestion.output_schema import SCHEMA_VERSION
 from crosscodex_ingestion.state import DocumentRecord, MemoryStateBackend
@@ -25,6 +27,7 @@ from crosscodex_ingestion.worker import (
 from tests.unit.output_samples import conforming_output, structured_output
 
 REGISTRY = load_registry("")
+PROFILES = load_html_profiles("")
 ASVS = REGISTRY.get("owasp-asvs-5.0.0-json")
 
 
@@ -94,6 +97,7 @@ async def test_run_conversion_with_bytes_successful(
             attestation=None,
             audit=audit_publisher,
             mappings=REGISTRY,
+            html_profiles=PROFILES,
         )
 
     # Verify state transitions
@@ -156,6 +160,7 @@ async def test_run_conversion_with_url_successful(settings, state_backend, stora
                 attestation=None,
                 audit=audit_publisher,
                 mappings=REGISTRY,
+                html_profiles=PROFILES,
             )
 
     # Verify validate_url was called
@@ -196,6 +201,7 @@ async def test_run_conversion_format_validation_failure(settings, state_backend,
             attestation=None,
             audit=audit_publisher,
             mappings=REGISTRY,
+            html_profiles=PROFILES,
         )
 
     # Verify state is FAILED with error code 1 (INVALID_ARGUMENT)
@@ -230,6 +236,7 @@ async def test_unknown_format_error_keeps_input_bytes_out_of_state_audit_and_log
             attestation=None,
             audit=audit_publisher,
             mappings=REGISTRY,
+            html_profiles=PROFILES,
         )
 
     final_record = await state_backend.get(tenant_id, document_id)
@@ -276,6 +283,7 @@ async def test_run_conversion_timeout(settings, state_backend, storage_backend, 
             attestation=None,
             audit=audit_publisher,
             mappings=REGISTRY,
+            html_profiles=PROFILES,
         )
 
     # Verify state is FAILED with RESOURCE_EXHAUSTED error
@@ -323,6 +331,7 @@ async def test_run_conversion_storage_failure(settings, state_backend, storage_b
             attestation=None,
             audit=audit_publisher,
             mappings=REGISTRY,
+            html_profiles=PROFILES,
         )
 
     # Verify state is FAILED with INTERNAL error
@@ -375,6 +384,7 @@ async def test_run_conversion_with_attestation(settings, state_backend, storage_
             attestation=mock_attestation,
             audit=audit_publisher,
             mappings=REGISTRY,
+            html_profiles=PROFILES,
         )
 
     # Verify attestation.create_link was called
@@ -428,6 +438,7 @@ async def test_run_conversion_audit_event_published(settings, state_backend, sto
             attestation=None,
             audit=audit_publisher,
             mappings=REGISTRY,
+            html_profiles=PROFILES,
         )
 
     # Verify audit.publish was called
@@ -478,6 +489,7 @@ async def test_run_conversion_temp_files_cleaned_on_success(settings, state_back
             attestation=None,
             audit=audit_publisher,
             mappings=REGISTRY,
+            html_profiles=PROFILES,
         )
 
     # Verify conversion succeeded
@@ -518,6 +530,7 @@ async def test_run_conversion_temp_files_cleaned_on_failure(settings, state_back
             attestation=None,
             audit=audit_publisher,
             mappings=REGISTRY,
+            html_profiles=PROFILES,
         )
 
     # Verify state is FAILED
@@ -569,6 +582,7 @@ async def test_run_conversion_hash_validation(settings, state_backend, storage_b
             attestation=None,
             audit=audit_publisher,
             mappings=REGISTRY,
+            html_profiles=PROFILES,
         )
 
     # Verify validate_content_hash was called
@@ -592,6 +606,7 @@ async def _run_pdf_conversion(settings, state_backend, storage_backend, audit_pu
         attestation=None,
         audit=audit_publisher,
         mappings=REGISTRY,
+        html_profiles=PROFILES,
     )
 
 
@@ -852,6 +867,7 @@ async def test_non_conforming_output_is_never_attested(
             attestation=attestation,
             audit=audit_publisher,
             mappings=REGISTRY,
+            html_profiles=PROFILES,
         )
 
     assert (await state_backend.get("tenant-t", "doc-t")).status == JOB_STATUS_FAILED
@@ -895,6 +911,153 @@ async def test_dropped_content_is_logged_and_kept_in_the_stored_output(
     assert any("doc-t" in m and "table" in m and "page 4" in m and "exported no content" in m for m in warnings)
 
 
+def _structure_warning_count(fmt, warning):
+    return PROMETHEUS.get_sample_value("ingestion_structure_warnings_total", {"format": fmt, "warning": warning}) or 0
+
+
+async def _stored_output(state_backend, tenant, document):
+    record = await state_backend.get(tenant, document)
+    assert record.status == 3
+    return json.loads(Path(record.structured_json_uri.removeprefix("file://")).read_text())
+
+
+def _flat_output():
+    output = conforming_output()
+    output["elements"] = [
+        {
+            "element_id": f"e-{i:03d}",
+            "type": "paragraph",
+            "content": f"secret paragraph text {i}",
+            "page": 1,
+            "level": None,
+            "parent_id": None,
+            "style": {},
+        }
+        for i in range(60)
+    ]
+    output["metadata"]["element_count"] = 60
+    return output
+
+
+@pytest.mark.asyncio
+async def test_flat_result_counts_and_logs_no_headings(
+    settings, state_backend, storage_backend, audit_publisher, caplog
+):
+    output = _flat_output()
+    before = _structure_warning_count("pdf", "no_headings")
+
+    with (
+        patch("crosscodex_ingestion.worker.convert_document", return_value=output),
+        caplog.at_level("WARNING"),
+    ):
+        await _run_pdf_conversion(settings, state_backend, storage_backend, audit_publisher)
+
+    stored = await _stored_output(state_backend, "tenant-t", "doc-t")
+    assert stored["metadata"]["structure"]["warnings"] == ["no_headings"]
+    assert _structure_warning_count("pdf", "no_headings") == before + 1
+    assert "structure warning no_headings (60 elements)" in caplog.text
+    assert "secret paragraph text" not in caplog.text
+
+
+@pytest.mark.asyncio
+async def test_structured_result_has_no_warnings(settings, state_backend, storage_backend, audit_publisher, caplog):
+    before = _structure_warning_count("pdf", "no_headings")
+
+    with (
+        patch("crosscodex_ingestion.worker.convert_document", return_value=conforming_output()),
+        caplog.at_level("WARNING"),
+    ):
+        await _run_pdf_conversion(settings, state_backend, storage_backend, audit_publisher)
+
+    stored = await _stored_output(state_backend, "tenant-t", "doc-t")
+    assert stored["metadata"]["structure"]["warnings"] == []
+    assert _structure_warning_count("pdf", "no_headings") == before
+    assert "structure warning" not in caplog.text
+
+
+@pytest.mark.asyncio
+async def test_conversion_warnings_are_merged_counted_and_logged(
+    settings, state_backend, storage_backend, audit_publisher, caplog
+):
+    output = conforming_output()
+    output["metadata"]["detected_format"] = "html"
+    output["conversion_warnings"] = ["html_profile_ambiguous"]
+    before = _structure_warning_count("html", "html_profile_ambiguous")
+    await state_backend.create(DocumentRecord(document_id="doc-h", tenant_id="tenant-h", status=1, metadata={}))
+
+    with (
+        patch("crosscodex_ingestion.worker.convert_document", return_value=output),
+        caplog.at_level("WARNING"),
+    ):
+        await run_conversion(
+            document_id="doc-h",
+            tenant_id="tenant-h",
+            content=b"<!DOCTYPE html><html><body><p>x</p></body></html>",
+            source_uri=None,
+            metadata={},
+            settings=settings,
+            state=state_backend,
+            storage=storage_backend,
+            attestation=None,
+            audit=audit_publisher,
+            mappings=REGISTRY,
+            html_profiles=PROFILES,
+        )
+
+    stored = await _stored_output(state_backend, "tenant-h", "doc-h")
+    assert "conversion_warnings" not in stored
+    assert stored["metadata"]["structure"]["warnings"] == ["html_profile_ambiguous"]
+    assert _structure_warning_count("html", "html_profile_ambiguous") == before + 1
+    assert "structure warning html_profile_ambiguous (2 elements)" in caplog.text
+
+
+@pytest.mark.asyncio
+async def test_conversion_warnings_follow_measured_warnings(settings, state_backend, storage_backend, audit_publisher):
+    output = _flat_output()
+    output["conversion_warnings"] = ["html_profile_ambiguous"]
+
+    with patch("crosscodex_ingestion.worker.convert_document", return_value=output):
+        await _run_pdf_conversion(settings, state_backend, storage_backend, audit_publisher)
+
+    stored = await _stored_output(state_backend, "tenant-t", "doc-t")
+    assert stored["metadata"]["structure"]["warnings"] == ["no_headings", "html_profile_ambiguous"]
+
+
+@pytest.mark.asyncio
+async def test_result_missing_elements_fails_as_invalid_output(
+    settings, state_backend, storage_backend, audit_publisher, tmp_path
+):
+    output = conforming_output()
+    del output["elements"]
+
+    with patch("crosscodex_ingestion.worker.convert_document", return_value=output):
+        await _run_pdf_conversion(settings, state_backend, storage_backend, audit_publisher)
+
+    record = await state_backend.get("tenant-t", "doc-t")
+    assert record.status == JOB_STATUS_FAILED
+    assert record.error["code"] == 6
+    assert record.error["details"]["location"] == "output"
+    assert not list((tmp_path / "storage").rglob("*"))
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("bad", [["Bad Code"], [3], ["ok\n"], "no_headings", ["made_up_code"]])
+async def test_malformed_conversion_warnings_fail_as_invalid_output(
+    bad, settings, state_backend, storage_backend, audit_publisher, tmp_path
+):
+    output = conforming_output()
+    output["conversion_warnings"] = bad
+
+    with patch("crosscodex_ingestion.worker.convert_document", return_value=output):
+        await _run_pdf_conversion(settings, state_backend, storage_backend, audit_publisher)
+
+    record = await state_backend.get("tenant-t", "doc-t")
+    assert record.status == JOB_STATUS_FAILED
+    assert record.error["code"] == 6
+    assert record.error["details"]["location"].startswith("conversion_warnings")
+    assert not list((tmp_path / "storage").rglob("*"))
+
+
 ASVS_JSON = b'{"Requirements": [{"Shortcode": "V1", "Description": "Verify."}]}'
 
 
@@ -925,11 +1088,19 @@ async def _run_structured(
         attestation=attestation,
         audit=audit_publisher,
         mappings=REGISTRY,
+        html_profiles=PROFILES,
     )
     return await state_backend.get("tenant-s", "doc-s")
 
 
 class TestStructuredConversion:
+    async def test_structure_present_on_structured_path(self, state_backend, storage_backend, audit_publisher):
+        with patch("crosscodex_ingestion.worker.convert_structured", return_value=structured_output()):
+            await _run_structured(state_backend, storage_backend, audit_publisher)
+
+        stored = await _stored_output(state_backend, "tenant-s", "doc-s")
+        assert stored["metadata"]["structure"]["heading_count"] == 1
+
     async def test_mapping_routes_to_the_structured_worker_and_is_attested(
         self, state_backend, storage_backend, audit_publisher
     ):
@@ -1126,3 +1297,27 @@ class TestStructuredConversion:
 
         assert record.status == 3
         assert mock_fetch.call_args.kwargs["expected_format"] == "json"
+
+
+async def test_run_conversion_passes_the_html_profiles_to_the_converter(tmp_path):
+    state, storage, audit = MemoryStateBackend(), FilesystemStorage(str(tmp_path / "storage")), AsyncMock()
+    metadata = {"mime_type": "text/html"}
+    await state.create(DocumentRecord(document_id="doc-p", tenant_id="t", status=1, metadata=metadata))
+
+    with patch("crosscodex_ingestion.worker.convert_document", return_value=conforming_output()) as document:
+        await run_conversion(
+            document_id="doc-p",
+            tenant_id="t",
+            content=b"<p>x</p>",
+            source_uri=None,
+            metadata=metadata,
+            settings=IngestionSettings(storage_path=str(tmp_path / "storage")),
+            state=state,
+            storage=storage,
+            attestation=None,
+            audit=audit,
+            mappings=REGISTRY,
+            html_profiles=PROFILES,
+        )
+
+    assert document.call_args.args[-1] is PROFILES

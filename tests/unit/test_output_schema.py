@@ -7,6 +7,7 @@ import pytest
 from jsonschema import Draft202012Validator
 
 from crosscodex_ingestion.output_schema import SCHEMA_VERSION, OutputSchemaError, validate_output
+from crosscodex_ingestion.quality import measure_structure
 from tests.unit.output_samples import conforming_output, structured_output
 
 
@@ -252,8 +253,8 @@ class TestReferenceViolations:
 class TestStructuredSourceFields:
     """Schema 1.1 adds source ids, titles, properties and metadata.source, all optional."""
 
-    def test_this_service_emits_1_1(self):
-        assert SCHEMA_VERSION == "1.1"
+    def test_this_service_emits_1_2(self):
+        assert SCHEMA_VERSION == "1.2"
 
     def test_structured_output_passes(self):
         validate_output(structured_output())
@@ -317,3 +318,43 @@ class TestStructuredSourceFields:
         output["elements"][2]["id"] = None
 
         validate_output(output)
+
+
+class TestStructureFields:
+    """Schema 1.2 adds optional metadata.structure and metadata.html_profile."""
+
+    def test_structure_and_html_profile_validate(self):
+        output = conforming_output()
+        output["metadata"]["structure"] = measure_structure(output["elements"])
+        output["metadata"]["html_profile"] = {"id": "eur-lex-oj", "sha256": "0" * 64}
+
+        validate_output(output)
+
+        assert output["schema_version"] == "1.2"
+
+    @pytest.mark.parametrize("version", ["1.0", "1.1"])
+    def test_older_versions_still_validate(self, version):
+        output = conforming_output()
+        output["schema_version"] = version
+
+        validate_output(output)
+
+    @pytest.mark.parametrize(
+        "mutate",
+        [
+            lambda m: m["structure"].update(heading_count=-1),
+            lambda m: m["structure"].update(warnings=[3]),
+            lambda m: m["structure"].update(warnings=["No-Headings"]),
+            lambda m: m["structure"].update(ratio=0.5),
+            lambda m: m["structure"].pop("warnings"),
+            lambda m: m["html_profile"].pop("sha256"),
+        ],
+        ids=["negative_count", "non_string_warning", "bad_warning_code", "extra_key", "missing_warnings", "no_sha256"],
+    )
+    def test_invalid_shapes_are_rejected(self, mutate):
+        output = conforming_output()
+        output["metadata"]["structure"] = measure_structure(output["elements"])
+        output["metadata"]["html_profile"] = {"id": "eur-lex-oj", "sha256": "0" * 64}
+        mutate(output["metadata"])
+
+        _violation(output)

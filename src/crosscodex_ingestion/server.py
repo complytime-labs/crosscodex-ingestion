@@ -19,6 +19,7 @@ from crosscodex_ingestion.audit import AuditPublisher
 from crosscodex_ingestion.config import IngestionSettings
 from crosscodex_ingestion.converter import validate_artifacts_path
 from crosscodex_ingestion.dispatch import create_dispatch
+from crosscodex_ingestion.html_profile import HtmlProfileError, load_html_profiles
 from crosscodex_ingestion.mapping import MappingError, load_registry
 from crosscodex_ingestion.proto.crosscodex.v1 import ingestion_pb2_grpc
 from crosscodex_ingestion.service import IngestionServiceServicer
@@ -48,7 +49,9 @@ async def serve() -> None:
         validate_artifacts_path(settings.docling_artifacts_path)
         # Every mapping is validated now: a request can only name one that was valid at startup.
         mappings = load_registry(settings.mappings_path)
-    except (ValueError, MappingError) as exc:
+        # Same for HTML profiles: the workers are only ever sent profiles that were valid at startup.
+        html_profiles = load_html_profiles(settings.html_profiles_path)
+    except (ValueError, MappingError, HtmlProfileError) as exc:
         raise SystemExit(f"Configuration error: {exc}") from exc
 
     # Fail closed on unverifiable attestations and unauthenticated callers before opening anything
@@ -70,6 +73,7 @@ async def serve() -> None:
             "storage_backend": settings.storage_backend,
             "state_backend": settings.state_backend,
             "mappings": mappings.ids(),
+            "html_profiles": html_profiles.ids(),
         },
     )
 
@@ -89,6 +93,7 @@ async def serve() -> None:
         attestation=attestation_manager,
         audit=audit_publisher,
         mappings=mappings,
+        html_profiles=html_profiles,
     )
 
     # Create gRPC servicer

@@ -16,6 +16,13 @@ ERRORS_TOTAL = Counter(
     ["error_type"],
 )
 
+# Structure warnings on completed conversions
+STRUCTURE_WARNINGS = Counter(
+    "ingestion_structure_warnings_total",
+    "Structure warnings raised on completed conversions",
+    ["format", "warning"],
+)
+
 # Duration histogram
 DURATION = Histogram(
     "ingestion_duration_seconds",

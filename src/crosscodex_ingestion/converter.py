@@ -22,6 +22,7 @@ from pathlib import Path
 from typing import Any, cast
 
 from crosscodex_ingestion.config import IngestionSettings
+from crosscodex_ingestion.html_profile import HtmlProfileRegistry
 from crosscodex_ingestion.mapping import Mapping
 from crosscodex_ingestion.output_schema import SCHEMA_VERSION
 from crosscodex_ingestion.structured import (
@@ -105,7 +106,11 @@ def main():
     from docling.datamodel.base_models import ConversionStatus, InputFormat
     from docling.datamodel.pipeline_options import PdfPipelineOptions
     from docling.document_converter import DocumentConverter, HTMLFormatOption, PdfFormatOption
-    from crosscodex_ingestion.html_backend import SiteChromeStrippingHTMLBackend
+    from crosscodex_ingestion.html_backend import html_backend_for
+    from crosscodex_ingestion.html_profile import HtmlProfile
+
+    # The profiles are JSON on stdin; the backend class records which one a conversion applied.
+    backend = html_backend_for([HtmlProfile.from_json(profile) for profile in json.load(sys.stdin)])
 
     # Models come from the pre-downloaded artifacts directory; HF_HUB_OFFLINE=1 in the
     # environment guarantees nothing is fetched from the network.
@@ -113,7 +118,7 @@ def main():
     converter = DocumentConverter(
         format_options={
             InputFormat.PDF: PdfFormatOption(pipeline_options=pdf_options),
-            InputFormat.HTML: HTMLFormatOption(backend=SiteChromeStrippingHTMLBackend),
+            InputFormat.HTML: HTMLFormatOption(backend=backend),
         }
     )
     # Docling fails (rather than truncates) a document longer than max_num_pages. Any status
@@ -137,6 +142,10 @@ def main():
         "elements": extraction_result.elements,
         "metadata": extraction_result.metadata,
     }
+    if backend.applied:
+        output_data["metadata"]["html_profile"] = {"id": backend.applied.id, "sha256": backend.applied.sha256}
+    if backend.ambiguous:
+        output_data["conversion_warnings"] = ["html_profile_ambiguous"]
 
     with open(output_path, "w") as f:
         json.dump(output_data, f, separators=(",", ":"))
@@ -343,12 +352,14 @@ def _raise_for_exit(result: _WorkerResult, limits: _WorkerLimits) -> None:
         raise ConversionError(f"Conversion subprocess failed with exit code {returncode}. stderr: {result.stderr}")
 
 
-async def convert_document(input_path: str, format_hint: str, settings: IngestionSettings) -> dict[str, Any]:
+async def convert_document(
+    input_path: str, format_hint: str, settings: IngestionSettings, html_profiles: HtmlProfileRegistry
+) -> dict[str, Any]:
     """Convert a document using Docling in an isolated subprocess.
 
     The subprocess:
     1. Sets resource limits (RLIMIT_AS, RLIMIT_CPU, RLIMIT_FSIZE)
-    2. Runs Docling conversion
+    2. Runs Docling conversion, with the HTML profiles read from stdin
     3. Calls extract_elements()
     4. Writes result JSON to temp directory
 
@@ -363,11 +374,14 @@ async def convert_document(input_path: str, format_hint: str, settings: Ingestio
         Format hint (e.g., 'pdf', 'html', 'txt').
     settings : IngestionSettings
         Configuration settings.
+    html_profiles : HtmlProfileRegistry
+        HTML profiles the worker may apply; sent to it on stdin.
 
     Returns
     -------
     dict
-        Dictionary with 'schema_version', 'elements' and 'metadata' keys.
+        Dictionary with 'schema_version', 'elements' and 'metadata' keys, plus a
+        'conversion_warnings' list when the worker raised any (run_conversion consumes it).
 
     Raises
     ------
@@ -393,6 +407,7 @@ async def convert_document(input_path: str, format_hint: str, settings: Ingestio
         [format_hint, *_rlimits(limits, settings), settings.docling_artifacts_path, str(settings.max_pages)],
         limits,
         settings,
+        stdin_data=json.dumps([profile.to_json() for profile in html_profiles.profiles]).encode(),
     )
     if result.returncode == PAGE_LIMIT_EXIT_CODE:
         raise DocumentLimitError(f"Document exceeds the maximum of {settings.max_pages} pages")
