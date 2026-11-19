@@ -34,6 +34,8 @@ The Ingestion service receives documents via gRPC, validates them for security, 
 - Python 3.12+
 - [uv](https://docs.astral.sh/uv/) (Python package manager)
 - podman or docker (for containerized deployment)
+- [Git LFS](https://git-lfs.com/) (for the integration tests: the real-publication PDF fixtures,
+  `tests/fixtures/documents/nist-*.pdf`, are stored in LFS; run `git lfs pull` if you cloned without it)
 
 ### Run in a container
 
@@ -159,6 +161,45 @@ For an HTML page that matched a profile, `metadata` also carries the profile tha
 | `metadata.source` (1.1)       | Present for structured sources: `kind` (`structured`), `format`, `mapping` (`id`, `sha256`, `mapping_version`), `node_count`, `unmapped_fields`.          |
 | `metadata.structure` (1.2)    | Structure signals: `heading_count`, `table_count`, `max_heading_depth`, `unparented_count`, `fragment_count`, and `warnings` (open-ended codes such as `no_headings`). |
 | `metadata.html_profile` (1.2) | Present when an HTML profile shaped the conversion: `id` and the `sha256` of the profile file (see "HTML profiles").                                      |
+
+### PDF heading levels
+
+Docling marks PDF headings without a level (every one is level 1). For PDF input whose headings are
+all level 1, the level comes from the section number at the start of the heading:
+
+- Decimal numbers nest by their number of parts: `2.` or `2`, then `2.1` or `2.1.`, then
+  `03.01.01` (leading zeros are allowed, at most 6 parts).
+- `CHAPTER`, `ANNEX` and `APPENDIX` headings rank with one-part numbers, `SECTION` with two-part
+  numbers and `ARTICLE` with three-part numbers, in any letter case. The number after the word can be
+  arabic (`Article 12`), roman (`CHAPTER IV`) or a word from ONE to TWENTY (`CHAPTER TWO`); annexes and
+  appendices can also use a letter (`Appendix A.`).
+- The ranks a document uses are numbered from level 1 down, so NIS2's `CHAPTER I` is level 1 and its
+  `Article 1` level 2, and 800-53r5's `CHAPTER THREE` is level 1 and its `3.1 ACCESS CONTROL` level 2.
+- A heading without a number (`DISCUSSION`, `Subject matter`, `AC-2 ACCOUNT MANAGEMENT`) is one level
+  below the numbered heading before it. Headings before the first numbered one are level 1.
+- A number that does not come after the previous one of its kind and depth is not used. For
+  example, 800-53r5 has a list item, `3. Include a description of the authorized uses of the
+  system.`, labelled as a heading inside `CHAPTER THREE`. It is treated as a heading without a number.
+  The check restarts under each new parent, so a requirement quoted early as an example (`03.13.11` in
+  800-171r3's section 2.2) does not hide the real ones later.
+- When fewer than two headings carry a usable number, every heading stays at level 1.
+
+Font size is not used: Docling's output does not record it. A heading's box height grows with its line
+count, so it does not show the font size either. Limits that follow from this:
+
+- Control identifiers such as `AC-1` and enhancements such as `(1)` are not section numbers. In 800-53r5
+  they are siblings under their family (`3.1 ACCESS CONTROL`).
+- An unnumbered heading after the last numbered section, such as a closing `REFERENCES`, nests under
+  that section.
+- A number may skip ahead, because Docling misses some headings (NIS2 goes from `Article 31` to
+  `Article 37`). So a stray item numbered *higher* than the real next section is taken as a heading,
+  and the real ones after it at that depth are treated as unnumbered.
+- Not recognised as numbering: a number without a space after it (`1.Intro`), lettered decimals
+  (`A.1`), suffixed articles (`Article 2a`), parts of more than 3 digits, and roman numerals above C.
+  `ANNEX` and `APPENDIX` numbers are not checked for order, because a letter and a roman numeral
+  (`ANNEX I`, `ANNEX C`) cannot be told apart.
+
+DOCX and HTML keep the levels in their markup.
 
 ### What HTML conversion leaves out
 
@@ -748,6 +789,7 @@ gRPC Request → Dispatch → Worker → [Converter → Extractor | Structured] 
 - `security.py`: SSRF prevention, URL validation, content type detection, resource limit enforcement. URL fetches connect directly and ignore `HTTP_PROXY`/`HTTPS_PROXY`/`ALL_PROXY`: the address actually connected to is checked against the blocked ranges, and through a proxy that check would only see the proxy.
 - `converter.py`: Async subprocess-based Docling execution with rlimits and timeout; the subprocess's process group is killed on timeout or cancellation
 - `extractor.py`: Structured element extraction from Docling output
+- `heading_levels.py`: Heading levels for PDF headings Docling leaves flat, inferred from section numbering
 - `html_backend.py`: Docling HTML backend that drops navigation and, on pages with a main landmark, page-level `<header>`/`<footer>` before conversion, and applies the HTML profile a page matches (design: [docs/html-profiles.md](docs/html-profiles.md))
 - `output_schema.py`: Validates every output against the versioned output schema before it is stored (design: [docs/output-schema.md](docs/output-schema.md))
 - `quality.py`: Measures structure signals (`metadata.structure`) from the extracted elements
