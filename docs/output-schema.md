@@ -1,7 +1,7 @@
 # Output schema: design notes
 
-For maintainers. The consumer-facing description of the format and its guarantees is the README section
-"Output format"; this page explains how the contract is enforced and how to change it.
+For maintainers (back to the [README](../README.md)). The consumer-facing description of the format and its guarantees is
+[Output format](usage/output-format.md); this page explains how the contract is enforced and how to change it.
 
 ## Where each part of the output comes from
 
@@ -40,10 +40,12 @@ on every field being present and typed. Further cross-element rules belong besid
 The schema states exactly what one version emits, so a field added in code without a schema change fails
 the service's own validation and tests instead of reaching consumers unannounced. Forward compatibility
 comes from the version policy instead: minors only add optional fields, and readers must ignore fields
-they don't know (README "Versions"). The cost: a consumer that validates with the schema needs a copy at
+they don't know ([Versions](usage/output-format.md#versions)). The cost: a consumer that validates with the schema needs a copy at
 least as new as the output, because a 1.0-era copy rejects fields that 1.1 adds.
 
-**A non-conforming output is `ERROR_CODE_INTERNAL`, with a specific message.** It is a bug in the
+**A non-conforming output is `ERROR_CODE_INTERNAL`, with a specific message.** (`ErrorCode` and
+`Error`, whose `details` are mentioned below, are defined in
+[`proto/crosscodex/v1/common.proto`](../proto/crosscodex/v1/common.proto).) It is a bug in the
 service, not in the request, so it is not `INVALID_ARGUMENT`. Unlike other internal errors its message
 is returned in full. It is built from locations, schema keywords and schema values. Element content is
 tenant data, and the message reaches the client, the logs and the audit stream, so the only values
@@ -71,6 +73,38 @@ quote document text.
 **Blank headings are skipped without touching the heading stack.** That attaches the content under one to
 the nearest non-blank heading above, and it keeps a blank heading from closing the sections above it.
 
+```mermaid
+%%{init: {'theme': 'base', 'themeVariables': {
+  'primaryColor': '#2f6dab',
+  'primaryTextColor': '#1e1e1e',
+  'primaryBorderColor': '#7c8ba1',
+  'lineColor': '#7c8ba1',
+  'edgeLabelBackground': '#eef2f8',
+  'tertiaryColor': 'transparent',
+  'tertiaryTextColor': '#7c8ba1',
+  'tertiaryBorderColor': '#7c8ba1',
+  'clusterBkg': 'transparent',
+  'clusterBorder': '#7c8ba1',
+  'titleColor': '#7c8ba1',
+  'noteBkgColor': '#eef2f8',
+  'noteTextColor': '#1e1e1e',
+  'fontFamily': 'system-ui, sans-serif'
+}, 'themeCSS': '.node .nodeLabel{color:#ffffff!important;fill:#ffffff!important;}'}}%%
+flowchart TD
+  worker["Worker passes markdown=None"] --> typed["extract_elements: typed pass"]
+  typed --> any{"Any elements?"}
+  any -->|yes| out["Elements, metadata.dropped"]
+  any -->|no| export["Export the document's Markdown"]
+  export -->|raises| failed["Conversion fails"]
+  export -->|succeeds| fallback["Fallback elements, metadata.dropped kept"]
+  classDef sysA fill:#2f6dab,color:#ffffff,stroke:#7c8ba1
+  classDef sysB fill:#1d7848,color:#ffffff,stroke:#7c8ba1
+  classDef sysF fill:#5c6a82,color:#ffffff,stroke:#7c8ba1
+  class worker,typed,export sysA
+  class out,fallback sysB
+  class failed sysF
+```
+
 **Markdown is exported only for the fallback, and drops survive it.** `DoclingDocument.export_to_markdown`
 renders tables with the same `MarkdownDocSerializer` as `TableItem.export_to_markdown`. When that
 serializer raises on a table, the document export raises too; this was reproduced on a real
@@ -81,7 +115,7 @@ can't contain a table the typed pass dropped, so `metadata.dropped` is kept when
 
 ## Changing the schema
 
-1. Decide minor or major by the README "Versions" rules. Adding an optional field is minor; anything that
+1. Decide minor or major by the [Versions](usage/output-format.md#versions) rules. Adding an optional field is minor; anything that
    could break an existing reader is major.
 2. For a minor: edit `schemas/structured-output-v1.json`, add the new fields as optional (never to
    `required`), append the new version to the `schema_version` `enum` (never remove one), and bump
@@ -92,7 +126,7 @@ can't contain a table the typed pass dropped, so `metadata.dropped` is kept when
 4. Add positive and negative cases to `tests/unit/test_output_schema.py`, and run
    `task test:integration` (`tests/integration/test_output_schema_e2e.py` validates real conversions of
    every fixture document).
-5. Update the README "Output format" section: field table, guarantees, and the example.
+5. Update [Output format](usage/output-format.md): field table, guarantees, and the example.
 
 ## 1.1: what structured sources added
 
@@ -100,7 +134,8 @@ can't contain a table the typed pass dropped, so `metadata.dropped` is kept when
 1.0 readers still work. The Docling path emits none of them: it has no source IDs, and emitting `id: null`
 on every element would only add bytes. `title` is forbidden on headings (`"title": false` in the schema's
 `then` branch), because a heading's title is its `content`. Property names follow the same identifier rule
-as mapping property names; property values are non-blank strings.
+as mapping property names (`^[a-z][a-z0-9_]{0,63}$`, see
+[Writing a mapping](usage/structured-sources.md#writing-a-mapping)); property values are non-blank strings.
 
 ## 1.2: structure signals and HTML profiles
 

@@ -1,7 +1,7 @@
 # Structured sources: design notes
 
-For maintainers. How to request a conversion, write and register a mapping, and read the errors is in the
-README section "Structured sources"; this page explains how it works and why.
+For maintainers (back to the [README](../README.md)). How to request a conversion, write and register a mapping, and read the errors is in
+[Structured sources](usage/structured-sources.md); this page explains how it works and why.
 
 ## Flow
 
@@ -27,26 +27,31 @@ Inside the structured worker (`structured.convert_source`):
 
 ## Decisions
 
-- **Level columns (`rows.levels`) are additive within mapping version 1.** `expand_levels` runs between
-  reading and `build_tree`: it inserts one synthetic `SourceNode` per distinct level ID (keyed by ID alone,
-  so a conflicting title, parent or level is an error naming both rows) and points each row at its last
-  level through `SourceNode.parent`, the same channel JSON nesting uses. Synthetic nodes carry their own
-  `id_field`/`title_field` because their fields are keyed by the level columns' names. A server that
-  predates this addition rejects such a mapping at startup (the schema forbids unknown keys).
+- **Level columns (`rows.levels`) are additive within mapping version 1.**
+  - `expand_levels` runs between reading and `build_tree`.
+  - It inserts one synthetic `SourceNode` per distinct level ID, keyed by ID alone, so a conflicting title,
+    parent or level is an error naming both rows.
+  - It points each row at its last level through `SourceNode.parent`, the same channel JSON nesting uses.
+  - Synthetic nodes carry their own `id_field`/`title_field` because their fields are keyed by the level
+    columns' names.
+  - A server that predates this addition rejects such a mapping at startup (the schema forbids unknown keys).
 - **Known publisher formats are declarative mappings, not per-publisher code.** A processor per format would
   sit outside the validate-at-startup model; new needs become mapping primitives once two publishers share
   them. `level_cells` below is an exception: only NIST CSF 2.0 uses it, and its re-entry rule exists for a
   quirk of that export. If another single-publisher primitive is needed, or primitives must combine in one
   mapping, revisit this decision (for example, named row transforms registered in code and referenced from
   the mapping, which keeps startup validation).
-- **Level cells (`rows.level_cells`) cover the one-level-per-row shape** (NIST CSF 2.0). `expand_level_cells`
-  turns each row into one node whose depth is its filled column, with the parent taken positionally from
-  the newest node at the level above. IDs come from fixed separator and bracket text, never a regex, so the
-  parsing stays bounded and reviewable. A bare repeat of an earlier node (the CSF closes each Function with
-  one) re-enters that node; anything else repeated is left to `build_tree`'s duplicate-ID check. Synthesised
-  field names read `<column> (ID|title|text)` and sit beside the row's own columns, which stay available as
-  properties. Found by running the real file: the reference tool's export has a banner above the header
-  (`header_row: 2`), brackets only on Function and Category cells, and the bare closing rows.
+- **Level cells (`rows.level_cells`) cover the one-level-per-row shape** (NIST CSF 2.0).
+  - `expand_level_cells` turns each row into one node whose depth is its filled column, with the parent
+    taken positionally from the newest node at the level above.
+  - IDs come from fixed separator and bracket text, never a regex, so the parsing stays bounded and
+    reviewable.
+  - A bare repeat of an earlier node (the CSF closes each Function with one) re-enters that node; anything
+    else repeated is left to `build_tree`'s duplicate-ID check.
+  - Synthesised field names read `<column> (ID|title|text)` and sit beside the row's own columns, which stay
+    available as properties.
+  - Found by running the real file: the CSF 2.0 Reference Tool's export has a banner above the header
+    (`header_row: 2`), brackets only on Function and Category cells, and the bare closing rows.
 
 **Mappings are reviewed files, named by ID.** No inline mappings and no mapping URLs: a mapping decides
 what the service extracts and stores, so it gets the review that code gets, and fetching one would be
@@ -99,6 +104,46 @@ or array means the mapping points at the wrong field. Integral floats become int
 store `5` as `5.0`. Echoed values go through `repr` after truncation to 64 characters, so newlines and
 control characters can't forge log lines or messages; IDs therefore appear quoted (`Node 'V6.2' …`).
 
+```mermaid
+%%{init: {'theme': 'base', 'themeVariables': {
+  'primaryColor': '#2f6dab',
+  'primaryTextColor': '#1e1e1e',
+  'primaryBorderColor': '#7c8ba1',
+  'lineColor': '#7c8ba1',
+  'edgeLabelBackground': '#eef2f8',
+  'tertiaryColor': 'transparent',
+  'tertiaryTextColor': '#7c8ba1',
+  'tertiaryBorderColor': '#7c8ba1',
+  'clusterBkg': 'transparent',
+  'clusterBorder': '#7c8ba1',
+  'titleColor': '#7c8ba1',
+  'noteBkgColor': '#eef2f8',
+  'noteTextColor': '#1e1e1e',
+  'fontFamily': 'system-ui, sans-serif'
+}, 'themeCSS': '.node .nodeLabel{color:#ffffff!important;fill:#ffffff!important;}'}}%%
+flowchart TD
+  start{"Request names a mapping?"}
+  start -->|yes| expect["Expect the mapping's format"]
+  expect --> confirm["confirm_structured_format checks the whole file"]
+  expect -.->|URL download| skip["fetch_url expected_format skips the first-bytes sniff"]
+  start -->|no| magic{"PDF or HTML bytes?"}
+  magic -->|yes| pdfhtml["pdf or html"]
+  magic -->|no| zip{"ZIP?"}
+  zip -->|xl/workbook.xml| xlsx["xlsx"]
+  zip -->|word/document.xml| docx["docx"]
+  zip -->|other or not a ZIP| ct{"Content-Type known?"}
+  ct -->|yes| bytype["format from Content-Type, JSON and CSV included"]
+  ct -->|no| ext{"URL extension known?"}
+  ext -->|yes| byext["format from extension"]
+  ext -->|no| fail["Cannot determine file type"]
+  classDef sysA fill:#2f6dab,color:#ffffff,stroke:#7c8ba1
+  classDef sysB fill:#1d7848,color:#ffffff,stroke:#7c8ba1
+  classDef sysF fill:#5c6a82,color:#ffffff,stroke:#7c8ba1
+  class expect,confirm,skip sysA
+  class pdfhtml,xlsx,docx,bytype,byext sysB
+  class fail sysF
+```
+
 **Format detection stays conservative.** Without a mapping, JSON and CSV are recognised only from the
 Content-Type or the URL extension, never from the bytes, so text starting with `[` or containing commas is
 still `txt` and still converts. XLSX and DOCX are told apart by the ZIP directory (`xl/workbook.xml`,
@@ -111,19 +156,20 @@ without an extension (GitHub release downloads redirect to such URLs).
 
 All structured input is untrusted. Defences, in the order they apply:
 
-- **Service process** (not sandboxed): `MAX_DOCUMENT_SIZE` / `MAX_URL_BYTES`. Untrusted bytes are never
-  handed to `zipfile` here: it walks every record within the directory size the end record declares,
-  whatever entry count that record gives, so a forged end record makes it build a million `ZipInfo`
-  objects. `zipdir.read_zip_directory` reads only the names, stops after 10 000 records
-  (`security._MAX_SNIFF_ZIP_ENTRIES`), refuses ZIP64 (real workbooks below 4 GB and 65 535 entries don't use
-  it) and ignores extract versions, since nothing is decompressed. It must read exactly what `zipfile` (and
-  so openpyxl) would: `zipfile` ignores the end record's offset and reads the directory-size bytes before
-  it, so zipdir requires the directory to end exactly at the end record (no prepended or appended data),
-  and refuses names `zipfile` would rewrite (a NUL, which truncates, or an Info-ZIP Unicode Path field
-  0x7075, which renames) instead of emulating them. All real workbooks and documents checked meet these
-  rules. Sniffing and confirmation run in a thread
-  (`asyncio.to_thread`), not on the event loop. The CSV-vs-JSON check is a match on JSON's first token, not
-  a parse. Nothing else is parsed here.
+- **Service process** (not sandboxed): `MAX_DOCUMENT_SIZE` / `MAX_URL_BYTES`.
+  - Untrusted bytes are never handed to `zipfile` here: it walks every record within the directory size the
+    end record declares, whatever entry count that record gives, so a forged end record makes it build a
+    million `ZipInfo` objects.
+  - `zipdir.read_zip_directory` reads only the names, stops after 10 000 records
+    (`security._MAX_SNIFF_ZIP_ENTRIES`), refuses ZIP64 (real workbooks below 4 GB and 65 535 entries don't
+    use it) and ignores extract versions, since nothing is decompressed.
+  - It must read exactly what `zipfile` (and so openpyxl) would: `zipfile` ignores the end record's offset
+    and reads the directory-size bytes before it, so zipdir requires the directory to end exactly at the end
+    record (no prepended or appended data), and refuses names `zipfile` would rewrite (a NUL, which
+    truncates, or an Info-ZIP Unicode Path field 0x7075, which renames) instead of emulating them. All real
+    workbooks and documents checked meet these rules.
+  - Sniffing and confirmation run in a thread (`asyncio.to_thread`), not on the event loop.
+  - The CSV-vs-JSON check is a match on JSON's first token, not a parse. Nothing else is parsed here.
 - **Worker sandbox**: separate process and session, `STRUCTURED_RLIMIT_AS_MB`, `STRUCTURED_RLIMIT_CPU`,
   `RLIMIT_FSIZE_MB`, `STRUCTURED_MAX_PROCESSING_TIME`, minimal environment.
 - **JSON**: strict UTF-8; a depth scan before parsing (`MAX_JSON_DEPTH`), one left-to-right tokenizing
@@ -132,17 +178,18 @@ All structured input is untrusted. Defences, in the order they apply:
   `RecursionError` is still caught as a depth-limit error, as a backstop; duplicate keys rejected
   (`object_pairs_hook`), because which one wins is parser-specific; `NaN`/`Infinity` rejected
   (`parse_constant`); oversized integers (Python's int-to-str limit) are an input error.
-- **XLSX**: before zipfile touches it, `zipdir` counts the directory records (`MAX_XLSX_ENTRIES`), and
-  zipfile must then list the same number of entries; an
-  extract version zipfile doesn't support is an input error. Before openpyxl touches it, the ZIP directory
-  is checked: entry count, total uncompressed size,
-  per-entry compression ratio, encryption flag. `zipfile` never returns more than an entry's declared size,
-  so the declared sizes bound the decompression work. openpyxl then runs with `read_only=True`,
-  `data_only=True` (cached values, no formulas evaluated) and `keep_links=False`, and rows are iterated with
-  `values_only=True`, stopping past `MAX_TABLE_ROWS`. The sheet's declared `<dimension>` is discarded
-  (`reset_dimensions`): read-only openpyxl otherwise truncates every row and column to it (a stale one
-  would silently drop data) and pads every row to it (`A1:XFD100000` would cost 16 384 cells per row). Only
-  worksheets can be read; a chart sheet is reported as such.
+- **XLSX**:
+  - Before zipfile touches it, `zipdir` counts the directory records (`MAX_XLSX_ENTRIES`), and zipfile must
+    then list the same number of entries; an extract version zipfile doesn't support is an input error.
+  - Before openpyxl touches it, the ZIP directory is checked: entry count, total uncompressed size,
+    per-entry compression ratio, encryption flag. `zipfile` never returns more than an entry's declared
+    size, so the declared sizes bound the decompression work.
+  - openpyxl then runs with `read_only=True`, `data_only=True` (cached values, no formulas evaluated) and
+    `keep_links=False`, and rows are iterated with `values_only=True`, stopping past `MAX_TABLE_ROWS`.
+  - The sheet's declared `<dimension>` is discarded (`reset_dimensions`): read-only openpyxl otherwise
+    truncates every row and column to it (a stale one would silently drop data) and pads every row to it
+    (`A1:XFD100000` would cost 16 384 cells per row).
+  - Only worksheets can be read; a chart sheet is reported as such.
 - **XML entities**: openpyxl 3.1.5 uses `defusedxml` when importable (`openpyxl.DEFUSEDXML`) for `iterparse`
   (worksheets, shared strings). Its `fromstring` is defusedxml's, or, when lxml is installed (it is, through
   Docling), lxml's with `resolve_entities=False`. Because of that split, `_require_defused_openpyxl` checks
@@ -182,7 +229,7 @@ loader (a `yaml.SafeLoader` subclass that also rejects duplicate keys) and valid
 - `Error.details` carries `location.N` beside each `problem.N`.
 - An `id_prefix` separator that occurs in no ID is a problem (it would nest nothing); this was not in the
   design and came from a real run (ATT&CK with `(`).
-- The `ALLOWED_FORMATS` default now includes `json,csv,xlsx`; a request still needs a registered mapping.
+- The `ALLOWED_FORMATS` default includes `json,csv,xlsx`; a request still needs a registered mapping.
 
 ## Fixtures and tests
 
@@ -198,7 +245,10 @@ registered mappings, not copies:
   file, routing and hash skew, submission, startup refusal.
 - `tests/integration/test_structured_e2e.py`: the fixtures through the real server, storage and attestation.
 
-To add a source: write and try the mapping with `python -m crosscodex_ingestion.structured`, add it under
-`src/crosscodex_ingestion/mappings/`, add a fixture directory as above, and add it to the golden lists in
-`test_structured.py` and `test_structured_e2e.py`. `expected.json` is generated from the implementation, so
-review it by hand before committing it.
+To add a source:
+
+1. Write and try the mapping with `python -m crosscodex_ingestion.structured`.
+2. Add it under `src/crosscodex_ingestion/mappings/`.
+3. Add a fixture directory as above.
+4. Add it to the golden lists in `test_structured.py` and `test_structured_e2e.py`.
+5. Review `expected.json` by hand before committing it: it is generated from the implementation.
