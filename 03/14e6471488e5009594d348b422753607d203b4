@@ -1,0 +1,46 @@
+src/crosscodex_ingestion/heading_levels.py
+  s_f91de4c8b4e7f3::t_efbfb6d1e86bed 32,75-77
+  s_f91de4c8b4e7f3::t_094cb0835ac671 118,121-123
+  s_f91de4c8b4e7f3::t_3fd88e9941ff6f 21-24
+  s_f91de4c8b4e7f3::t_f983a4279401b8 1-20,25-31,33-34,38-39,62-74,78-117,119-120,124-127
+  s_f91de4c8b4e7f3::t_609bcd247b1968 35-37,40-61
+tests/unit/test_heading_levels.py
+  s_f91de4c8b4e7f3::t_2026a6c8ca5f13 93-94,104-105
+  s_f91de4c8b4e7f3::t_7b1a448baed8c9 1-18,26-34,43-52,60-63,75-82,91-92,106-110,118-125,139-141,154-164
+  s_f91de4c8b4e7f3::t_c24ee9427f30ce 136-137,142-153
+  s_f91de4c8b4e7f3::t_ce760be2824c98 19-25,35-42,53-59,64-74,83-90,95-103,111-117,126-135,138
+tests/unit/test_extractor.py
+  s_f91de4c8b4e7f3::t_167c3131f57737 405-407,409-416,418-421,426-427,429-441,443-456
+  s_f91de4c8b4e7f3::t_609bcd247b1968 408,417,428,442
+  s_f91de4c8b4e7f3::t_ce760be2824c98 422-425
+src/crosscodex_ingestion/extractor.py
+  s_f91de4c8b4e7f3::t_32036b9b2f0b26 9-11
+  s_f91de4c8b4e7f3::t_c6445aa8543f2d 28-29,95,106-108,168-170,172,569
+  s_f91de4c8b4e7f3::t_e73a95e03639fb 166-167,171,173
+  s_f91de4c8b4e7f3::t_efbfb6d1e86bed 165,174-175,203
+README.md
+  s_f91de4c8b4e7f3::t_3fd88e9941ff6f 192-198
+  s_f91de4c8b4e7f3::t_9d95ea7f780488 790
+  s_f91de4c8b4e7f3::t_b4ef0b872a7ca7 163-191,199-201
+tests/fixtures/documents/NOTICE
+  s_f91de4c8b4e7f3::t_b2a27f0ec71734 32-44
+tests/integration/test_pdf_heading_levels_e2e.py
+  s_f91de4c8b4e7f3::t_2e034251f2fefa 1-66,72
+  s_f91de4c8b4e7f3::t_c24ee9427f30ce 67-71
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0314e6471488e5009594d348b422753607d203b4",
+  "prompts": {},
+  "sessions": {
+    "s_f91de4c8b4e7f3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "55febf71-6e56-4fda-bbd5-73b5787d0f8e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "LLM (riotbox) <llm@riotbox>"
+    }
+  }
+}
