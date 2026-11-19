@@ -1,0 +1,49 @@
+.ruff.toml
+  s_5d917c98347d9d::t_28e06e83c59541 41-43
+README.md
+  s_5d917c98347d9d::t_291182a7046d83 91
+docs/usage/README.md
+  s_5d917c98347d9d::t_18b4a5b55ca844 11
+docs/usage/attestation.md
+  s_5d917c98347d9d::t_cdfacf52152166 1-74
+docs/usage/configuration.md
+  s_5d917c98347d9d::t_3001e83bc91499 220-221
+proto/crosscodex/v1/ingestion.proto
+  s_5d917c98347d9d::t_40eb0f96d7f7b9 54-57
+scripts/verify_attestation.py
+  s_5d917c98347d9d::t_44489d360e2e2d 1-123
+src/crosscodex_ingestion/service.py
+  s_5d917c98347d9d::t_44a9f632c10845 18,135,322
+src/crosscodex_ingestion/state.py
+  s_5d917c98347d9d::t_1f8e5234f3ca83 23
+src/crosscodex_ingestion/tls.py
+  s_5d917c98347d9d::t_8879f4e7c5915a 30-47,126
+src/crosscodex_ingestion/worker.py
+  s_5d917c98347d9d::t_418b2e13998d0b 437,460-462,467,520
+tests/unit/test_service.py
+  s_5d917c98347d9d::t_3a9b30edccd850 27,31-35,184-220,335-357
+tests/unit/test_state.py
+  s_5d917c98347d9d::t_ce56b9af173385 112-127,251-265
+tests/unit/test_tls.py
+  s_5d917c98347d9d::t_89a9607df1dada 17,216-286
+tests/unit/test_verify_attestation.py
+  s_5d917c98347d9d::t_11f0448dcf3284 1-213
+tests/unit/test_worker.py
+  s_5d917c98347d9d::t_e97bcc01b207a2 1170-1225
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "533f1c02328da9aee5ecaf11da3c143af92347ad",
+  "prompts": {},
+  "sessions": {
+    "s_5d917c98347d9d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a939a6d12ba4ccfa2",
+        "model": "unknown"
+      },
+      "human_author": "LLM (riotbox) <llm@riotbox>"
+    }
+  }
+}
