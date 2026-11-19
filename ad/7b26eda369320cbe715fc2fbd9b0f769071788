@@ -1,0 +1,19 @@
+README.md
+  s_d56cac44e1839e::t_c861f647252a4c 362-364,373-374,398-399,620,650,653-654
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "ad7b26eda369320cbe715fc2fbd9b0f769071788",
+  "prompts": {},
+  "sessions": {
+    "s_d56cac44e1839e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1c75074b-0bd4-41c7-b2c5-85468da8de67",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "LLM (riotbox) <llm@riotbox>"
+    }
+  }
+}
