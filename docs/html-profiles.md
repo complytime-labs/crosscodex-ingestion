@@ -1,6 +1,6 @@
 # HTML profiles: how the engine works
 
-Maintainer notes for `src/crosscodex_ingestion/html_backend.py`. Profile loading and validation live in
+Maintainer notes for `src/crosscodex_ingestion/html_backend.py` (back to the [README](../README.md)). Profile loading and validation live in
 `html_profile.py`; the file format is in `src/crosscodex_ingestion/schemas/html-profile-v1.schema.json`.
 
 ## Engine
@@ -27,14 +27,14 @@ The operations always run in this order, whatever order the YAML lists them in:
 
 1. `unwrap`: every match of each selector is replaced by its children.
 2. `remove`: every match of each selector is deleted, but only when the raw source has as many start
-   as end tags for the match's tag name (the same balance guard chrome stripping uses: with
+   as end tags for the match's tag name (the same balance guard that chrome stripping uses: with
    `html.parser`, an unclosed element swallows the rest of the page, so deleting it would delete the
    document). Matches inside an already-removed element are skipped.
 3. `title`: the `lines` inside the first `container` match are joined by a space into one `<h1>`,
    inserted where the first line was; the lines are removed. Nothing happens if no line matches.
    A `lines` selector that matches nested elements repeats their text, so anchor it (for example
    `:scope >`), as the EUR-Lex profile does.
-4. `divisions`: a `<div>` not matching `exclude` whose first element child matches `title` is a division.
+4. `divisions`: a `<div>` not matching `exclude` whose first element child matches the `divisions.title` selector is a division.
    That child becomes `<h{depth+1}>` (capped at `<h6>`), where depth counts the division and its
    division ancestors. Consecutive following siblings matching `subtitle` are appended to the heading
    text, joined by `separator` (default `" - "`), and removed.
@@ -57,6 +57,9 @@ Why this order:
 
 ## The EUR-Lex profile (`html_profiles/eur-lex-oj.yaml`)
 
+The profile file is
+[`src/crosscodex_ingestion/html_profiles/eur-lex-oj.yaml`](../src/crosscodex_ingestion/html_profiles/eur-lex-oj.yaml).
+
 Official Journal pages from eur-lex.europa.eu use no `<h*>` elements and lay out numbered text as tables.
 
 - `detect`: any element with a class token starting `oj-` (the Official Journal stylesheet's
@@ -71,7 +74,7 @@ Official Journal pages from eur-lex.europa.eu use no `<h*>` elements and lay out
   (`oj-doc-ti`). `exclude: div.eli-main-title` stops the act title block, which also holds `oj-doc-ti`
   lines, from being a division. Subtitles (`div.eli-title`, `oj-ti-section-2`, `oj-sti-art`, `oj-doc-ti`)
   produce headings such as "CHAPTER I - General provisions".
-- `numbered_tables`: recitals, points and indents are laid out as label/text tables; `label` accepts
+- `numbered_tables`: recitals, points and indents are laid out as label-and-text tables; `label` accepts
   "(5)", "(a)", "12." and dashes. `exclude: table.oj-table` keeps data tables as tables.
 
 Known limit: content after the last article (final provisions, signatures, footnotes) attaches to that
