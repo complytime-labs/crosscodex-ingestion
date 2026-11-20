@@ -12,6 +12,7 @@ from crosscodex_ingestion.listing import parse_list_options
 from crosscodex_ingestion.mapping import MappingRegistry, load_registry
 from crosscodex_ingestion.nats_connection import NatsConnection, NatsUnavailableError
 from crosscodex_ingestion.proto.crosscodex.v1 import common_pb2, ingestion_pb2
+from crosscodex_ingestion.security import _NOT_PUBLIC_HOST
 from crosscodex_ingestion.service import IngestionServiceServicer
 from crosscodex_ingestion.state import DocumentRecord, MemoryStateBackend
 
@@ -690,6 +691,69 @@ class TestAbortStopsProcessing:
             await servicer.GetDocument(request, context)
 
         assert context.abort_code == grpc.StatusCode.NOT_FOUND
+
+
+class TestSourceUriValidation:
+    """Disallowed source URLs are refused before any state is written, with the worker's message."""
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "uri",
+        [
+            "file:///etc/passwd",
+            "http://127.0.0.1/",
+            "http://[::1]/",
+            "http://localhost/",
+            "http://169.254.169.254/",
+            "http://[::ffff:127.0.0.1]/",
+        ],
+    )
+    async def test_convert_rejects_disallowed_source_uri_and_writes_nothing(
+        self, servicer, mock_dispatch, state_backend, uri
+    ):
+        request = ingestion_pb2.ConvertDocumentRequest(
+            tenant_context=common_pb2.TenantContext(tenant_id="tenant-a"),
+            source_uri=uri,
+        )
+        context = MockServicerContext()
+
+        with pytest.raises(grpc.RpcError):
+            await servicer.ConvertDocument(request, context)
+
+        assert context.abort_code == grpc.StatusCode.INVALID_ARGUMENT
+        mock_dispatch.dispatch.assert_not_called()
+        records, _ = await state_backend.list_documents("", _ALL)
+        assert records == []
+
+    @pytest.mark.asyncio
+    async def test_convert_rejection_message_is_the_one_the_worker_produces(self, servicer):
+        request = ingestion_pb2.ConvertDocumentRequest(
+            tenant_context=common_pb2.TenantContext(tenant_id="tenant-a"),
+            source_uri="http://127.0.0.1/",
+        )
+        context = MockServicerContext()
+
+        with pytest.raises(grpc.RpcError):
+            await servicer.ConvertDocument(request, context)
+
+        assert context.abort_details == _NOT_PUBLIC_HOST
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("uri", ["https://example.org/x.pdf", "https://internal.example/x.pdf"])
+    async def test_convert_accepts_public_and_dns_dependent_hosts_as_pending(
+        self, servicer, mock_dispatch, state_backend, uri
+    ):
+        request = ingestion_pb2.ConvertDocumentRequest(
+            tenant_context=common_pb2.TenantContext(tenant_id="tenant-a"),
+            source_uri=uri,
+        )
+
+        response = await servicer.ConvertDocument(request, MockServicerContext())
+
+        assert response.status == common_pb2.JOB_STATUS_PENDING
+        mock_dispatch.dispatch.assert_called_once()
+        record = await state_backend.get("tenant-a", response.document_id)
+        assert record is not None
 
 
 def _nats(available: bool) -> MagicMock:

@@ -13,7 +13,12 @@ from crosscodex_ingestion.mapping import MappingRegistry
 from crosscodex_ingestion.metrics import DOC_SIZE, ERRORS_TOTAL, REQUESTS_TOTAL
 from crosscodex_ingestion.nats_connection import NatsConnection, NatsUnavailableError
 from crosscodex_ingestion.proto.crosscodex.v1 import common_pb2, ingestion_pb2, ingestion_pb2_grpc
-from crosscodex_ingestion.security import declared_format, validate_document_id, validate_tenant_id
+from crosscodex_ingestion.security import (
+    declared_format,
+    validate_document_id,
+    validate_tenant_id,
+    validate_url_without_dns,
+)
 from crosscodex_ingestion.state import DocumentRecord, StateBackend
 from crosscodex_ingestion.tls import client_identity
 
@@ -84,6 +89,13 @@ class IngestionServiceServicer(ingestion_pb2_grpc.IngestionServiceServicer):
                 grpc.StatusCode.INVALID_ARGUMENT,
                 "Either content or source_uri must be provided",
             )
+
+        # Refuse URLs that need no DNS to judge now; the worker still checks what the name resolves to.
+        if has_source_uri:
+            try:
+                validate_url_without_dns(request.source_uri)
+            except ValueError as exc:
+                await context.abort(grpc.StatusCode.INVALID_ARGUMENT, str(exc))
 
         # Validate document size if content is provided
         if has_content:

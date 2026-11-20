@@ -108,10 +108,13 @@ def _is_blocked_ip(ip: ipaddress.IPv4Address | ipaddress.IPv6Address) -> bool:
     return any(ip in net for net in _EXTRA_BLOCKED)
 
 
-def validate_url(url: str) -> None:
-    """Validate scheme and resolve host IP(s) against blocked ranges.
+def validate_url_without_dns(url: str) -> urllib.parse.ParseResult:
+    """Check the parts of a URL that need no resolver: scheme, host presence, localhost, literal IPs.
 
-    Raises ValueError with a descriptive message on any violation.
+    Cheap enough to run before a job is accepted. It does not replace validate_url: a name that
+    passes here may still resolve to a blocked address.
+
+    Returns the parsed URL. Raises ValueError with a descriptive message on any violation.
     """
     try:
         parsed = urllib.parse.urlparse(url)
@@ -124,6 +127,28 @@ def validate_url(url: str) -> None:
     hostname = parsed.hostname
     if not hostname:
         raise ValueError(f"URL has no hostname: {url!r}")
+
+    if hostname.rstrip(".") == "localhost":
+        log.warning("Refusing URL host %r: localhost", hostname)
+        raise ValueError(_NOT_PUBLIC_HOST)
+
+    try:
+        literal = ipaddress.ip_address(hostname)
+    except ValueError:
+        return parsed  # a name: only DNS can say where it points
+    if _is_blocked_ip(literal):
+        log.warning("Refusing URL host %r: blocked address", hostname)
+        raise ValueError(_NOT_PUBLIC_HOST)
+    return parsed
+
+
+def validate_url(url: str) -> None:
+    """Validate scheme and resolve host IP(s) against blocked ranges.
+
+    Raises ValueError with a descriptive message on any violation.
+    """
+    parsed = validate_url_without_dns(url)
+    hostname = parsed.hostname  # validate_url_without_dns guarantees it is set
 
     if parsed.scheme == "http":
         log.warning("Fetching over unencrypted HTTP — use https where possible: %s", url)
