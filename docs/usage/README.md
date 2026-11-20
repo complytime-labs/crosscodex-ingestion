@@ -8,4 +8,5 @@ drives its CLI from a script or an agent. New here? Start at the
 - [Listing documents](listing.md)
 - [Output format](output-format.md)
 - [Structured sources](structured-sources.md)
+- [Verifying an attestation](attestation.md)
 - [Configuration](configuration.md)

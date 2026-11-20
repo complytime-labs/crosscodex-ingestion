@@ -434,7 +434,7 @@ async def run_conversion(
             )
 
         # Step 8: Create attestation link (if enabled)
-        attestation_uri = None
+        attestation_uri = ""
         if attestation:
             with tracer.start_as_current_span("ingestion.attest") as span:
                 span.set_attribute("document.id", document_id)
@@ -457,10 +457,14 @@ async def run_conversion(
                         "sha256": output_hash,
                     }
                 }
+                # The submitting caller is recorded on the state record at submission (also in
+                # distributed mode, where the record lives in the shared state backend).
+                submitted = await state.get(tenant_id, document_id)
                 byproducts = {
                     "document_id": document_id,
                     "tenant_id": tenant_id,
                     "format": validated_format,
+                    "created_by": submitted.audit.get("created_by", "unknown") if submitted else "unknown",
                 }
                 if mapping:
                     byproducts["mapping_id"] = mapping.id
@@ -513,6 +517,7 @@ async def run_conversion(
             document_id,
             status=JOB_STATUS_COMPLETED,
             structured_json_uri=structured_json_uri,
+            attestation_uri=attestation_uri,
         )
 
         # Record metrics for successful conversion

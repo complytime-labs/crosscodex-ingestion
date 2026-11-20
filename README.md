@@ -88,6 +88,7 @@ instead of `content` to have the service fetch a URL. `tenant_id` must be a vali
 - **Run from source:** [docs/usage/getting-started.md](docs/usage/getting-started.md)
 - **Output format and its guarantees:** [docs/usage/output-format.md](docs/usage/output-format.md)
 - **Converting JSON, CSV and XLSX with mappings:** [docs/usage/structured-sources.md](docs/usage/structured-sources.md)
+- **Verifying a conversion attestation:** [docs/usage/attestation.md](docs/usage/attestation.md)
 - **Configuration, limits, authentication and keys:** [docs/usage/configuration.md](docs/usage/configuration.md)
 - **How it works (architecture and design notes):** [docs/dev/](docs/dev/README.md)
 - **Reporting a vulnerability:** [SECURITY.md](SECURITY.md)

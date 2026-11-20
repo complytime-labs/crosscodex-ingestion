@@ -15,6 +15,7 @@ from crosscodex_ingestion.nats_connection import NatsConnection, NatsUnavailable
 from crosscodex_ingestion.proto.crosscodex.v1 import common_pb2, ingestion_pb2, ingestion_pb2_grpc
 from crosscodex_ingestion.security import validate_document_id, validate_tenant_id
 from crosscodex_ingestion.state import DocumentRecord, StateBackend
+from crosscodex_ingestion.tls import client_identity
 
 logger = logging.getLogger(__name__)
 
@@ -131,7 +132,7 @@ class IngestionServiceServicer(ingestion_pb2_grpc.IngestionServiceServicer):
         now = datetime.now(UTC).isoformat()
         audit = {
             "created_at": now,
-            "created_by": "system",  # no caller identity until mTLS/auth context exists
+            "created_by": client_identity(context, self._settings.grpc_allowed_clients_set) or "unauthenticated",
         }
 
         # Create DocumentRecord in state backend
@@ -318,6 +319,7 @@ class IngestionServiceServicer(ingestion_pb2_grpc.IngestionServiceServicer):
             audit=audit,
             conversion_status=record.status,
             structured_json_uri=record.structured_json_uri,
+            attestation_uri=record.attestation_uri,
         )
 
         if error:

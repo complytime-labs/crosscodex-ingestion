@@ -20,6 +20,7 @@ class DocumentRecord:
     error: dict | None = None
     created_at: str = ""
     updated_at: str = ""
+    attestation_uri: str = ""
 
 
 class StateBackend(ABC):

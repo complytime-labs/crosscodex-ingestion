@@ -6,7 +6,7 @@ the caller's responsibility.
 """
 
 import logging
-from collections.abc import Awaitable, Callable
+from collections.abc import Awaitable, Callable, Collection
 from pathlib import Path
 
 import grpc
@@ -25,6 +25,28 @@ def _read(path: str, setting: str) -> bytes:
         return Path(path).read_bytes()
     except OSError as exc:
         raise ValueError(f"Cannot read {setting} ({path}): {exc.strerror or exc}") from exc
+
+
+def client_identity(context: grpc.aio.ServicerContext, allowed: Collection[str] = ()) -> str | None:
+    """Return the client certificate identity the service acts on, or None without one.
+
+    Identities are tried CN first, then SANs in certificate order. With ALLOWED (the
+    GRPC_ALLOWED_CLIENTS set) the result is the first one on the allowlist, which is the identity
+    ClientAllowlistInterceptor authorizes; None means no identity is allowlisted. Without an allowlist
+    it is the first identity. None also covers a plaintext port and a client with no certificate.
+    """
+    identities = _identities(context)
+    if allowed:
+        return next((identity for identity in identities if identity in allowed), None)
+    return identities[0] if identities else None
+
+
+def _identities(context: grpc.aio.ServicerContext) -> list[str]:
+    """Identities named by the client certificate, common name first; empty without TLS."""
+    auth = context.auth_context()
+    if auth.get(_TRANSPORT_SECURITY_KEY) != [b"ssl"]:
+        return []
+    return [value.decode("utf-8", "replace") for key in _IDENTITY_KEYS for value in auth.get(key, [])]
 
 
 def build_server_credentials(settings: IngestionSettings) -> grpc.ServerCredentials | None:
@@ -78,6 +100,9 @@ class ClientAllowlistInterceptor(grpc.aio.ServerInterceptor):  # type: ignore[mi
     """
 
     def __init__(self, allowed_clients: set[str]):
+        if not allowed_clients:
+            # client_identity treats an empty allowlist as "no allowlist" and admits everyone.
+            raise ValueError("ClientAllowlistInterceptor requires a non-empty allowlist")
         self._allowed = frozenset(allowed_clients)
 
     async def intercept_service(
@@ -105,14 +130,11 @@ class ClientAllowlistInterceptor(grpc.aio.ServerInterceptor):  # type: ignore[mi
         )
 
     async def _authorize(self, context: grpc.aio.ServicerContext) -> None:
-        auth = context.auth_context()
-        if auth.get(_TRANSPORT_SECURITY_KEY) != [b"ssl"]:
-            await context.abort(grpc.StatusCode.UNAUTHENTICATED, "client authentication required")
-        identities = {value.decode("utf-8", "replace") for key in _IDENTITY_KEYS for value in auth.get(key, [])}
+        identities = _identities(context)
         if not identities:
             await context.abort(grpc.StatusCode.UNAUTHENTICATED, "client authentication required")
-        if identities.isdisjoint(self._allowed):
+        if client_identity(context, self._allowed) is None:
             logger.warning(
-                "Rejected gRPC client not in GRPC_ALLOWED_CLIENTS", extra={"client_identities": sorted(identities)}
+                "Rejected gRPC client not in GRPC_ALLOWED_CLIENTS", extra={"client_identities": sorted(set(identities))}
             )
             await context.abort(grpc.StatusCode.PERMISSION_DENIED, "permission denied")

@@ -24,10 +24,15 @@ _ALL = parse_list_options(common_pb2.ListOptions())
 class MockServicerContext:
     """Mock grpc.aio servicer context: abort() is a coroutine that raises only when awaited."""
 
-    def __init__(self):
+    def __init__(self, auth: dict[str, list[bytes]] | None = None):
         self.aborted = False
         self.abort_code = None
         self.abort_details = None
+        self._auth = auth or {}
+
+    def auth_context(self) -> dict[str, list[bytes]]:
+        """Return the gRPC auth context; empty, as on a plaintext port, unless a test supplies one."""
+        return self._auth
 
     async def abort(self, code: grpc.StatusCode, details: str):
         """Capture abort call and stop processing, as grpc.aio does."""
@@ -176,6 +181,68 @@ class TestConvertDocument:
         assert "size" in context.abort_details.lower() or "large" in context.abort_details.lower()
 
 
+class TestCreatedBy:
+    """created_by records the authenticated caller."""
+
+    @staticmethod
+    def _request():
+        return ingestion_pb2.ConvertDocumentRequest(
+            tenant_context=common_pb2.TenantContext(tenant_id="tenant-a"),
+            content=b"fake PDF content",
+            metadata=common_pb2.ContentMetadata(mime_type="application/pdf"),
+        )
+
+    @pytest.mark.asyncio
+    async def test_created_by_is_the_client_certificate_identity(self, servicer, state_backend):
+        context = MockServicerContext({"transport_security_type": [b"ssl"], "x509_common_name": [b"gateway"]})
+
+        response = await servicer.ConvertDocument(self._request(), context)
+
+        record = await state_backend.get("tenant-a", response.document_id)
+        assert record.audit["created_by"] == "gateway"
+
+    @pytest.mark.asyncio
+    async def test_created_by_uses_san_when_certificate_has_no_common_name(self, servicer, state_backend):
+        auth = {"transport_security_type": [b"ssl"], "x509_subject_alternative_name": [b"gateway.internal"]}
+
+        response = await servicer.ConvertDocument(self._request(), MockServicerContext(auth))
+
+        record = await state_backend.get("tenant-a", response.document_id)
+        assert record.audit["created_by"] == "gateway.internal"
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        ("auth", "expected"),
+        [
+            ({"x509_common_name": [b"foo"], "x509_subject_alternative_name": [b"gateway"]}, "gateway"),
+            (
+                {"x509_common_name": [b"foo"], "x509_subject_alternative_name": [b"other", b"gateway"]},
+                "gateway",
+            ),
+        ],
+    )
+    async def test_created_by_is_the_allowlisted_identity(self, state_backend, mock_dispatch, auth, expected):
+        servicer = IngestionServiceServicer(
+            settings=IngestionSettings(grpc_allowed_clients="gateway"),
+            state_backend=state_backend,
+            dispatch_backend=mock_dispatch,
+            mappings=REGISTRY,
+        )
+        context = MockServicerContext({"transport_security_type": [b"ssl"], **auth})
+
+        response = await servicer.ConvertDocument(self._request(), context)
+
+        record = await state_backend.get("tenant-a", response.document_id)
+        assert record.audit["created_by"] == expected
+
+    @pytest.mark.asyncio
+    async def test_created_by_is_unauthenticated_without_tls(self, servicer, state_backend):
+        response = await servicer.ConvertDocument(self._request(), MockServicerContext())
+
+        record = await state_backend.get("tenant-a", response.document_id)
+        assert record.audit["created_by"] == "unauthenticated"
+
+
 class TestConvertWithMapping:
     """request.mapping names a registered mapping; it is checked before anything is stored or dispatched."""
 
@@ -289,6 +356,29 @@ class TestGetDocument:
         assert response.document.conversion_status == common_pb2.JOB_STATUS_COMPLETED
         assert response.document.structured_json_uri == f"s3://bucket/{DOC_ID}.json"
         assert response.document.tenant_context.tenant_id == "tenant-a"
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("uri", ["s3://bucket/t/d/attestation.link", ""])
+    async def test_get_document_returns_attestation_uri(self, servicer, state_backend, uri):
+        """attestation_uri is the stored link location, or empty when the job was not attested."""
+        now = datetime.now(UTC).isoformat()
+        await state_backend.create(
+            DocumentRecord(
+                document_id=DOC_ID,
+                tenant_id="tenant-a",
+                status=common_pb2.JOB_STATUS_COMPLETED,
+                attestation_uri=uri,
+                created_at=now,
+                updated_at=now,
+            )
+        )
+        request = ingestion_pb2.GetDocumentRequest(
+            tenant_context=common_pb2.TenantContext(tenant_id="tenant-a"), document_id=DOC_ID
+        )
+
+        response = await servicer.GetDocument(request, MockServicerContext())
+
+        assert response.document.attestation_uri == uri
 
     @pytest.mark.asyncio
     async def test_get_document_returns_failure_code_message_and_details(self, servicer, state_backend):

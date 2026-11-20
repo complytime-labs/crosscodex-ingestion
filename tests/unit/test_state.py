@@ -109,6 +109,22 @@ class TestStateBackendContract:
         assert retrieved.status == JobStatus.JOB_STATUS_COMPLETED
         assert retrieved.structured_json_uri == "s3://bucket/doc-123.json"
 
+    async def test_attestation_uri_defaults_empty_and_round_trips(
+        self, backend: StateBackend, sample_record: DocumentRecord
+    ):
+        await backend.create(sample_record)
+        before = await backend.get(sample_record.tenant_id, sample_record.document_id)
+        assert before is not None
+        assert before.attestation_uri == ""
+
+        await backend.update(
+            sample_record.tenant_id, sample_record.document_id, attestation_uri="s3://bucket/attestation.link"
+        )
+
+        after = await backend.get(sample_record.tenant_id, sample_record.document_id)
+        assert after is not None
+        assert after.attestation_uri == "s3://bucket/attestation.link"
+
     async def test_list_documents_returns_only_tenant_records(self, backend: StateBackend):
         now = datetime.now(UTC).isoformat()
         for tenant in ["tenant-a", "tenant-b"]:
@@ -230,6 +246,21 @@ class TestMemoryStateBackendConcurrency:
 
 def _record_json(record: DocumentRecord) -> str:
     return json.dumps(asdict(record))
+
+
+class TestLegacyRedisRecords:
+    async def test_record_stored_before_attestation_uri_existed_still_loads(self):
+        fake = FakeRedis()
+        with patch("crosscodex_ingestion.state.redis.from_url", return_value=fake):
+            backend = RedisStateBackend("redis://localhost:6379")
+        legacy = asdict(DocumentRecord(document_id="old", tenant_id="t", status=JobStatus.JOB_STATUS_COMPLETED))
+        del legacy["attestation_uri"]
+        await fake.hset("doc:t:old", "data", json.dumps(legacy))
+
+        record = await backend.get("t", "old")
+
+        assert record is not None
+        assert record.attestation_uri == ""
 
 
 class TestRedisStateBackend:

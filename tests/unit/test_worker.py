@@ -1167,6 +1167,62 @@ class TestStructuredConversion:
             ASVS.sha256,
         )
 
+    async def test_link_byproducts_record_who_submitted_the_job(self, state_backend, storage_backend, audit_publisher):
+        attestation = Mock()
+        attestation.create_link.return_value = {"signed": {}, "signatures": []}
+        metadata = {"mapping_id": ASVS.id, "mapping_sha256": ASVS.sha256}
+        await state_backend.create(
+            DocumentRecord(
+                document_id="doc-s", tenant_id="tenant-s", status=1, metadata=metadata, audit={"created_by": "gateway"}
+            )
+        )
+
+        with patch("crosscodex_ingestion.worker.convert_structured", return_value=structured_output()):
+            await run_conversion(
+                document_id="doc-s",
+                tenant_id="tenant-s",
+                content=ASVS_JSON,
+                source_uri=None,
+                metadata=metadata,
+                settings=IngestionSettings(),
+                state=state_backend,
+                storage=storage_backend,
+                attestation=attestation,
+                audit=audit_publisher,
+                mappings=REGISTRY,
+                html_profiles=PROFILES,
+            )
+
+        assert attestation.create_link.call_args.kwargs["byproducts"]["created_by"] == "gateway"
+
+    async def test_attestation_uri_is_stored_on_the_record(self, state_backend, storage_backend, audit_publisher):
+        attestation = Mock()
+        attestation.create_link.return_value = {"signed": {}, "signatures": []}
+
+        with patch("crosscodex_ingestion.worker.convert_document", return_value=conforming_output()):
+            record = await _run_structured(
+                state_backend,
+                storage_backend,
+                audit_publisher,
+                content=b"%PDF-1.4",
+                metadata={},
+                attestation=attestation,
+            )
+
+        assert record.attestation_uri
+        assert record.attestation_uri.endswith("attestation.link")
+
+    async def test_attestation_uri_is_empty_when_attestation_is_disabled(
+        self, state_backend, storage_backend, audit_publisher
+    ):
+        with patch("crosscodex_ingestion.worker.convert_document", return_value=conforming_output()):
+            record = await _run_structured(
+                state_backend, storage_backend, audit_publisher, content=b"%PDF-1.4", metadata={}
+            )
+
+        assert record.status == 3
+        assert record.attestation_uri == ""
+
     async def test_documents_are_attested_without_mapping_fields(self, state_backend, storage_backend, audit_publisher):
         attestation = Mock()
         attestation.create_link.return_value = {"signed": {}, "signatures": []}

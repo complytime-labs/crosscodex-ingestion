@@ -51,6 +51,10 @@ message Document {
   // (README "Output format").
   string structured_json_uri = 6;
   Error error = 7;  // If conversion failed
+  // Object storage path to the signed in-toto link for this conversion. Empty until the job
+  // completes, and for jobs converted with ATTESTATION_ENABLED=false. Verify it with
+  // scripts/verify_attestation.py (docs/usage/attestation.md).
+  string attestation_uri = 8;
 }
 
 message GetDocumentResponse {

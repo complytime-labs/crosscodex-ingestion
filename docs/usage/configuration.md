@@ -217,6 +217,8 @@ openssl pkey -in attestation.key -pubout -out attestation.pub
 
 Keys on curves the signer (securesystemslib) does not support, such as secp256k1, are rejected at startup.
 
+To check a conversion against the public key, see [Verifying an attestation](attestation.md).
+
 ## Identifiers
 
 `tenant_id` must match `^[a-z][a-z0-9-]{1,50}[a-z0-9]$` (3-52 characters: lowercase letters, digits, hyphens;
