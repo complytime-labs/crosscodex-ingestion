@@ -131,6 +131,78 @@ def test_server_shuts_down_gracefully_on_signal(tmp_path, sig):
             proc.wait()
 
 
+@pytest.mark.asyncio
+async def test_serve_refuses_to_start_with_a_nats_cert_and_no_key(monkeypatch, startable_env, pki_dir):
+    """A half-configured client certificate used to fall back to plaintext without a word."""
+    monkeypatch.setenv("ATTESTATION_ENABLED", "false")
+    monkeypatch.setenv("GRPC_TLS_MODE", "off")
+    monkeypatch.setenv("NATS_URL", "nats://127.0.0.1:4222")
+    monkeypatch.setenv("NATS_TLS_CERT", str(pki_dir / "client.pem"))
+
+    with pytest.raises(SystemExit, match=r"Configuration error: .*NATS_TLS_KEY"):
+        await serve()
+
+
+@pytest.mark.asyncio
+async def test_serve_refuses_distributed_mode_without_nats_url(monkeypatch, startable_env):
+    monkeypatch.setenv("ATTESTATION_ENABLED", "false")
+    monkeypatch.setenv("GRPC_TLS_MODE", "off")
+    monkeypatch.setenv("EXECUTION_MODE", "distributed")
+    monkeypatch.delenv("NATS_URL", raising=False)
+
+    with pytest.raises(SystemExit, match=r"Configuration error: .*NATS_URL"):
+        await serve()
+
+
+def test_server_serves_while_nats_does_not_answer(tmp_path):
+    """NATS is optional at startup: the port opens at once and the connect retries in the background.
+
+    The listener accepts TCP but never sends the NATS INFO line, so every connect attempt hangs
+    until its timeout, as with a firewalled or wedged broker.
+    """
+    models = tmp_path / "models"
+    models.mkdir()
+    with socket.socket() as silent_nats:
+        silent_nats.bind(("127.0.0.1", 0))
+        silent_nats.listen(16)
+        nats_port = silent_nats.getsockname()[1]
+        env = {
+            **os.environ,
+            "STORAGE_PATH": str(tmp_path / "data"),
+            "ATTESTATION_ENABLED": "false",
+            "GRPC_TLS_MODE": "off",
+            "GRPC_PORT": str(_free_port()),
+            "METRICS_PORT": str(_free_port()),
+            "DOCLING_ARTIFACTS_PATH": str(models),
+            "NATS_URL": f"nats://127.0.0.1:{nats_port}",
+        }
+        proc = subprocess.Popen(
+            [sys.executable, "-m", "crosscodex_ingestion"],
+            env=env,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+        )
+        try:
+            deadline = time.monotonic() + 30
+            assert proc.stdout is not None
+            for line in proc.stdout:
+                if "gRPC server listening" in line:
+                    break
+                assert time.monotonic() < deadline, "server did not start while NATS hangs"
+            else:
+                raise AssertionError("server exited before listening")
+            proc.send_signal(signal.SIGTERM)
+            assert proc.wait(timeout=15) == 0
+            rest = proc.stdout.read()
+            assert "Server shutdown complete" in rest
+            assert "Traceback" not in rest
+        finally:
+            if proc.poll() is None:
+                proc.kill()
+                proc.wait()
+
+
 def _free_port() -> int:
     with socket.socket() as s:
         s.bind(("127.0.0.1", 0))

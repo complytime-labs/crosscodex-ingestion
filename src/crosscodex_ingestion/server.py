@@ -21,6 +21,7 @@ from crosscodex_ingestion.converter import validate_artifacts_path
 from crosscodex_ingestion.dispatch import create_dispatch
 from crosscodex_ingestion.html_profile import HtmlProfileError, load_html_profiles
 from crosscodex_ingestion.mapping import MappingError, load_registry
+from crosscodex_ingestion.nats_connection import NatsConnection
 from crosscodex_ingestion.proto.crosscodex.v1 import ingestion_pb2_grpc
 from crosscodex_ingestion.service import IngestionServiceServicer
 from crosscodex_ingestion.state import create_state_backend
@@ -58,6 +59,10 @@ async def serve() -> None:
     listen_addr = f"[::]:{settings.grpc_port}"
     try:
         attestation_manager = create_attestation_manager(settings)
+        # Builds the NATS TLS context now; connecting waits until after telemetry is set up
+        nats_connection = NatsConnection(settings) if settings.nats_url else None
+        if settings.execution_mode == "distributed" and nats_connection is None:
+            raise ValueError("EXECUTION_MODE=distributed publishes jobs to NATS, so NATS_URL must be set")
         server, _ = create_grpc_server(settings, listen_addr)
     except (ValueError, OSError) as exc:
         raise SystemExit(f"Configuration error: {exc}") from exc
@@ -81,9 +86,13 @@ async def serve() -> None:
     state_backend = create_state_backend(settings)
     storage_backend = create_storage(settings)
 
+    # Connect to NATS in the background: the port opens now, and ConvertDocument returns
+    # UNAVAILABLE until NATS is connected
+    if nats_connection is not None:
+        await nats_connection.start()
+
     # Create audit publisher
-    audit_publisher = AuditPublisher(settings)
-    await audit_publisher.connect()
+    audit_publisher = AuditPublisher(settings, nats_connection)
 
     # Create dispatch backend
     dispatch_backend = create_dispatch(
@@ -94,6 +103,7 @@ async def serve() -> None:
         audit=audit_publisher,
         mappings=mappings,
         html_profiles=html_profiles,
+        nats=nats_connection,
     )
 
     # Create gRPC servicer
@@ -102,6 +112,7 @@ async def serve() -> None:
         state_backend=state_backend,
         dispatch_backend=dispatch_backend,
         mappings=mappings,
+        nats=nats_connection,
     )
 
     ingestion_pb2_grpc.add_IngestionServiceServicer_to_server(servicer, server)
@@ -142,8 +153,9 @@ async def serve() -> None:
     # Shutdown dispatch backend: let in-flight jobs finish, then cancel them (retryable FAILED)
     await dispatch_backend.shutdown(max(0.0, shutdown_deadline - loop.time()))
 
-    # Close audit publisher connection
-    await audit_publisher.close()
+    # Close the NATS connection last: the dispatch shutdown above publishes audit events
+    if nats_connection is not None:
+        await nats_connection.close()
 
     logger.info("Server shutdown complete")
 

@@ -8,6 +8,7 @@ import pytest
 
 from crosscodex_ingestion.config import IngestionSettings
 from crosscodex_ingestion.mapping import MappingRegistry, load_registry
+from crosscodex_ingestion.nats_connection import NatsConnection, NatsUnavailableError
 from crosscodex_ingestion.proto.crosscodex.v1 import common_pb2, ingestion_pb2
 from crosscodex_ingestion.service import IngestionServiceServicer
 from crosscodex_ingestion.state import DocumentRecord, MemoryStateBackend
@@ -540,6 +541,149 @@ class TestAbortStopsProcessing:
             await servicer.GetDocument(request, context)
 
         assert context.abort_code == grpc.StatusCode.NOT_FOUND
+
+
+def _nats(available: bool) -> MagicMock:
+    nats = MagicMock(spec=NatsConnection)
+    nats.available = available
+    nats.url = "nats://nats.internal:4222"
+    return nats
+
+
+class TestNatsAvailability:
+    """While NATS is down, audit events cannot be recorded, so submissions are refused up front."""
+
+    @pytest.mark.asyncio
+    async def test_convert_while_nats_is_unavailable_aborts_unavailable_and_writes_nothing(
+        self, settings, state_backend, mock_dispatch, caplog
+    ):
+        servicer = IngestionServiceServicer(
+            settings=settings,
+            state_backend=state_backend,
+            dispatch_backend=mock_dispatch,
+            mappings=REGISTRY,
+            nats=_nats(available=False),
+        )
+        request = ingestion_pb2.ConvertDocumentRequest(
+            tenant_context=common_pb2.TenantContext(tenant_id="tenant-a"),
+            content=b"fake PDF content",
+        )
+        context = MockServicerContext()
+
+        with pytest.raises(grpc.RpcError):
+            await servicer.ConvertDocument(request, context)
+
+        assert context.abort_code == grpc.StatusCode.UNAVAILABLE
+        # CWE-209: the broker's address is logged, never sent to the client
+        assert context.abort_details == "NATS is unavailable; audit events cannot be recorded. Retry later."
+        assert "nats.internal:4222" in caplog.text
+        mock_dispatch.dispatch.assert_not_called()
+        records, _ = await state_backend.list_documents(tenant_id="tenant-a", page_size=10, page_token="")
+        assert records == []
+
+    @pytest.mark.asyncio
+    async def test_nats_dropping_before_the_dispatch_publish_fails_the_record_and_aborts_unavailable(
+        self, settings, state_backend, mock_dispatch, caplog
+    ):
+        """The availability check passed, then the job publish found NATS gone."""
+        mock_dispatch.dispatch.side_effect = NatsUnavailableError(
+            "NATS at nats://nats.internal:4222 is unavailable; job for document x was not published"
+        )
+        servicer = IngestionServiceServicer(
+            settings=settings,
+            state_backend=state_backend,
+            dispatch_backend=mock_dispatch,
+            mappings=REGISTRY,
+            nats=_nats(available=True),
+        )
+        request = ingestion_pb2.ConvertDocumentRequest(
+            tenant_context=common_pb2.TenantContext(tenant_id="tenant-a"),
+            content=b"fake PDF content",
+        )
+        context = MockServicerContext()
+
+        with pytest.raises(grpc.RpcError):
+            await servicer.ConvertDocument(request, context)
+
+        assert context.abort_code == grpc.StatusCode.UNAVAILABLE
+        assert context.abort_details == "NATS is unavailable; audit events cannot be recorded. Retry later."
+        assert "nats.internal:4222" in caplog.text
+        # No PENDING record is left behind that no worker will ever pick up
+        records, _ = await state_backend.list_documents(tenant_id="tenant-a", page_size=10, page_token="")
+        assert len(records) == 1
+        assert records[0].status == common_pb2.JOB_STATUS_FAILED
+        assert records[0].error == {
+            "code": common_pb2.ERROR_CODE_UNAVAILABLE,
+            "message": "NATS is unavailable; audit events cannot be recorded. Retry later.",
+        }
+
+    @pytest.mark.asyncio
+    async def test_convert_validates_the_tenant_before_checking_nats(self, settings, state_backend, mock_dispatch):
+        servicer = IngestionServiceServicer(
+            settings=settings,
+            state_backend=state_backend,
+            dispatch_backend=mock_dispatch,
+            mappings=REGISTRY,
+            nats=_nats(available=False),
+        )
+        request = ingestion_pb2.ConvertDocumentRequest(
+            tenant_context=common_pb2.TenantContext(tenant_id="../../x"),
+            content=b"fake PDF content",
+        )
+        context = MockServicerContext()
+
+        with pytest.raises(grpc.RpcError):
+            await servicer.ConvertDocument(request, context)
+
+        assert context.abort_code == grpc.StatusCode.INVALID_ARGUMENT
+
+    @pytest.mark.asyncio
+    async def test_convert_while_nats_is_available_is_accepted(self, settings, state_backend, mock_dispatch):
+        servicer = IngestionServiceServicer(
+            settings=settings,
+            state_backend=state_backend,
+            dispatch_backend=mock_dispatch,
+            mappings=REGISTRY,
+            nats=_nats(available=True),
+        )
+        request = ingestion_pb2.ConvertDocumentRequest(
+            tenant_context=common_pb2.TenantContext(tenant_id="tenant-a"),
+            content=b"fake PDF content",
+        )
+
+        response = await servicer.ConvertDocument(request, MockServicerContext())
+
+        assert response.status == common_pb2.JOB_STATUS_PENDING
+        mock_dispatch.dispatch.assert_called_once()
+        assert await state_backend.get("tenant-a", response.document_id) is not None
+
+    @pytest.mark.asyncio
+    async def test_convert_without_nats_configured_is_accepted(self, servicer, mock_dispatch):
+        """nats=None (NATS_URL unset): audit events go to the log, so there is nothing to wait for."""
+        request = ingestion_pb2.ConvertDocumentRequest(
+            tenant_context=common_pb2.TenantContext(tenant_id="tenant-a"),
+            content=b"fake PDF content",
+        )
+
+        response = await servicer.ConvertDocument(request, MockServicerContext())
+
+        assert response.status == common_pb2.JOB_STATUS_PENDING
+        mock_dispatch.dispatch.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_reads_are_served_while_nats_is_unavailable(self, settings, state_backend, mock_dispatch):
+        servicer = IngestionServiceServicer(
+            settings=settings,
+            state_backend=state_backend,
+            dispatch_backend=mock_dispatch,
+            mappings=REGISTRY,
+            nats=_nats(available=False),
+        )
+        request = ingestion_pb2.ListDocumentsRequest(tenant_context=common_pb2.TenantContext(tenant_id="tenant-a"))
+
+        response = await servicer.ListDocuments(request, MockServicerContext())
+
+        assert list(response.documents) == []
 
 
 BAD_TENANTS = [

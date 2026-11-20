@@ -10,6 +10,7 @@ from unittest.mock import AsyncMock, Mock, patch
 import pytest
 from prometheus_client import REGISTRY as PROMETHEUS
 
+from crosscodex_ingestion.audit import AuditUnavailableError
 from crosscodex_ingestion.config import IngestionSettings
 from crosscodex_ingestion.converter import ConversionError, ConversionTimeout, DocumentLimitError
 from crosscodex_ingestion.html_profile import load_html_profiles
@@ -22,6 +23,7 @@ from crosscodex_ingestion.worker import (
     ERROR_CODE_UNAVAILABLE,
     JOB_STATUS_FAILED,
     SHUTDOWN_ERROR,
+    record_failure,
     run_conversion,
 )
 from tests.unit.output_samples import conforming_output, structured_output
@@ -815,6 +817,48 @@ async def test_cancelled_conversion_is_failed_with_retryable_error_and_audited(
     event = audit_publisher.publish.call_args.kwargs["event"]
     assert event["status"] == "failed"
     assert event["error"] == SHUTDOWN_ERROR
+
+
+@pytest.mark.asyncio
+async def test_record_failure_with_nats_down_keeps_failed_state_and_warns(state_backend, audit_publisher, caplog):
+    """NATS dropped mid-job: the FAILED state is what callers see, so a lost audit event must not raise."""
+    await state_backend.create(DocumentRecord(document_id="doc-t", tenant_id="tenant-t", status=1, metadata={}))
+    audit_publisher.publish.side_effect = AuditUnavailableError("NATS at nats://nats:4222 is unavailable")
+
+    with caplog.at_level("WARNING"):
+        await record_failure(state_backend, audit_publisher, "tenant-t", "doc-t", {}, SHUTDOWN_ERROR, "shutdown", "pdf")
+
+    record = await state_backend.get("tenant-t", "doc-t")
+    assert record.status == JOB_STATUS_FAILED
+    assert record.error == SHUTDOWN_ERROR
+    warnings = [r for r in caplog.records if "doc-t" in r.getMessage()]
+    assert [r.levelname for r in warnings] == ["WARNING"]
+    assert warnings[0].exc_info is None
+    assert "audit event was not recorded" in warnings[0].getMessage()
+
+
+@pytest.mark.asyncio
+async def test_record_failure_propagates_other_audit_errors(state_backend, audit_publisher):
+    """Only the known NATS-down case is downgraded to a warning."""
+    await state_backend.create(DocumentRecord(document_id="doc-t", tenant_id="tenant-t", status=1, metadata={}))
+    audit_publisher.publish.side_effect = RuntimeError("unexpected")
+
+    with pytest.raises(RuntimeError, match="unexpected"):
+        await record_failure(state_backend, audit_publisher, "tenant-t", "doc-t", {}, SHUTDOWN_ERROR, "shutdown", "pdf")
+
+
+@pytest.mark.asyncio
+async def test_conversion_with_nats_down_ends_failed_without_raising(
+    settings, state_backend, storage_backend, audit_publisher
+):
+    """Every audit publish fails: the job is FAILED and run_conversion returns, so no task exception is left."""
+    audit_publisher.publish.side_effect = AuditUnavailableError("NATS at nats://nats:4222 is unavailable")
+
+    with patch("crosscodex_ingestion.worker.convert_document", side_effect=ConversionError("boom")):
+        await _run_pdf_conversion(settings, state_backend, storage_backend, audit_publisher)
+
+    record = await state_backend.get("tenant-t", "doc-t")
+    assert record.status == JOB_STATUS_FAILED
 
 
 @pytest.mark.asyncio

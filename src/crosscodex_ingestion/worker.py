@@ -23,7 +23,7 @@ from typing import Any
 from opentelemetry import trace
 
 from crosscodex_ingestion.attestation import AttestationManager
-from crosscodex_ingestion.audit import AuditPublisher
+from crosscodex_ingestion.audit import AuditPublisher, AuditUnavailableError
 from crosscodex_ingestion.config import IngestionSettings
 from crosscodex_ingestion.converter import (
     ConversionError,
@@ -201,17 +201,21 @@ async def record_failure(
         error=error,
     )
 
-    await audit.publish(
-        tenant_id=tenant_id,
-        event={
-            "document_id": document_id,
-            "tenant_id": tenant_id,
-            "status": "failed",
-            "error": audit_error or error,
-        },
-        trace_id=metadata.get("correlation_id", ""),
-        span_id="",
-    )
+    try:
+        await audit.publish(
+            tenant_id=tenant_id,
+            event={
+                "document_id": document_id,
+                "tenant_id": tenant_id,
+                "status": "failed",
+                "error": audit_error or error,
+            },
+            trace_id=metadata.get("correlation_id", ""),
+            span_id="",
+        )
+    except AuditUnavailableError as exc:
+        # The FAILED state above is what callers see; a lost audit event must not also fail the task.
+        logger.warning("Document %s marked FAILED, but its audit event was not recorded: %s", document_id, exc)
 
 
 async def run_conversion(

@@ -10,26 +10,21 @@ The create_dispatch factory returns the appropriate backend based on execution_m
 
 import asyncio
 import base64
+import functools
 import json
 import logging
-import ssl
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any
-
-import nats
 
 from crosscodex_ingestion.attestation import AttestationManager
 from crosscodex_ingestion.audit import AuditPublisher
 from crosscodex_ingestion.config import IngestionSettings
 from crosscodex_ingestion.html_profile import HtmlProfileRegistry
 from crosscodex_ingestion.mapping import MappingRegistry
+from crosscodex_ingestion.nats_connection import NatsConnection, NatsUnavailableError
 from crosscodex_ingestion.state import StateBackend
 from crosscodex_ingestion.storage import StorageBackend
 from crosscodex_ingestion.worker import SHUTDOWN_ERROR, record_failure, run_conversion
-
-if TYPE_CHECKING:
-    from nats.aio.client import Client
 
 logger = logging.getLogger(__name__)
 
@@ -147,8 +142,17 @@ class EmbeddedDispatch(DispatchBackend):
         self._tasks.add(task)
         self._queued[task] = _QueuedJob(document_id, tenant_id, metadata)
 
-        # Remove from tracking when done
-        task.add_done_callback(self._tasks.discard)
+        # Remove from tracking when done, and retrieve any exception so none goes unreported
+        task.add_done_callback(functools.partial(self._task_done, document_id))
+
+    def _task_done(self, document_id: str, task: asyncio.Task) -> None:
+        """Stop tracking a finished task and log an exception that escaped run_conversion."""
+        self._tasks.discard(task)
+        if task.cancelled():
+            return
+        exc = task.exception()
+        if exc is not None:
+            logger.error("Conversion task for document %s failed", document_id, exc_info=exc)
 
     async def _run_with_semaphore(
         self,
@@ -251,42 +255,13 @@ class NatsDispatch(DispatchBackend):
     run_conversion fails the job as retryable if its own mapping differs.
     """
 
-    def __init__(self, settings: IngestionSettings):
+    def __init__(self, connection: NatsConnection):
         """Initialize the NATS dispatch backend.
 
         Args:
-            settings: Configuration settings with NATS connection details.
+            connection: The NATS connection shared with the audit publisher.
         """
-        self._settings = settings
-        self._nc: Client | None = None
-        self._js: Any = None
-
-    async def _connect(self) -> None:
-        """Establish connection to NATS server."""
-        if self._nc:
-            return
-
-        # Build TLS context if certificates are provided
-        tls_context: ssl.SSLContext | None = None
-        if self._settings.nats_tls_cert and self._settings.nats_tls_key:
-            tls_context = ssl.create_default_context(ssl.Purpose.SERVER_AUTH)
-            tls_context.load_cert_chain(
-                certfile=self._settings.nats_tls_cert,
-                keyfile=self._settings.nats_tls_key,
-            )
-            if self._settings.nats_tls_ca:
-                tls_context.load_verify_locations(cafile=self._settings.nats_tls_ca)
-
-        # Connect to NATS
-        logger.info("Connecting to NATS at %s", self._settings.nats_url)
-        self._nc = await nats.connect(
-            servers=[self._settings.nats_url],
-            tls=tls_context,
-        )
-
-        # Get JetStream context (synchronous call)
-        self._js = self._nc.jetstream()
-        logger.info("Connected to NATS JetStream")
+        self._connection = connection
 
     async def dispatch(
         self,
@@ -304,9 +279,16 @@ class NatsDispatch(DispatchBackend):
             content: Optional raw document bytes (base64-encoded in payload).
             source_uri: Optional URL to fetch document from.
             metadata: Document metadata.
+
+        Raises:
+            NatsUnavailableError: If NATS is not connected. The servicer refuses submissions while NATS is
+                down; this covers a disconnect between that check and the publish.
         """
-        # Ensure connected
-        await self._connect()
+        client = self._connection.client
+        if client is None or not self._connection.available:
+            raise NatsUnavailableError(
+                f"NATS at {self._connection.url} is unavailable; job for document {document_id} was not published"
+            )
 
         # Serialize job payload
         job = {
@@ -321,24 +303,19 @@ class NatsDispatch(DispatchBackend):
 
         # Publish to ingestion.jobs subject
         logger.debug("Publishing job to NATS: document_id=%s", document_id)
-        await self._js.publish(
+        await client.jetstream().publish(
             subject="ingestion.jobs",
             payload=payload,
         )
 
     async def shutdown(self, grace_seconds: float) -> None:
-        """Flush pending publishes and close the NATS connection.
+        """Nothing to wait for: each job publish already awaited its JetStream acknowledgement.
 
         This backend only publishes jobs; consuming them is done by a separate worker that
         is not part of this repository, so there are no in-flight messages to negatively
-        acknowledge here. *grace_seconds* is unused: drain() is bounded by the NATS client.
+        acknowledge here. The shared NATS connection is closed by server.serve(), which owns it.
+        *grace_seconds* is unused.
         """
-        if self._nc:
-            logger.info("Closing NATS connection")
-            await self._nc.drain()
-            await self._nc.close()
-            self._nc = None
-            self._js = None
 
 
 def create_dispatch(
@@ -349,6 +326,7 @@ def create_dispatch(
     audit: AuditPublisher,
     mappings: MappingRegistry,
     html_profiles: HtmlProfileRegistry,
+    nats: NatsConnection | None = None,
 ) -> DispatchBackend:
     """Factory function to create the appropriate dispatch backend.
 
@@ -360,12 +338,13 @@ def create_dispatch(
         audit: Audit event publisher.
         mappings: Structured-source mappings registered at startup (used by the embedded workers).
         html_profiles: HTML profiles registered at startup (used by the embedded workers).
+        nats: The shared NATS connection; required in distributed mode.
 
     Returns:
         DispatchBackend instance based on execution_mode.
 
     Raises:
-        ValueError: If execution_mode is not recognized.
+        ValueError: If execution_mode is not recognized, or is distributed without NATS.
     """
     if settings.execution_mode == "embedded":
         logger.info("Creating embedded dispatch backend")
@@ -379,6 +358,8 @@ def create_dispatch(
             html_profiles=html_profiles,
         )
     if settings.execution_mode == "distributed":
+        if nats is None:
+            raise ValueError("EXECUTION_MODE=distributed publishes jobs to NATS, so NATS_URL must be set")
         logger.info("Creating NATS dispatch backend")
-        return NatsDispatch(settings=settings)
+        return NatsDispatch(nats)
     raise ValueError(f"Unknown execution_mode: {settings.execution_mode}")

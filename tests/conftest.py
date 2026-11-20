@@ -96,8 +96,7 @@ async def running_grpc_server(
         mappings = load_registry(settings.mappings_path)
         attestation_manager = create_attestation_manager(settings)
 
-        audit_publisher = AuditPublisher(settings)
-        await audit_publisher.connect()
+        audit_publisher = AuditPublisher(settings, None)
 
         dispatch_backend = create_dispatch(
             settings=settings,
@@ -124,7 +123,6 @@ async def running_grpc_server(
             yield server, port
         finally:
             await dispatch_backend.shutdown(grace_seconds=5)
-            await audit_publisher.close()
             await server.stop(grace=1.0)
 
 

@@ -10,11 +10,15 @@ from crosscodex_ingestion.config import IngestionSettings
 from crosscodex_ingestion.dispatch import DispatchBackend
 from crosscodex_ingestion.mapping import MappingRegistry
 from crosscodex_ingestion.metrics import DOC_SIZE, ERRORS_TOTAL, REQUESTS_TOTAL
+from crosscodex_ingestion.nats_connection import NatsConnection, NatsUnavailableError
 from crosscodex_ingestion.proto.crosscodex.v1 import common_pb2, ingestion_pb2, ingestion_pb2_grpc
 from crosscodex_ingestion.security import validate_document_id, validate_tenant_id
 from crosscodex_ingestion.state import DocumentRecord, StateBackend
 
 logger = logging.getLogger(__name__)
+
+# Sent to clients while NATS is down. CWE-209: the broker's address goes to the log only.
+NATS_UNAVAILABLE_MESSAGE = "NATS is unavailable; audit events cannot be recorded. Retry later."
 
 
 class IngestionServiceServicer(ingestion_pb2_grpc.IngestionServiceServicer):
@@ -29,6 +33,7 @@ class IngestionServiceServicer(ingestion_pb2_grpc.IngestionServiceServicer):
         state_backend: StateBackend,
         dispatch_backend: DispatchBackend,
         mappings: MappingRegistry,
+        nats: NatsConnection | None = None,
     ):
         """Initialize the servicer.
 
@@ -37,11 +42,13 @@ class IngestionServiceServicer(ingestion_pb2_grpc.IngestionServiceServicer):
             state_backend: State management backend.
             dispatch_backend: Job dispatch backend.
             mappings: Structured-source mappings a request may name.
+            nats: The shared NATS connection, or None when NATS_URL is unset.
         """
         self._settings = settings
         self._state = state_backend
         self._dispatch = dispatch_backend
         self._mappings = mappings
+        self._nats = nats
 
     async def ConvertDocument(
         self, request: ingestion_pb2.ConvertDocumentRequest, context: grpc.aio.ServicerContext
@@ -56,9 +63,15 @@ class IngestionServiceServicer(ingestion_pb2_grpc.IngestionServiceServicer):
             ConvertDocumentResponse with document_id and PENDING status.
 
         Raises:
-            grpc.RpcError: On validation failures (INVALID_ARGUMENT, RESOURCE_EXHAUSTED).
+            grpc.RpcError: On validation failures (INVALID_ARGUMENT, RESOURCE_EXHAUSTED), or
+                UNAVAILABLE while NATS is configured but not connected.
         """
         await self._require_valid_tenant(request.tenant_context.tenant_id, context)
+
+        # Every job ends in an audit event; refuse work whose outcome could not be recorded.
+        if self._nats is not None and not self._nats.available:
+            logger.warning("Rejected ConvertDocument: NATS at %s is unavailable", self._nats.url)
+            await context.abort(grpc.StatusCode.UNAVAILABLE, NATS_UNAVAILABLE_MESSAGE)
 
         # Validate that either content or source_uri is provided
         has_content = request.WhichOneof("source") == "content"
@@ -135,13 +148,24 @@ class IngestionServiceServicer(ingestion_pb2_grpc.IngestionServiceServicer):
         await self._state.create(record)
 
         # Dispatch to worker
-        await self._dispatch.dispatch(
-            document_id=document_id,
-            tenant_id=request.tenant_context.tenant_id,
-            content=request.content if has_content else None,
-            source_uri=request.source_uri if has_source_uri else None,
-            metadata=metadata,
-        )
+        try:
+            await self._dispatch.dispatch(
+                document_id=document_id,
+                tenant_id=request.tenant_context.tenant_id,
+                content=request.content if has_content else None,
+                source_uri=request.source_uri if has_source_uri else None,
+                metadata=metadata,
+            )
+        except NatsUnavailableError as exc:
+            # NATS dropped after the check above. Fail the record so it does not stay PENDING forever.
+            logger.warning("Rejected ConvertDocument for document %s: %s", document_id, exc)
+            await self._state.update(
+                request.tenant_context.tenant_id,
+                document_id,
+                status=common_pb2.JOB_STATUS_FAILED,
+                error={"code": common_pb2.ERROR_CODE_UNAVAILABLE, "message": NATS_UNAVAILABLE_MESSAGE},
+            )
+            await context.abort(grpc.StatusCode.UNAVAILABLE, NATS_UNAVAILABLE_MESSAGE)
 
         # Record metrics
         format_label = metadata.get("format_version", "unknown")

@@ -36,8 +36,8 @@ For operators who deploy and configure the service. Back to the [README](../../R
 | `GRPC_TLS_KEY`                                                            | (empty)             | Server private key (PEM); required for `mutual`                                                                                                                                                                                  |
 | `GRPC_TLS_CA`                                                             | (empty)             | CA (PEM) that signs client certificates; required for `mutual`                                                                                                                                                                   |
 | `GRPC_ALLOWED_CLIENTS`                                                    | (empty)             | Comma-separated client certificate identities (subject CN or DNS SAN) allowed to call the service; empty accepts any certificate signed by `GRPC_TLS_CA`. Rejected with `PERMISSION_DENIED`; not usable with `GRPC_TLS_MODE=off` |
-| `NATS_URL`                                                                | (empty)             | NATS server URL (e.g., `nats://localhost:4222`)                                                                                                                                                                                  |
-| `NATS_TLS_CERT`, `NATS_TLS_KEY`, `NATS_TLS_CA`                            | (empty)             | Client certificate, key and CA (PEM) for TLS to NATS                                                                                                                                                                             |
+| `NATS_URL`                                                                | (empty)             | NATS server URL (e.g., `nats://localhost:4222`). Empty: audit events go to the log. Set: see [NATS](#nats); required for `distributed`                                                                                           |
+| `NATS_TLS_CERT`, `NATS_TLS_KEY`, `NATS_TLS_CA`                            | (empty)             | TLS to NATS (PEM files); see [NATS](#nats) for the valid combinations                                                                                                                                                            |
 | `REDIS_URL`                                                               | (empty)             | Redis URL for state backend                                                                                                                                                                                                      |
 | `S3_ENDPOINT`, `S3_BUCKET`, `S3_ACCESS_KEY`, `S3_SECRET_KEY`, `S3_REGION` | (see `config.py`)   | S3 storage backend settings                                                                                                                                                                                                      |
 | `OTEL_EXPORTER_OTLP_ENDPOINT`                                             | (empty)             | OTLP endpoint for OpenTelemetry traces; tracing is off when empty                                                                                                                                                                |
@@ -123,6 +123,50 @@ period and must be resubmitted after a restart.
 
 In `distributed` mode this service only publishes jobs to NATS JetStream; the consumer is not part of this
 repository, so that worker must redeliver in-flight messages on shutdown (negative acknowledgement).
+
+## NATS
+
+Without `NATS_URL`, audit events are written to the log, and only `embedded` mode is available
+(`distributed` without `NATS_URL` stops at startup).
+
+With `NATS_URL` set, audit events go to `tenant.<tenant_id>.audit.ingestion` as a core NATS publish with no
+JetStream acknowledgement. To keep them, define a JetStream stream on `tenant.*.audit.ingestion`. Without
+such a stream, an event that no subscriber receives is lost. If `NATS_URL` includes credentials
+(`nats://user:pass@host`), they are removed from logs and error messages.
+
+The service does not wait for NATS at startup. It opens the gRPC port at once and connects in the
+background. A failed attempt is logged as one line, and the wait between attempts doubles from 1 s up to
+60 s:
+
+```
+NATS at nats://nats:4222 unreachable ([Errno 111] Connect call failed ('10.89.0.5', 4222)); retrying in 4s
+```
+
+Each attempt makes two tries of up to 5 s each. Once connected, the client reconnects on its own and never
+gives up. While NATS is not connected, before the first connect or during a reconnect, `ConvertDocument`
+returns `UNAVAILABLE`:
+
+```
+NATS is unavailable; audit events cannot be recorded. Retry later.
+```
+
+The message leaves out the NATS address. The service logs that address at WARNING for each rejected request.
+Retry such a request after a delay. `GetDocument` and `ListDocuments` keep working.
+
+In `distributed` mode, NATS can drop after this check but before the job is published. In that case the
+request also gets `UNAVAILABLE`, and the document record it created is marked `FAILED` with the same message,
+so it does not stay `PENDING`. A conversion that is already running when NATS drops is marked `FAILED`
+because its audit event cannot be published. The lost audit event is logged at WARNING.
+
+TLS to NATS depends on which `NATS_TLS_*` variables are set:
+
+| Set                                                | Result                                                                   |
+|----------------------------------------------------|--------------------------------------------------------------------------|
+| none                                               | Plaintext; with a `tls://` URL or a server that requires TLS, nats-py verifies against the system CAs |
+| `NATS_TLS_CA`                                      | TLS; the server certificate is verified against that CA                  |
+| `NATS_TLS_CERT` and `NATS_TLS_KEY`                 | Mutual TLS; the server certificate is verified against the system CAs    |
+| `NATS_TLS_CERT`, `NATS_TLS_KEY` and `NATS_TLS_CA`  | Mutual TLS; the server certificate is verified against that CA           |
+| only one of `NATS_TLS_CERT` and `NATS_TLS_KEY`     | Startup fails with `Configuration error: …` naming the missing variable  |
 
 ## gRPC authentication
 
