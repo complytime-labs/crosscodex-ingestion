@@ -49,6 +49,7 @@ running)
 	echo "error: compose exited (status $up_status) while the ingestion service is still running" >&2
 	exit "$((up_status == 0 ? 1 : up_status))"
 	;;
+*) ;; # stopped states: judged by the OOM and exit-code checks below
 esac
 if [[ $oom_killed == "true" ]]; then
 	echo "error: ingestion service was killed by the OOM killer (see mem_limit in docker-compose.yml)" >&2
