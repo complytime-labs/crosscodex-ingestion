@@ -71,11 +71,13 @@ message PageInfo {
 
 // FieldFilter for list filtering. Multiple filters are ANDed.
 // Supported combinations:
-//   status                  eq, in       value is a JobStatus name; "in" takes a comma-separated list
+//   status                  eq, in       value is a JobStatus name;
+//                                        "in" takes a comma-separated list
 //   created_at, updated_at  eq, gt, lt   value is RFC 3339 with a timezone
 message FieldFilter {
   string field = 1;    // "status", "created_at", "updated_at"
-  string operator = 2; // "eq", "gt", "lt", "in" (which apply depends on the field, see above)
+  // "eq", "gt", "lt", "in" (which apply depends on the field, see above)
+  string operator = 2;
   string value = 3;
 }
 
