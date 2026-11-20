@@ -6,6 +6,7 @@ from typing import Any
 import redis.asyncio as redis
 
 from crosscodex_ingestion.config import IngestionSettings
+from crosscodex_ingestion.listing import ListQuery, apply_list_query
 
 
 @dataclass
@@ -35,10 +36,8 @@ class StateBackend(ABC):
         """Update specific fields of a document record."""
 
     @abstractmethod
-    async def list_documents(
-        self, tenant_id: str, page_size: int = 50, page_token: str = ""
-    ) -> tuple[list[DocumentRecord], str]:
-        """List documents for a tenant with pagination.
+    async def list_documents(self, tenant_id: str, query: ListQuery) -> tuple[list[DocumentRecord], str]:
+        """List documents for a tenant, applying the query's filters, sort and page window.
 
         Returns (records, next_page_token). Empty next_page_token means no more pages.
         """
@@ -72,21 +71,9 @@ class MemoryStateBackend(StateBackend):
         for field_name, value in fields.items():
             setattr(record, field_name, value)
 
-    async def list_documents(
-        self, tenant_id: str, page_size: int = 50, page_token: str = ""
-    ) -> tuple[list[DocumentRecord], str]:
+    async def list_documents(self, tenant_id: str, query: ListQuery) -> tuple[list[DocumentRecord], str]:
         tenant_records = [record for (tid, _), record in self._store.items() if tid == tenant_id]
-
-        tenant_records.sort(key=lambda r: r.document_id)
-
-        offset = int(page_token) if page_token else 0
-
-        page_records = tenant_records[offset : offset + page_size]
-
-        next_offset = offset + page_size
-        next_token = str(next_offset) if next_offset < len(tenant_records) else ""
-
-        return page_records, next_token
+        return apply_list_query(tenant_records, query)
 
 
 class RedisStateBackend(StateBackend):
@@ -122,9 +109,7 @@ class RedisStateBackend(StateBackend):
 
         await self.create(record)
 
-    async def list_documents(
-        self, tenant_id: str, page_size: int = 50, page_token: str = ""
-    ) -> tuple[list[DocumentRecord], str]:
+    async def list_documents(self, tenant_id: str, query: ListQuery) -> tuple[list[DocumentRecord], str]:
         pattern = f"doc:{tenant_id}:*"
         records = []
         async for key in self._redis.scan_iter(match=pattern):
@@ -133,16 +118,7 @@ class RedisStateBackend(StateBackend):
                 record_dict = json.loads(data)
                 records.append(DocumentRecord(**record_dict))
 
-        records.sort(key=lambda r: r.document_id)
-
-        offset = int(page_token) if page_token else 0
-
-        page_records = records[offset : offset + page_size]
-
-        next_offset = offset + page_size
-        next_token = str(next_offset) if next_offset < len(records) else ""
-
-        return page_records, next_token
+        return apply_list_query(records, query)
 
 
 def create_state_backend(settings: IngestionSettings) -> StateBackend:

@@ -162,7 +162,7 @@ See `proto/crosscodex/v1/ingestion.proto` for the full API definition.
 **Key RPCs:**
 - `ConvertDocument`: Submit a document for asynchronous conversion.
 - `GetDocument`: Retrieve conversion status and results.
-- `ListDocuments`: Paginate through documents for a tenant.
+- `ListDocuments`: List a tenant's documents, with filters, sort and stable pagination ([details](docs/usage/listing.md)).
 
 ## Development Workflow
 

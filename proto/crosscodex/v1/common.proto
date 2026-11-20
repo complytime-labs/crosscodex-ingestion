@@ -69,14 +69,19 @@ message PageInfo {
   int64 total_count = 2;  // Total matching records (optional, expensive)
 }
 
-// FieldFilter for list filtering.
+// FieldFilter for list filtering. Multiple filters are ANDed.
+// Supported combinations:
+//   status                  eq, in       value is a JobStatus name; "in" takes a comma-separated list
+//   created_at, updated_at  eq, gt, lt   value is RFC 3339 with a timezone
 message FieldFilter {
-  string field = 1;    // "status", "created_at", "framework"
-  string operator = 2; // "eq", "gt", "lt", "contains", "in"
+  string field = 1;    // "status", "created_at", "updated_at"
+  string operator = 2; // "eq", "gt", "lt", "in" (which apply depends on the field, see above)
   string value = 3;
 }
 
-// SortOrder for list sorting.
+// SortOrder for list sorting. Supported fields: created_at, updated_at, status.
+// Keys apply in order; document_id ascending is always the final tiebreak.
+// With no sort given, results are ordered by created_at ascending.
 message SortOrder {
   string field = 1;
   bool descending = 2;

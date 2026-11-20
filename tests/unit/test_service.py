@@ -7,6 +7,7 @@ import grpc
 import pytest
 
 from crosscodex_ingestion.config import IngestionSettings
+from crosscodex_ingestion.listing import parse_list_options
 from crosscodex_ingestion.mapping import MappingRegistry, load_registry
 from crosscodex_ingestion.nats_connection import NatsConnection, NatsUnavailableError
 from crosscodex_ingestion.proto.crosscodex.v1 import common_pb2, ingestion_pb2
@@ -16,6 +17,8 @@ from crosscodex_ingestion.state import DocumentRecord, MemoryStateBackend
 DOC_ID = "6f1c1c1e-3b2a-4c55-9d0e-0a1b2c3d4e5f"
 MISSING_ID = "00000000-0000-4000-8000-000000000000"
 REGISTRY = load_registry("")
+
+_ALL = parse_list_options(common_pb2.ListOptions())
 
 
 class MockServicerContext:
@@ -224,7 +227,7 @@ class TestConvertWithMapping:
             "nist-csf-2.0-core-xlsx, nist-sp800-53r5-catalog-xlsx, owasp-asvs-5.0.0-csv, owasp-asvs-5.0.0-json."
         )
         mock_dispatch.dispatch.assert_not_called()
-        assert (await state_backend.list_documents("tenant-a", 10, ""))[0] == []
+        assert (await state_backend.list_documents("tenant-a", _ALL))[0] == []
 
     @pytest.mark.asyncio
     async def test_unknown_mapping_is_echoed_truncated(self, servicer):
@@ -488,6 +491,61 @@ class TestListDocuments:
         assert context.aborted
         assert context.abort_code == grpc.StatusCode.INVALID_ARGUMENT
 
+    @pytest.mark.asyncio
+    async def test_list_documents_filters_and_sorts(self, servicer, state_backend):
+        for i, status in enumerate(
+            [common_pb2.JOB_STATUS_FAILED, common_pb2.JOB_STATUS_COMPLETED, common_pb2.JOB_STATUS_FAILED]
+        ):
+            await state_backend.create(
+                DocumentRecord(
+                    document_id=f"doc-{i}",
+                    tenant_id="tenant-a",
+                    status=status,
+                    created_at=datetime(2026, 1, 1, i, tzinfo=UTC).isoformat(),
+                )
+            )
+        request = ingestion_pb2.ListDocumentsRequest(
+            tenant_context=common_pb2.TenantContext(tenant_id="tenant-a"),
+            options=common_pb2.ListOptions(
+                filters=[common_pb2.FieldFilter(field="status", operator="eq", value="JOB_STATUS_FAILED")],
+                sort=[common_pb2.SortOrder(field="created_at", descending=True)],
+            ),
+        )
+
+        response = await servicer.ListDocuments(request, MockServicerContext())
+
+        assert [d.document_id for d in response.documents] == ["doc-2", "doc-0"]
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        ("options", "message"),
+        [
+            (
+                common_pb2.ListOptions(pagination=common_pb2.Pagination(page_token="garbage")),
+                "page_token is invalid or belongs to a different query",
+            ),
+            (
+                common_pb2.ListOptions(filters=[common_pb2.FieldFilter(field="framework", operator="eq", value="x")]),
+                "unsupported filter field 'framework'. Supported filters: status",
+            ),
+            (
+                common_pb2.ListOptions(pagination=common_pb2.Pagination(page_size=1001)),
+                "page_size must be between 0 and 1000 (0 means 50)",
+            ),
+        ],
+    )
+    async def test_list_documents_bad_options_return_invalid_argument(self, servicer, options, message):
+        request = ingestion_pb2.ListDocumentsRequest(
+            tenant_context=common_pb2.TenantContext(tenant_id="tenant-a"), options=options
+        )
+        context = MockServicerContext()
+
+        with pytest.raises(grpc.RpcError):
+            await servicer.ListDocuments(request, context)
+
+        assert context.abort_code == grpc.StatusCode.INVALID_ARGUMENT
+        assert context.abort_details.startswith(message)
+
 
 class TestAbortStopsProcessing:
     """A failed validation must stop the RPC before any state or dispatch side effect."""
@@ -505,7 +563,7 @@ class TestAbortStopsProcessing:
             await servicer.ConvertDocument(request, MockServicerContext())
 
         mock_dispatch.dispatch.assert_not_called()
-        records, _ = await state_backend.list_documents(tenant_id="", page_size=10, page_token="")
+        records, _ = await state_backend.list_documents("", _ALL)
         assert records == []
 
     @pytest.mark.asyncio
@@ -578,7 +636,7 @@ class TestNatsAvailability:
         assert context.abort_details == "NATS is unavailable; audit events cannot be recorded. Retry later."
         assert "nats.internal:4222" in caplog.text
         mock_dispatch.dispatch.assert_not_called()
-        records, _ = await state_backend.list_documents(tenant_id="tenant-a", page_size=10, page_token="")
+        records, _ = await state_backend.list_documents("tenant-a", _ALL)
         assert records == []
 
     @pytest.mark.asyncio
@@ -609,7 +667,7 @@ class TestNatsAvailability:
         assert context.abort_details == "NATS is unavailable; audit events cannot be recorded. Retry later."
         assert "nats.internal:4222" in caplog.text
         # No PENDING record is left behind that no worker will ever pick up
-        records, _ = await state_backend.list_documents(tenant_id="tenant-a", page_size=10, page_token="")
+        records, _ = await state_backend.list_documents("tenant-a", _ALL)
         assert len(records) == 1
         assert records[0].status == common_pb2.JOB_STATUS_FAILED
         assert records[0].error == {

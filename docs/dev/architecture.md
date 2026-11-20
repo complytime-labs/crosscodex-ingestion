@@ -49,6 +49,11 @@ The service has three primary components:
 2. **Dispatch Layer** (`dispatch.py`): Routes jobs to either embedded workers or NATS JetStream.
 3. **Worker** (`worker.py`): Fetches, validates, converts, extracts, stores, and attests documents.
 
+`ListDocuments` query semantics live in `listing.py`. Both state backends fetch the tenant's records and
+delegate to `apply_list_query`, which sorts in memory and paginates by keyset: the page token holds the
+last record's sort values plus `document_id` and a hash of the filters and sort, so it is rejected when
+reused with a different query. This is O(n log n) per request, which is fine for the current record counts.
+
 ```
 gRPC Request → Dispatch → Worker → [Converter → Extractor | Structured] → Output schema check → Storage → State → Response
 ```

@@ -8,6 +8,7 @@ import grpc
 
 from crosscodex_ingestion.config import IngestionSettings
 from crosscodex_ingestion.dispatch import DispatchBackend
+from crosscodex_ingestion.listing import ListQueryError, parse_list_options
 from crosscodex_ingestion.mapping import MappingRegistry
 from crosscodex_ingestion.metrics import DOC_SIZE, ERRORS_TOTAL, REQUESTS_TOTAL
 from crosscodex_ingestion.nats_connection import NatsConnection, NatsUnavailableError
@@ -227,10 +228,10 @@ class IngestionServiceServicer(ingestion_pb2_grpc.IngestionServiceServicer):
     async def ListDocuments(
         self, request: ingestion_pb2.ListDocumentsRequest, context: grpc.aio.ServicerContext
     ) -> ingestion_pb2.ListDocumentsResponse:
-        """List documents for a tenant with pagination.
+        """List documents for a tenant with filters, sort and keyset pagination.
 
         Args:
-            request: ListDocumentsRequest containing tenant context and pagination options.
+            request: ListDocumentsRequest containing tenant context and list options.
             context: gRPC servicer context.
 
         Returns:
@@ -241,22 +242,12 @@ class IngestionServiceServicer(ingestion_pb2_grpc.IngestionServiceServicer):
         """
         await self._require_valid_tenant(request.tenant_context.tenant_id, context)
 
-        # Extract pagination parameters
-        page_size = 50  # Default
-        page_token = ""
+        try:
+            query = parse_list_options(request.options)
+        except ListQueryError as exc:
+            await context.abort(grpc.StatusCode.INVALID_ARGUMENT, str(exc))
 
-        if request.options and request.options.pagination:
-            if request.options.pagination.page_size:
-                page_size = request.options.pagination.page_size
-            if request.options.pagination.page_token:
-                page_token = request.options.pagination.page_token
-
-        # Query state backend
-        records, next_token = await self._state.list_documents(
-            tenant_id=request.tenant_context.tenant_id,
-            page_size=page_size,
-            page_token=page_token,
-        )
+        records, next_token = await self._state.list_documents(request.tenant_context.tenant_id, query)
 
         # Map records to proto messages
         documents = [self._record_to_proto(record) for record in records]
