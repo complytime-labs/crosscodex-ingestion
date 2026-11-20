@@ -4,7 +4,8 @@
 # Stage 1: Builder - Install dependencies, generate proto stubs, install the package, fetch models
 FROM docker.io/library/python:3.12-slim AS builder
 
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
+# Pinned by tag and digest for reproducible builds; 0.13.7 is the uv version the lock was written with.
+COPY --from=ghcr.io/astral-sh/uv:0.13.7@sha256:96f40d3904aad8d0bd010539001d36c8e2188b981e1334471a90c4a1d93bb490 /uv /usr/local/bin/uv
 
 # Shared libraries OpenCV (imported by Docling's RapidOCR) needs at import time. Also required
 # here because docling-tools imports Docling to download the models.
@@ -23,11 +24,15 @@ COPY pyproject.toml uv.lock ./
 RUN uv export --locked --no-dev --no-emit-project --format requirements.txt -o /tmp/requirements.txt && \
     uv pip install --system --no-cache --require-hashes -r /tmp/requirements.txt
 
-# Copy proto files and generate gRPC stubs
+# Copy proto files and generate gRPC stubs. The code generators (grpcio-tools, mypy-protobuf) come
+# from the lock's dev group, hash-checked, into a separate venv: installing them next to the
+# runtime packages would change the runtime grpcio/protobuf and ship build tools in the image.
 COPY proto/ proto/
-RUN uv pip install --system --no-cache grpcio-tools mypy-protobuf && \
+RUN uv export --locked --only-group dev --no-emit-project --format requirements.txt -o /tmp/codegen-requirements.txt && \
+    uv venv /opt/codegen && \
+    uv pip install --python /opt/codegen/bin/python --no-cache --require-hashes -r /tmp/codegen-requirements.txt && \
     mkdir -p src/crosscodex_ingestion/proto/crosscodex/v1 && \
-    python -m grpc_tools.protoc \
+    PATH="/opt/codegen/bin:$PATH" /opt/codegen/bin/python -m grpc_tools.protoc \
       --proto_path=proto \
       --python_out=src/crosscodex_ingestion/proto \
       --grpc_python_out=src/crosscodex_ingestion/proto \
@@ -46,9 +51,15 @@ RUN find src/crosscodex_ingestion/proto -name '*_pb2*.py' -exec \
 # worker runs offline (HF_HUB_OFFLINE=1)
 COPY README.md .
 COPY src/ src/
-COPY scripts/download_models.py scripts/
-RUN uv pip install --system --no-cache --no-deps . && \
-    python scripts/download_models.py /opt/docling-models
+COPY scripts/download_models.py scripts/check_lock_parity.py scripts/
+RUN uv pip install --system --no-cache --no-deps .
+
+# Fail the build if what is installed differs from the lock. pip is base-image tooling, not part
+# of the lock; the project itself is installed above.
+RUN uv pip freeze --system --exclude pip --exclude crosscodex-ingestion > /tmp/freeze.txt && \
+    python scripts/check_lock_parity.py /tmp/requirements.txt /tmp/freeze.txt
+
+RUN python scripts/download_models.py /opt/docling-models
 
 # Stage 2: Runtime - Minimal production image
 FROM docker.io/library/python:3.12-slim
