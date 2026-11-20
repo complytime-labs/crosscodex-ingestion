@@ -55,9 +55,9 @@ class IngestionSettings(BaseSettings):
     structured_rlimit_as_mb: int = Field(default=4096, ge=0)
     structured_rlimit_cpu: int = Field(default=300, ge=0)
 
-    # Directory holding pre-downloaded Docling models (layout, table, OCR). The sandboxed
+    # Directory holding pre-downloaded Docling models (layout, table, OCR). The resource-limited
     # worker runs offline, so the server refuses to start if this is unset or not a directory.
-    # Fetch models with: docling-tools models download -o <dir>
+    # Fetch models with: uv run python scripts/download_models.py <dir>
     docling_artifacts_path: str = ""
 
     # RLIMIT_AS bounds virtual address space only, not resident memory. Importing torch alone

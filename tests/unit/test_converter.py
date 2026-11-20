@@ -418,7 +418,7 @@ class TestOfflineModels:
 
 class TestValidateArtifactsPath:
     def test_unset_path_is_refused_with_download_instructions(self):
-        with pytest.raises(ValueError, match=r"DOCLING_ARTIFACTS_PATH.*docling-tools models download -o"):
+        with pytest.raises(ValueError, match=r"DOCLING_ARTIFACTS_PATH.*scripts/download_models.py"):
             validate_artifacts_path("")
 
     def test_missing_directory_is_refused(self, tmp_path):

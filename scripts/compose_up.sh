@@ -8,6 +8,7 @@
 # `up` in the foreground returns only once the containers stop (Ctrl-C included), and the compose
 # tools do not agree on exit codes (`--exit-code-from` implies aborting on the one-shot certs-init
 # exiting), so the ingestion container's final state is inspected instead.
+# No -e on purpose: compose exits non-zero when stopped, and the container state is inspected below.
 set -uo pipefail
 
 service_container=crosscodex-ingestion # container_name in docker-compose.yml
@@ -53,8 +54,8 @@ if [[ $oom_killed == "true" ]]; then
 	echo "error: ingestion service was killed by the OOM killer (see mem_limit in docker-compose.yml)" >&2
 	exit 1
 fi
-# 0, and 137/143 (SIGKILL/SIGTERM after the stop that Ctrl-C asks for; the service has no SIGTERM
-# handler and runs as PID 1), mean the operator stopped a service that was running.
+# 0, and 137/143 (SIGKILL after the stop timeout, or SIGTERM before the service installed its
+# handler; server.py handles SIGTERM and shuts down with 0), mean the operator stopped a service that was running.
 case "$exit_code" in
 0 | 137 | 143) exit "$up_status" ;;
 *)

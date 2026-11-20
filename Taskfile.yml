@@ -73,6 +73,6 @@ tasks:
       - uv run python -m crosscodex_ingestion
 
   clean:
-    desc: Remove generated files, test artifacts, and virtualenv
+    desc: Remove generated files, virtualenv and .test-output/ (including the dev CA and downloaded models)
     cmds:
       - rm -rf {{.PROTO_OUT}} .test-output/ dist/ build/ *.egg-info .venv

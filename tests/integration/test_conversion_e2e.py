@@ -1,7 +1,8 @@
 """Integration tests for full document conversion pipeline.
 
 These tests exercise the complete gRPC service with real Docling conversion.
-They may be slow and may fail if Docling model downloads are blocked.
+They may be slow. When Docling is unusable the tests skip, except that they fail when
+DOCLING_ARTIFACTS_PATH is set (Docling is then expected to work).
 """
 
 import asyncio
@@ -16,6 +17,7 @@ from pathlib import Path
 import pytest
 
 from crosscodex_ingestion.proto.crosscodex.v1 import common_pb2, ingestion_pb2, ingestion_pb2_grpc
+
 
 def _probe_docling() -> str:
     """Return "" if a clean interpreter can import Docling's converter, else the failure text.

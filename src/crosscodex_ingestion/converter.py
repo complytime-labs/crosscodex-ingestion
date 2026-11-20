@@ -224,12 +224,12 @@ def validate_artifacts_path(artifacts_path: str) -> None:
     if not artifacts_path:
         raise ValueError(
             "DOCLING_ARTIFACTS_PATH is not set. Download the Docling models with "
-            "`docling-tools models download -o <dir>` and set DOCLING_ARTIFACTS_PATH=<dir>."
+            "`uv run python scripts/download_models.py <dir>` and set DOCLING_ARTIFACTS_PATH=<dir>."
         )
     if not Path(artifacts_path).is_dir():
         raise ValueError(
             f"DOCLING_ARTIFACTS_PATH {artifacts_path!r} is not a directory. Download the Docling models with "
-            "`docling-tools models download -o <dir>` and point DOCLING_ARTIFACTS_PATH at <dir>."
+            "`uv run python scripts/download_models.py <dir>` and point DOCLING_ARTIFACTS_PATH at <dir>."
         )
 
 
@@ -269,7 +269,7 @@ async def _run_worker(
     settings: IngestionSettings,
     stdin_data: bytes | None = None,
 ) -> _WorkerResult:
-    """Run *script* on a copy of *input_path* in a sandboxed subprocess; return what it left behind.
+    """Run *script* on a copy of *input_path* in a resource-limited subprocess; return what it left behind.
 
     The command is [python, script, input, output, *args]; *args* include the worker's rlimits
     (see _rlimits). The subprocess runs in its own session so that on
@@ -296,7 +296,7 @@ async def _run_worker(
             *args,
         ]
 
-        # Minimal environment: HF_HUB_OFFLINE keeps the sandboxed worker off the network.
+        # Minimal environment: HF_HUB_OFFLINE stops Docling fetching models; it is not a network block.
         env = {"PATH": os.environ.get("PATH", ""), "HF_HUB_OFFLINE": "1"}
         # The worker must import the same packages as this process; the FIPS image finds them
         # only via PYTHONPATH.

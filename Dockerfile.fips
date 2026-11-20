@@ -63,8 +63,8 @@ RUN uv pip install --no-cache --no-deps .
 RUN uv pip freeze --exclude pip --exclude crosscodex-ingestion > /tmp/freeze.txt && \
     python scripts/check_lock_parity.py /tmp/requirements.txt /tmp/freeze.txt
 
-# Bake in the Docling and RapidOCR models, pinned by revision (see the script): the sandboxed
-# worker runs offline (HF_HUB_OFFLINE=1)
+# Bake in the Docling and RapidOCR models, pinned by revision (see the script): the
+# resource-limited worker runs offline (HF_HUB_OFFLINE=1, which stops model fetches; it is not a network block)
 COPY --chown=1001:0 scripts/download_models.py scripts/
 RUN python scripts/download_models.py /opt/app-root/docling-models
 

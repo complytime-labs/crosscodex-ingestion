@@ -261,7 +261,7 @@ STRUCTURED_FORMATS = frozenset({"json", "csv", "xlsx"})
 # Main part of each OOXML format; its presence in the ZIP directory identifies the format.
 _OOXML_PARTS = {"xl/workbook.xml": "xlsx", "word/document.xml": "docx"}
 
-# sniff_format and confirm_structured_format run in the service process, not the sandbox, so a ZIP's
+# sniff_format and confirm_structured_format run in the service process, not the resource-limited worker, so a ZIP's
 # directory is read with zipdir (never zipfile) and at most this many records of it.
 _MAX_SNIFF_ZIP_ENTRIES = 10_000
 

@@ -49,8 +49,8 @@ RUN find src/crosscodex_ingestion/proto -name '*_pb2*.py' -exec \
     sed -i 's/from crosscodex\.v1/from crosscodex_ingestion.proto.crosscodex.v1/g' {} +
 
 # Copy application source and install the package (hatchling reads README.md and src/), then
-# bake in the Docling and RapidOCR models, pinned by revision (see the script): the sandboxed
-# worker runs offline (HF_HUB_OFFLINE=1)
+# bake in the Docling and RapidOCR models, pinned by revision (see the script): the
+# resource-limited worker runs offline (HF_HUB_OFFLINE=1, which stops model fetches; it is not a network block)
 COPY README.md .
 COPY src/ src/
 COPY scripts/download_models.py scripts/check_lock_parity.py scripts/

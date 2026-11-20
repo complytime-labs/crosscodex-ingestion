@@ -18,7 +18,7 @@ the [README](../../README.md); the tools you need are listed in its [Prerequisit
 3. Download the Docling models once (see [Docling models](../../README.md#docling-models)):
 
    ```bash
-   uv run docling-tools models download -o ~/.cache/crosscodex/docling-models
+   uv run python scripts/download_models.py ~/.cache/crosscodex/docling-models
    ```
 
 4. Generate the dev PKI and attestation key pair in `.test-output/certs`:
