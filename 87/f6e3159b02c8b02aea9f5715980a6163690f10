@@ -1,0 +1,19 @@
+scripts/compose_up.sh
+  s_107df4e015757c::t_a411324fd6458a 52
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "87f6e3159b02c8b02aea9f5715980a6163690f10",
+  "prompts": {},
+  "sessions": {
+    "s_107df4e015757c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f4866803-0f23-42b0-a921-d42e6e55ff7d",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "LLM (riotbox) <llm@riotbox>"
+    }
+  }
+}
