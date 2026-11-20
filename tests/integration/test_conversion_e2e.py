@@ -6,32 +6,52 @@ They may be slow and may fail if Docling model downloads are blocked.
 
 import asyncio
 import json
+import os
+import shutil
+import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 import pytest
 
 from crosscodex_ingestion.proto.crosscodex.v1 import common_pb2, ingestion_pb2, ingestion_pb2_grpc
 
-# Check if Docling can actually run (import + subprocess viability)
-DOCLING_AVAILABLE = False
-try:
-    import subprocess
-    import sys
-    import tempfile
-    from pathlib import Path
+def _probe_docling() -> str:
+    """Return "" if a clean interpreter can import Docling's converter, else the failure text.
 
-    import docling  # noqa: F401
+    Runs in a private temp dir with ``python -I`` so a stray module in a shared directory
+    (e.g. /tmp/struct.py) cannot shadow the standard library and break the probe.
+    """
+    workdir = tempfile.mkdtemp(prefix="docling-probe-")
+    try:
+        try:
+            result = subprocess.run(
+                [sys.executable, "-I", "-c", "from docling.document_converter import DocumentConverter"],
+                capture_output=True,
+                text=True,
+                timeout=60,
+                check=False,
+                cwd=workdir,
+            )
+        except subprocess.TimeoutExpired as exc:
+            return f"Docling probe timed out after {exc.timeout}s"
+        return "" if result.returncode == 0 else f"Docling probe exited {result.returncode}: {result.stderr.strip()}"
+    finally:
+        shutil.rmtree(workdir, ignore_errors=True)
 
-    with tempfile.NamedTemporaryFile(suffix=".py", mode="w", delete=False) as f:
-        f.write("from docling.document_converter import DocumentConverter; print('ok')")
-        f.flush()
-        r = subprocess.run([sys.executable, f.name], capture_output=True, timeout=30, check=False)
-        Path(f.name).unlink()
-        DOCLING_AVAILABLE = r.returncode == 0
-except Exception:  # noqa: S110
-    # Docling availability check is best-effort
-    pass
+
+DOCLING_PROBE_ERROR = _probe_docling()
+
+
+@pytest.fixture(autouse=True)
+def _require_docling() -> None:
+    """Fail (never skip) when Docling is expected, i.e. DOCLING_ARTIFACTS_PATH is set."""
+    if not DOCLING_PROBE_ERROR:
+        return
+    if os.environ.get("DOCLING_ARTIFACTS_PATH"):
+        pytest.fail(f"DOCLING_ARTIFACTS_PATH is set but Docling is unusable: {DOCLING_PROBE_ERROR}")
+    pytest.skip(f"Docling not available in this environment: {DOCLING_PROBE_ERROR}")
 
 
 async def poll_until_complete(
@@ -74,7 +94,6 @@ async def poll_until_complete(
 
 
 @pytest.mark.integration
-@pytest.mark.skipif(not DOCLING_AVAILABLE, reason="Docling not available in this environment")
 @pytest.mark.asyncio
 async def test_convert_html_end_to_end(grpc_server_and_channel, sample_html):
     """Convert HTML document and verify COMPLETED status with structured output."""
@@ -105,7 +124,6 @@ async def test_convert_html_end_to_end(grpc_server_and_channel, sample_html):
 
 
 @pytest.mark.integration
-@pytest.mark.skipif(not DOCLING_AVAILABLE, reason="Docling not available in this environment")
 @pytest.mark.asyncio
 async def test_convert_txt_end_to_end(grpc_server_and_channel, sample_txt):
     """Convert TXT document and verify COMPLETED status."""
@@ -128,7 +146,6 @@ async def test_convert_txt_end_to_end(grpc_server_and_channel, sample_txt):
 
 
 @pytest.mark.integration
-@pytest.mark.skipif(not DOCLING_AVAILABLE, reason="Docling not available in this environment")
 @pytest.mark.asyncio
 async def test_csv_looking_text_is_converted_as_plain_text(grpc_server_and_channel):
     """Docling's sniffer would read this as a CSV table; text/plain is paragraphs."""
@@ -151,7 +168,6 @@ async def test_csv_looking_text_is_converted_as_plain_text(grpc_server_and_chann
 
 
 @pytest.mark.integration
-@pytest.mark.skipif(not DOCLING_AVAILABLE, reason="Docling not available in this environment")
 @pytest.mark.asyncio
 async def test_corrupt_pdf_is_an_invalid_argument_not_internal(grpc_server_and_channel):
     """The %PDF header passes format validation; Docling's PDF backend then cannot parse the body."""
@@ -173,7 +189,6 @@ async def test_corrupt_pdf_is_an_invalid_argument_not_internal(grpc_server_and_c
 
 
 @pytest.mark.integration
-@pytest.mark.skipif(not DOCLING_AVAILABLE, reason="Docling not available in this environment")
 @pytest.mark.asyncio
 async def test_convert_pdf_end_to_end(grpc_server_and_channel, sample_pdf):
     """Convert PDF document and verify COMPLETED status.
@@ -202,7 +217,6 @@ async def test_convert_pdf_end_to_end(grpc_server_and_channel, sample_pdf):
 
 
 @pytest.mark.integration
-@pytest.mark.skipif(not DOCLING_AVAILABLE, reason="Docling not available in this environment")
 @pytest.mark.asyncio
 async def test_convert_docx_end_to_end(grpc_server_and_channel, sample_docx):
     """Convert DOCX document and verify COMPLETED status.

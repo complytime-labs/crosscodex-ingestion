@@ -47,7 +47,8 @@ the [README](../../README.md); the tools you need are listed in its [Prerequisit
    ```
 
 7. Run integration tests. The first run downloads the pinned models into `.test-output/docling-models`; a
-   `DOCLING_ARTIFACTS_PATH` already set in your shell takes precedence:
+   `DOCLING_ARTIFACTS_PATH` already set in your shell takes precedence and skips that download. When it is
+   set, a broken Docling install fails the tests instead of skipping them:
 
    ```bash
    task test:integration

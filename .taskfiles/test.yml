@@ -22,15 +22,16 @@ tasks:
       - rm -rf "{{.MODELS_DIR}}.partial"
       - uv run python "{{.ROOT_DIR}}/scripts/download_models.py" "{{.MODELS_DIR}}.partial"
       - mv "{{.MODELS_DIR}}.partial" "{{.MODELS_DIR}}"
+    # A DOCLING_ARTIFACTS_PATH already set in the caller's shell means the models exist elsewhere.
     status:
-      - test -d "{{.MODELS_DIR}}"
+      - test -n "${DOCLING_ARTIFACTS_PATH:-}" || test -d "{{.MODELS_DIR}}"
 
   integration:
-    desc: Integration tests (requires Docling; downloads the models on first run)
+    desc: Integration tests (requires Docling; downloads the models on first run unless DOCLING_ARTIFACTS_PATH is set)
     deps: [models]
     env:
-      # Without it the model-dependent tests skip rather than fail.
-      DOCLING_ARTIFACTS_PATH: "{{.ROOT_DIR}}/.test-output/docling-models"
+      # Without it the model-dependent tests skip rather than fail. A value from the shell wins.
+      DOCLING_ARTIFACTS_PATH: '{{.DOCLING_ARTIFACTS_PATH | default (printf "%s/.test-output/docling-models" .ROOT_DIR)}}'
     cmds:
       - uv run pytest tests/integration/ -v --junitxml=.test-output/integration-results.xml
 
