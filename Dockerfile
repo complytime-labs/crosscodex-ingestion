@@ -20,9 +20,11 @@ WORKDIR /app
 # Install third-party dependencies first (layer caching); the package itself needs src/ and README.md.
 # Install exactly what uv.lock pins, hash-checked: resolving pyproject.toml afresh drifts from the
 # lock, and the model revisions in scripts/download_models.py match the locked Docling.
+# torch comes from the CPU-only index recorded in the lock (--emit-index-url); that index also
+# hosts non-torch names, so best-match across indexes is needed. --require-hashes keeps it safe.
 COPY pyproject.toml uv.lock ./
-RUN uv export --locked --no-dev --no-emit-project --format requirements.txt -o /tmp/requirements.txt && \
-    uv pip install --system --no-cache --require-hashes -r /tmp/requirements.txt
+RUN uv export --locked --no-dev --no-emit-project --emit-index-url --format requirements.txt -o /tmp/requirements.txt && \
+    uv pip install --system --no-cache --require-hashes --index-strategy unsafe-best-match -r /tmp/requirements.txt
 
 # Copy proto files and generate gRPC stubs. The code generators (grpcio-tools, mypy-protobuf) come
 # from the lock's dev group, hash-checked, into a separate venv: installing them next to the
