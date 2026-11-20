@@ -108,10 +108,13 @@ def _is_blocked_ip(ip: ipaddress.IPv4Address | ipaddress.IPv6Address) -> bool:
     return any(ip in net for net in _EXTRA_BLOCKED)
 
 
-def validate_url(url: str) -> None:
-    """Validate scheme and resolve host IP(s) against blocked ranges.
+def validate_url_without_dns(url: str) -> urllib.parse.ParseResult:
+    """Check the parts of a URL that need no resolver: scheme, host presence, localhost, literal IPs.
 
-    Raises ValueError with a descriptive message on any violation.
+    Cheap enough to run before a job is accepted. It does not replace validate_url: a name that
+    passes here may still resolve to a blocked address.
+
+    Returns the parsed URL. Raises ValueError with a descriptive message on any violation.
     """
     try:
         parsed = urllib.parse.urlparse(url)
@@ -124,6 +127,28 @@ def validate_url(url: str) -> None:
     hostname = parsed.hostname
     if not hostname:
         raise ValueError(f"URL has no hostname: {url!r}")
+
+    if hostname.rstrip(".") == "localhost":
+        log.warning("Refusing URL host %r: localhost", hostname)
+        raise ValueError(_NOT_PUBLIC_HOST)
+
+    try:
+        literal = ipaddress.ip_address(hostname)
+    except ValueError:
+        return parsed  # a name: only DNS can say where it points
+    if _is_blocked_ip(literal):
+        log.warning("Refusing URL host %r: blocked address", hostname)
+        raise ValueError(_NOT_PUBLIC_HOST)
+    return parsed
+
+
+def validate_url(url: str) -> None:
+    """Validate scheme and resolve host IP(s) against blocked ranges.
+
+    Raises ValueError with a descriptive message on any violation.
+    """
+    parsed = validate_url_without_dns(url)
+    hostname = parsed.hostname  # validate_url_without_dns guarantees it is set
 
     if parsed.scheme == "http":
         log.warning("Fetching over unencrypted HTTP — use https where possible: %s", url)
@@ -236,7 +261,7 @@ STRUCTURED_FORMATS = frozenset({"json", "csv", "xlsx"})
 # Main part of each OOXML format; its presence in the ZIP directory identifies the format.
 _OOXML_PARTS = {"xl/workbook.xml": "xlsx", "word/document.xml": "docx"}
 
-# sniff_format and confirm_structured_format run in the service process, not the sandbox, so a ZIP's
+# sniff_format and confirm_structured_format run in the service process, not the resource-limited worker, so a ZIP's
 # directory is read with zipdir (never zipfile) and at most this many records of it.
 _MAX_SNIFF_ZIP_ENTRIES = 10_000
 
@@ -265,6 +290,11 @@ def _ooxml_format(content: bytes) -> str | None:
 
 def _looks_like_json(text: str) -> bool:
     return _JSON_START.match(text) is not None
+
+
+def declared_format(mime_type: str) -> str | None:
+    """The format a Content-Type names ('pdf', 'html', ...), or None if it is not one the service knows."""
+    return _CT_MAP.get(mime_type.lower().split(";")[0].strip())
 
 
 def sniff_format(content: bytes, mime_type: str = "", url: str = "") -> str:
@@ -298,7 +328,7 @@ def sniff_format(content: bytes, mime_type: str = "", url: str = "") -> str:
 
     # Content-Type header
     ct = mime_type.lower().split(";")[0].strip()
-    detected = _CT_MAP.get(ct)
+    detected = declared_format(mime_type)
     if detected:
         return detected
 

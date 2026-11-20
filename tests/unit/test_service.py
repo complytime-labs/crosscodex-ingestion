@@ -5,10 +5,14 @@ from unittest.mock import AsyncMock, MagicMock
 
 import grpc
 import pytest
+from prometheus_client import REGISTRY as PROMETHEUS_REGISTRY
 
 from crosscodex_ingestion.config import IngestionSettings
+from crosscodex_ingestion.listing import parse_list_options
 from crosscodex_ingestion.mapping import MappingRegistry, load_registry
+from crosscodex_ingestion.nats_connection import NatsConnection, NatsUnavailableError
 from crosscodex_ingestion.proto.crosscodex.v1 import common_pb2, ingestion_pb2
+from crosscodex_ingestion.security import _NOT_PUBLIC_HOST
 from crosscodex_ingestion.service import IngestionServiceServicer
 from crosscodex_ingestion.state import DocumentRecord, MemoryStateBackend
 
@@ -16,14 +20,21 @@ DOC_ID = "6f1c1c1e-3b2a-4c55-9d0e-0a1b2c3d4e5f"
 MISSING_ID = "00000000-0000-4000-8000-000000000000"
 REGISTRY = load_registry("")
 
+_ALL = parse_list_options(common_pb2.ListOptions())
+
 
 class MockServicerContext:
     """Mock grpc.aio servicer context: abort() is a coroutine that raises only when awaited."""
 
-    def __init__(self):
+    def __init__(self, auth: dict[str, list[bytes]] | None = None):
         self.aborted = False
         self.abort_code = None
         self.abort_details = None
+        self._auth = auth or {}
+
+    def auth_context(self) -> dict[str, list[bytes]]:
+        """Return the gRPC auth context; empty, as on a plaintext port, unless a test supplies one."""
+        return self._auth
 
     async def abort(self, code: grpc.StatusCode, details: str):
         """Capture abort call and stop processing, as grpc.aio does."""
@@ -172,6 +183,68 @@ class TestConvertDocument:
         assert "size" in context.abort_details.lower() or "large" in context.abort_details.lower()
 
 
+class TestCreatedBy:
+    """created_by records the authenticated caller."""
+
+    @staticmethod
+    def _request():
+        return ingestion_pb2.ConvertDocumentRequest(
+            tenant_context=common_pb2.TenantContext(tenant_id="tenant-a"),
+            content=b"fake PDF content",
+            metadata=common_pb2.ContentMetadata(mime_type="application/pdf"),
+        )
+
+    @pytest.mark.asyncio
+    async def test_created_by_is_the_client_certificate_identity(self, servicer, state_backend):
+        context = MockServicerContext({"transport_security_type": [b"ssl"], "x509_common_name": [b"gateway"]})
+
+        response = await servicer.ConvertDocument(self._request(), context)
+
+        record = await state_backend.get("tenant-a", response.document_id)
+        assert record.audit["created_by"] == "gateway"
+
+    @pytest.mark.asyncio
+    async def test_created_by_uses_san_when_certificate_has_no_common_name(self, servicer, state_backend):
+        auth = {"transport_security_type": [b"ssl"], "x509_subject_alternative_name": [b"gateway.internal"]}
+
+        response = await servicer.ConvertDocument(self._request(), MockServicerContext(auth))
+
+        record = await state_backend.get("tenant-a", response.document_id)
+        assert record.audit["created_by"] == "gateway.internal"
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        ("auth", "expected"),
+        [
+            ({"x509_common_name": [b"foo"], "x509_subject_alternative_name": [b"gateway"]}, "gateway"),
+            (
+                {"x509_common_name": [b"foo"], "x509_subject_alternative_name": [b"other", b"gateway"]},
+                "gateway",
+            ),
+        ],
+    )
+    async def test_created_by_is_the_allowlisted_identity(self, state_backend, mock_dispatch, auth, expected):
+        servicer = IngestionServiceServicer(
+            settings=IngestionSettings(grpc_allowed_clients="gateway"),
+            state_backend=state_backend,
+            dispatch_backend=mock_dispatch,
+            mappings=REGISTRY,
+        )
+        context = MockServicerContext({"transport_security_type": [b"ssl"], **auth})
+
+        response = await servicer.ConvertDocument(self._request(), context)
+
+        record = await state_backend.get("tenant-a", response.document_id)
+        assert record.audit["created_by"] == expected
+
+    @pytest.mark.asyncio
+    async def test_created_by_is_unauthenticated_without_tls(self, servicer, state_backend):
+        response = await servicer.ConvertDocument(self._request(), MockServicerContext())
+
+        record = await state_backend.get("tenant-a", response.document_id)
+        assert record.audit["created_by"] == "unauthenticated"
+
+
 class TestConvertWithMapping:
     """request.mapping names a registered mapping; it is checked before anything is stored or dispatched."""
 
@@ -223,7 +296,7 @@ class TestConvertWithMapping:
             "nist-csf-2.0-core-xlsx, nist-sp800-53r5-catalog-xlsx, owasp-asvs-5.0.0-csv, owasp-asvs-5.0.0-json."
         )
         mock_dispatch.dispatch.assert_not_called()
-        assert (await state_backend.list_documents("tenant-a", 10, ""))[0] == []
+        assert (await state_backend.list_documents("tenant-a", _ALL))[0] == []
 
     @pytest.mark.asyncio
     async def test_unknown_mapping_is_echoed_truncated(self, servicer):
@@ -285,6 +358,29 @@ class TestGetDocument:
         assert response.document.conversion_status == common_pb2.JOB_STATUS_COMPLETED
         assert response.document.structured_json_uri == f"s3://bucket/{DOC_ID}.json"
         assert response.document.tenant_context.tenant_id == "tenant-a"
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("uri", ["s3://bucket/t/d/attestation.link", ""])
+    async def test_get_document_returns_attestation_uri(self, servicer, state_backend, uri):
+        """attestation_uri is the stored link location, or empty when the job was not attested."""
+        now = datetime.now(UTC).isoformat()
+        await state_backend.create(
+            DocumentRecord(
+                document_id=DOC_ID,
+                tenant_id="tenant-a",
+                status=common_pb2.JOB_STATUS_COMPLETED,
+                attestation_uri=uri,
+                created_at=now,
+                updated_at=now,
+            )
+        )
+        request = ingestion_pb2.GetDocumentRequest(
+            tenant_context=common_pb2.TenantContext(tenant_id="tenant-a"), document_id=DOC_ID
+        )
+
+        response = await servicer.GetDocument(request, MockServicerContext())
+
+        assert response.document.attestation_uri == uri
 
     @pytest.mark.asyncio
     async def test_get_document_returns_failure_code_message_and_details(self, servicer, state_backend):
@@ -487,6 +583,61 @@ class TestListDocuments:
         assert context.aborted
         assert context.abort_code == grpc.StatusCode.INVALID_ARGUMENT
 
+    @pytest.mark.asyncio
+    async def test_list_documents_filters_and_sorts(self, servicer, state_backend):
+        for i, status in enumerate(
+            [common_pb2.JOB_STATUS_FAILED, common_pb2.JOB_STATUS_COMPLETED, common_pb2.JOB_STATUS_FAILED]
+        ):
+            await state_backend.create(
+                DocumentRecord(
+                    document_id=f"doc-{i}",
+                    tenant_id="tenant-a",
+                    status=status,
+                    created_at=datetime(2026, 1, 1, i, tzinfo=UTC).isoformat(),
+                )
+            )
+        request = ingestion_pb2.ListDocumentsRequest(
+            tenant_context=common_pb2.TenantContext(tenant_id="tenant-a"),
+            options=common_pb2.ListOptions(
+                filters=[common_pb2.FieldFilter(field="status", operator="eq", value="JOB_STATUS_FAILED")],
+                sort=[common_pb2.SortOrder(field="created_at", descending=True)],
+            ),
+        )
+
+        response = await servicer.ListDocuments(request, MockServicerContext())
+
+        assert [d.document_id for d in response.documents] == ["doc-2", "doc-0"]
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        ("options", "message"),
+        [
+            (
+                common_pb2.ListOptions(pagination=common_pb2.Pagination(page_token="garbage")),
+                "page_token is invalid or belongs to a different query",
+            ),
+            (
+                common_pb2.ListOptions(filters=[common_pb2.FieldFilter(field="framework", operator="eq", value="x")]),
+                "unsupported filter field 'framework'. Supported filters: status",
+            ),
+            (
+                common_pb2.ListOptions(pagination=common_pb2.Pagination(page_size=1001)),
+                "page_size must be between 0 and 1000 (0 means 50)",
+            ),
+        ],
+    )
+    async def test_list_documents_bad_options_return_invalid_argument(self, servicer, options, message):
+        request = ingestion_pb2.ListDocumentsRequest(
+            tenant_context=common_pb2.TenantContext(tenant_id="tenant-a"), options=options
+        )
+        context = MockServicerContext()
+
+        with pytest.raises(grpc.RpcError):
+            await servicer.ListDocuments(request, context)
+
+        assert context.abort_code == grpc.StatusCode.INVALID_ARGUMENT
+        assert context.abort_details.startswith(message)
+
 
 class TestAbortStopsProcessing:
     """A failed validation must stop the RPC before any state or dispatch side effect."""
@@ -504,7 +655,7 @@ class TestAbortStopsProcessing:
             await servicer.ConvertDocument(request, MockServicerContext())
 
         mock_dispatch.dispatch.assert_not_called()
-        records, _ = await state_backend.list_documents(tenant_id="", page_size=10, page_token="")
+        records, _ = await state_backend.list_documents("", _ALL)
         assert records == []
 
     @pytest.mark.asyncio
@@ -540,6 +691,276 @@ class TestAbortStopsProcessing:
             await servicer.GetDocument(request, context)
 
         assert context.abort_code == grpc.StatusCode.NOT_FOUND
+
+
+class TestSourceUriValidation:
+    """Disallowed source URLs are refused before any state is written, with the worker's message."""
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "uri",
+        [
+            "file:///etc/passwd",
+            "http://127.0.0.1/",
+            "http://[::1]/",
+            "http://localhost/",
+            "http://169.254.169.254/",
+            "http://[::ffff:127.0.0.1]/",
+        ],
+    )
+    async def test_convert_rejects_disallowed_source_uri_and_writes_nothing(
+        self, servicer, mock_dispatch, state_backend, uri
+    ):
+        request = ingestion_pb2.ConvertDocumentRequest(
+            tenant_context=common_pb2.TenantContext(tenant_id="tenant-a"),
+            source_uri=uri,
+        )
+        context = MockServicerContext()
+
+        with pytest.raises(grpc.RpcError):
+            await servicer.ConvertDocument(request, context)
+
+        assert context.abort_code == grpc.StatusCode.INVALID_ARGUMENT
+        mock_dispatch.dispatch.assert_not_called()
+        records, _ = await state_backend.list_documents("", _ALL)
+        assert records == []
+
+    @pytest.mark.asyncio
+    async def test_convert_rejection_message_is_the_one_the_worker_produces(self, servicer):
+        request = ingestion_pb2.ConvertDocumentRequest(
+            tenant_context=common_pb2.TenantContext(tenant_id="tenant-a"),
+            source_uri="http://127.0.0.1/",
+        )
+        context = MockServicerContext()
+
+        with pytest.raises(grpc.RpcError):
+            await servicer.ConvertDocument(request, context)
+
+        assert context.abort_details == _NOT_PUBLIC_HOST
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("uri", ["https://example.org/x.pdf", "https://internal.example/x.pdf"])
+    async def test_convert_accepts_public_and_dns_dependent_hosts_as_pending(
+        self, servicer, mock_dispatch, state_backend, uri
+    ):
+        request = ingestion_pb2.ConvertDocumentRequest(
+            tenant_context=common_pb2.TenantContext(tenant_id="tenant-a"),
+            source_uri=uri,
+        )
+
+        response = await servicer.ConvertDocument(request, MockServicerContext())
+
+        assert response.status == common_pb2.JOB_STATUS_PENDING
+        mock_dispatch.dispatch.assert_called_once()
+        record = await state_backend.get("tenant-a", response.document_id)
+        assert record is not None
+
+
+def _nats(available: bool) -> MagicMock:
+    nats = MagicMock(spec=NatsConnection)
+    nats.available = available
+    nats.url = "nats://nats.internal:4222"
+    return nats
+
+
+class TestNatsAvailability:
+    """While NATS is down, audit events cannot be recorded, so submissions are refused up front."""
+
+    @pytest.mark.asyncio
+    async def test_convert_while_nats_is_unavailable_aborts_unavailable_and_writes_nothing(
+        self, settings, state_backend, mock_dispatch, caplog
+    ):
+        servicer = IngestionServiceServicer(
+            settings=settings,
+            state_backend=state_backend,
+            dispatch_backend=mock_dispatch,
+            mappings=REGISTRY,
+            nats=_nats(available=False),
+        )
+        request = ingestion_pb2.ConvertDocumentRequest(
+            tenant_context=common_pb2.TenantContext(tenant_id="tenant-a"),
+            content=b"fake PDF content",
+        )
+        context = MockServicerContext()
+
+        with pytest.raises(grpc.RpcError):
+            await servicer.ConvertDocument(request, context)
+
+        assert context.abort_code == grpc.StatusCode.UNAVAILABLE
+        # CWE-209: the broker's address is logged, never sent to the client
+        assert context.abort_details == "NATS is unavailable; audit events cannot be recorded. Retry later."
+        assert "nats.internal:4222" in caplog.text
+        mock_dispatch.dispatch.assert_not_called()
+        records, _ = await state_backend.list_documents("tenant-a", _ALL)
+        assert records == []
+
+    @pytest.mark.asyncio
+    async def test_nats_dropping_before_the_dispatch_publish_fails_the_record_and_aborts_unavailable(
+        self, settings, state_backend, mock_dispatch, caplog
+    ):
+        """The availability check passed, then the job publish found NATS gone."""
+        mock_dispatch.dispatch.side_effect = NatsUnavailableError(
+            "NATS at nats://nats.internal:4222 is unavailable; job for document x was not published"
+        )
+        servicer = IngestionServiceServicer(
+            settings=settings,
+            state_backend=state_backend,
+            dispatch_backend=mock_dispatch,
+            mappings=REGISTRY,
+            nats=_nats(available=True),
+        )
+        request = ingestion_pb2.ConvertDocumentRequest(
+            tenant_context=common_pb2.TenantContext(tenant_id="tenant-a"),
+            content=b"fake PDF content",
+        )
+        context = MockServicerContext()
+
+        with pytest.raises(grpc.RpcError):
+            await servicer.ConvertDocument(request, context)
+
+        assert context.abort_code == grpc.StatusCode.UNAVAILABLE
+        assert context.abort_details == "NATS is unavailable; audit events cannot be recorded. Retry later."
+        assert "nats.internal:4222" in caplog.text
+        # No PENDING record is left behind that no worker will ever pick up
+        records, _ = await state_backend.list_documents("tenant-a", _ALL)
+        assert len(records) == 1
+        assert records[0].status == common_pb2.JOB_STATUS_FAILED
+        assert records[0].error == {
+            "code": common_pb2.ERROR_CODE_UNAVAILABLE,
+            "message": "NATS is unavailable; audit events cannot be recorded. Retry later.",
+        }
+
+    @pytest.mark.asyncio
+    async def test_convert_validates_the_tenant_before_checking_nats(self, settings, state_backend, mock_dispatch):
+        servicer = IngestionServiceServicer(
+            settings=settings,
+            state_backend=state_backend,
+            dispatch_backend=mock_dispatch,
+            mappings=REGISTRY,
+            nats=_nats(available=False),
+        )
+        request = ingestion_pb2.ConvertDocumentRequest(
+            tenant_context=common_pb2.TenantContext(tenant_id="../../x"),
+            content=b"fake PDF content",
+        )
+        context = MockServicerContext()
+
+        with pytest.raises(grpc.RpcError):
+            await servicer.ConvertDocument(request, context)
+
+        assert context.abort_code == grpc.StatusCode.INVALID_ARGUMENT
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "fields",
+        [
+            {"source_uri": "http://127.0.0.1/x.pdf"},
+            {"mapping": "no-such-mapping", "content": b"x"},
+            {},
+        ],
+        ids=["bad-url", "unknown-mapping", "no-source"],
+    )
+    async def test_non_retryable_bad_request_gets_invalid_argument_while_nats_is_down(
+        self, settings, state_backend, mock_dispatch, fields
+    ):
+        """A request that can never succeed must not be told to retry just because NATS is down."""
+        servicer = IngestionServiceServicer(
+            settings=settings,
+            state_backend=state_backend,
+            dispatch_backend=mock_dispatch,
+            mappings=REGISTRY,
+            nats=_nats(available=False),
+        )
+        request = ingestion_pb2.ConvertDocumentRequest(
+            tenant_context=common_pb2.TenantContext(tenant_id="tenant-a"), **fields
+        )
+        context = MockServicerContext()
+
+        with pytest.raises(grpc.RpcError):
+            await servicer.ConvertDocument(request, context)
+
+        assert context.abort_code == grpc.StatusCode.INVALID_ARGUMENT
+        mock_dispatch.dispatch.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_unexpected_dispatch_failure_fails_the_record_and_aborts_internal(
+        self, settings, state_backend, mock_dispatch, caplog
+    ):
+        """E.g. nats MaxPayloadError for a large document: no PENDING record is left, no internals reach the client."""
+        mock_dispatch.dispatch.side_effect = RuntimeError("max payload exceeded at nats://nats.internal:4222")
+        servicer = IngestionServiceServicer(
+            settings=settings,
+            state_backend=state_backend,
+            dispatch_backend=mock_dispatch,
+            mappings=REGISTRY,
+            nats=_nats(available=True),
+        )
+        request = ingestion_pb2.ConvertDocumentRequest(
+            tenant_context=common_pb2.TenantContext(tenant_id="tenant-a"),
+            content=b"fake PDF content",
+        )
+        context = MockServicerContext()
+
+        with pytest.raises(grpc.RpcError):
+            await servicer.ConvertDocument(request, context)
+
+        assert context.abort_code == grpc.StatusCode.INTERNAL
+        assert "nats.internal" not in context.abort_details
+        assert "max payload" in caplog.text
+        records, _ = await state_backend.list_documents("tenant-a", _ALL)
+        assert len(records) == 1
+        assert records[0].status == common_pb2.JOB_STATUS_FAILED
+        assert records[0].error["code"] == common_pb2.ERROR_CODE_INTERNAL
+        assert "nats.internal" not in records[0].error["message"]
+        assert records[0].error["message"] == context.abort_details
+
+    @pytest.mark.asyncio
+    async def test_convert_while_nats_is_available_is_accepted(self, settings, state_backend, mock_dispatch):
+        servicer = IngestionServiceServicer(
+            settings=settings,
+            state_backend=state_backend,
+            dispatch_backend=mock_dispatch,
+            mappings=REGISTRY,
+            nats=_nats(available=True),
+        )
+        request = ingestion_pb2.ConvertDocumentRequest(
+            tenant_context=common_pb2.TenantContext(tenant_id="tenant-a"),
+            content=b"fake PDF content",
+        )
+
+        response = await servicer.ConvertDocument(request, MockServicerContext())
+
+        assert response.status == common_pb2.JOB_STATUS_PENDING
+        mock_dispatch.dispatch.assert_called_once()
+        assert await state_backend.get("tenant-a", response.document_id) is not None
+
+    @pytest.mark.asyncio
+    async def test_convert_without_nats_configured_is_accepted(self, servicer, mock_dispatch):
+        """nats=None (NATS_URL unset): audit events go to the log, so there is nothing to wait for."""
+        request = ingestion_pb2.ConvertDocumentRequest(
+            tenant_context=common_pb2.TenantContext(tenant_id="tenant-a"),
+            content=b"fake PDF content",
+        )
+
+        response = await servicer.ConvertDocument(request, MockServicerContext())
+
+        assert response.status == common_pb2.JOB_STATUS_PENDING
+        mock_dispatch.dispatch.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_reads_are_served_while_nats_is_unavailable(self, settings, state_backend, mock_dispatch):
+        servicer = IngestionServiceServicer(
+            settings=settings,
+            state_backend=state_backend,
+            dispatch_backend=mock_dispatch,
+            mappings=REGISTRY,
+            nats=_nats(available=False),
+        )
+        request = ingestion_pb2.ListDocumentsRequest(tenant_context=common_pb2.TenantContext(tenant_id="tenant-a"))
+
+        response = await servicer.ListDocuments(request, MockServicerContext())
+
+        assert list(response.documents) == []
 
 
 BAD_TENANTS = [
@@ -630,3 +1051,65 @@ class TestTenantIdValidation:
 
         assert context.abort_code == grpc.StatusCode.INVALID_ARGUMENT
         assert "document_id" in context.abort_details
+
+
+def _requests_total(format_label: str) -> float:
+    return (
+        PROMETHEUS_REGISTRY.get_sample_value("ingestion_requests_total", {"format": format_label, "status": "pending"})
+        or 0.0
+    )
+
+
+class TestRequestMetricLabels:
+    """ingestion_requests_total{format} takes a bounded value, never text the caller chose."""
+
+    async def _convert(self, servicer, **fields) -> None:
+        request = ingestion_pb2.ConvertDocumentRequest(
+            tenant_context=common_pb2.TenantContext(tenant_id="tenant-a"), content=b"x", **fields
+        )
+        await servicer.ConvertDocument(request, MockServicerContext())
+
+    @pytest.mark.asyncio
+    async def test_free_text_format_version_never_becomes_a_label(self, servicer):
+        before = _requests_total("unknown")
+
+        await self._convert(servicer, metadata=common_pb2.ContentMetadata(format_version="zz-1795120790608977744"))
+
+        assert _requests_total("zz-1795120790608977744") == 0.0
+        assert _requests_total("unknown") == before + 1
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        ("mime_type", "label"),
+        [
+            ("application/pdf", "pdf"),
+            ("Text/HTML; charset=utf-8", "html"),
+            ("application/x-attacker-1234", "unknown"),
+            ("", "unknown"),
+        ],
+    )
+    async def test_declared_mime_type_maps_to_a_known_format_or_unknown(self, servicer, mime_type, label):
+        before = _requests_total(label)
+
+        await self._convert(servicer, metadata=common_pb2.ContentMetadata(mime_type=mime_type))
+
+        assert _requests_total(label) == before + 1
+
+    @pytest.mark.asyncio
+    async def test_a_named_mapping_is_labelled_mapping(self, servicer):
+        before = _requests_total("mapping")
+
+        await self._convert(
+            servicer,
+            mapping="owasp-asvs-5.0.0-json",
+            metadata=common_pb2.ContentMetadata(mime_type="application/json"),
+        )
+
+        assert _requests_total("mapping") == before + 1
+
+
+def test_histogram_buckets_fit_document_sizes_and_conversion_times():
+    from crosscodex_ingestion.metrics import DOC_SIZE, DURATION
+
+    assert DOC_SIZE._upper_bounds == [1e3, 1e4, 1e5, 1e6, 1e7, 5e7, 1e8, float("inf")]
+    assert DURATION._upper_bounds == [1, 5, 15, 30, 60, 120, 300, 600, 1200, 1800, float("inf")]

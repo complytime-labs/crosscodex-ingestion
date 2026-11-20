@@ -8,13 +8,23 @@ import grpc
 
 from crosscodex_ingestion.config import IngestionSettings
 from crosscodex_ingestion.dispatch import DispatchBackend
+from crosscodex_ingestion.listing import ListQueryError, parse_list_options
 from crosscodex_ingestion.mapping import MappingRegistry
 from crosscodex_ingestion.metrics import DOC_SIZE, ERRORS_TOTAL, REQUESTS_TOTAL
+from crosscodex_ingestion.nats_connection import NATS_UNAVAILABLE_MESSAGE, NatsConnection, NatsUnavailableError
 from crosscodex_ingestion.proto.crosscodex.v1 import common_pb2, ingestion_pb2, ingestion_pb2_grpc
-from crosscodex_ingestion.security import validate_document_id, validate_tenant_id
+from crosscodex_ingestion.security import (
+    declared_format,
+    validate_document_id,
+    validate_tenant_id,
+    validate_url_without_dns,
+)
 from crosscodex_ingestion.state import DocumentRecord, StateBackend
+from crosscodex_ingestion.tls import client_identity
 
 logger = logging.getLogger(__name__)
+# Sent to clients when the job could not be handed to a worker for a reason that is not theirs to fix.
+DISPATCH_FAILED_MESSAGE = "The document could not be queued for conversion; contact the operator."
 
 
 class IngestionServiceServicer(ingestion_pb2_grpc.IngestionServiceServicer):
@@ -29,6 +39,7 @@ class IngestionServiceServicer(ingestion_pb2_grpc.IngestionServiceServicer):
         state_backend: StateBackend,
         dispatch_backend: DispatchBackend,
         mappings: MappingRegistry,
+        nats: NatsConnection | None = None,
     ):
         """Initialize the servicer.
 
@@ -37,11 +48,13 @@ class IngestionServiceServicer(ingestion_pb2_grpc.IngestionServiceServicer):
             state_backend: State management backend.
             dispatch_backend: Job dispatch backend.
             mappings: Structured-source mappings a request may name.
+            nats: The shared NATS connection, or None when NATS_URL is unset.
         """
         self._settings = settings
         self._state = state_backend
         self._dispatch = dispatch_backend
         self._mappings = mappings
+        self._nats = nats
 
     async def ConvertDocument(
         self, request: ingestion_pb2.ConvertDocumentRequest, context: grpc.aio.ServicerContext
@@ -56,7 +69,8 @@ class IngestionServiceServicer(ingestion_pb2_grpc.IngestionServiceServicer):
             ConvertDocumentResponse with document_id and PENDING status.
 
         Raises:
-            grpc.RpcError: On validation failures (INVALID_ARGUMENT, RESOURCE_EXHAUSTED).
+            grpc.RpcError: On validation failures (INVALID_ARGUMENT, RESOURCE_EXHAUSTED), or
+                UNAVAILABLE while NATS is configured but not connected.
         """
         await self._require_valid_tenant(request.tenant_context.tenant_id, context)
 
@@ -69,6 +83,13 @@ class IngestionServiceServicer(ingestion_pb2_grpc.IngestionServiceServicer):
                 grpc.StatusCode.INVALID_ARGUMENT,
                 "Either content or source_uri must be provided",
             )
+
+        # Refuse URLs that need no DNS to judge now; the worker still checks what the name resolves to.
+        if has_source_uri:
+            try:
+                validate_url_without_dns(request.source_uri)
+            except ValueError as exc:
+                await context.abort(grpc.StatusCode.INVALID_ARGUMENT, str(exc))
 
         # Validate document size if content is provided
         if has_content:
@@ -117,8 +138,14 @@ class IngestionServiceServicer(ingestion_pb2_grpc.IngestionServiceServicer):
         now = datetime.now(UTC).isoformat()
         audit = {
             "created_at": now,
-            "created_by": "system",  # no caller identity until mTLS/auth context exists
+            "created_by": client_identity(context, self._settings.grpc_allowed_clients_set) or "unauthenticated",
         }
+
+        # Every job ends in an audit event; refuse work whose outcome could not be recorded. This comes after
+        # the request validation (a bad request is not retryable) and before any state write.
+        if self._nats is not None and not self._nats.available:
+            logger.warning("Rejected ConvertDocument: NATS at %s is unavailable", self._nats.url)
+            await context.abort(grpc.StatusCode.UNAVAILABLE, NATS_UNAVAILABLE_MESSAGE)
 
         # Create DocumentRecord in state backend
         record = DocumentRecord(
@@ -135,16 +162,39 @@ class IngestionServiceServicer(ingestion_pb2_grpc.IngestionServiceServicer):
         await self._state.create(record)
 
         # Dispatch to worker
-        await self._dispatch.dispatch(
-            document_id=document_id,
-            tenant_id=request.tenant_context.tenant_id,
-            content=request.content if has_content else None,
-            source_uri=request.source_uri if has_source_uri else None,
-            metadata=metadata,
-        )
+        try:
+            await self._dispatch.dispatch(
+                document_id=document_id,
+                tenant_id=request.tenant_context.tenant_id,
+                content=request.content if has_content else None,
+                source_uri=request.source_uri if has_source_uri else None,
+                metadata=metadata,
+            )
+        except NatsUnavailableError as exc:
+            # NATS dropped after the check above. Fail the record so it does not stay PENDING forever.
+            logger.warning("Rejected ConvertDocument for document %s: %s", document_id, exc)
+            await self._state.update(
+                request.tenant_context.tenant_id,
+                document_id,
+                status=common_pb2.JOB_STATUS_FAILED,
+                error={"code": common_pb2.ERROR_CODE_UNAVAILABLE, "message": NATS_UNAVAILABLE_MESSAGE},
+            )
+            await context.abort(grpc.StatusCode.UNAVAILABLE, NATS_UNAVAILABLE_MESSAGE)
+        except Exception:
+            # E.g. a document over the NATS max payload, or a missing stream. Fail the record rather than
+            # leave it PENDING forever; the client gets no internals (CWE-209), the log gets the traceback.
+            logger.exception("Dispatch of document %s failed", document_id)
+            await self._state.update(
+                request.tenant_context.tenant_id,
+                document_id,
+                status=common_pb2.JOB_STATUS_FAILED,
+                error={"code": common_pb2.ERROR_CODE_INTERNAL, "message": DISPATCH_FAILED_MESSAGE},
+            )
+            await context.abort(grpc.StatusCode.INTERNAL, DISPATCH_FAILED_MESSAGE)
 
-        # Record metrics
-        format_label = metadata.get("format_version", "unknown")
+        # Record metrics. The label is bounded: a named mapping, a format from the declared MIME type, or
+        # "unknown". Never text the caller chose, which would be unbounded cardinality.
+        format_label = "mapping" if request.mapping else declared_format(request.metadata.mime_type) or "unknown"
         REQUESTS_TOTAL.labels(format=format_label, status="pending").inc()
 
         logger.info(
@@ -203,10 +253,10 @@ class IngestionServiceServicer(ingestion_pb2_grpc.IngestionServiceServicer):
     async def ListDocuments(
         self, request: ingestion_pb2.ListDocumentsRequest, context: grpc.aio.ServicerContext
     ) -> ingestion_pb2.ListDocumentsResponse:
-        """List documents for a tenant with pagination.
+        """List documents for a tenant with filters, sort and keyset pagination.
 
         Args:
-            request: ListDocumentsRequest containing tenant context and pagination options.
+            request: ListDocumentsRequest containing tenant context and list options.
             context: gRPC servicer context.
 
         Returns:
@@ -217,22 +267,12 @@ class IngestionServiceServicer(ingestion_pb2_grpc.IngestionServiceServicer):
         """
         await self._require_valid_tenant(request.tenant_context.tenant_id, context)
 
-        # Extract pagination parameters
-        page_size = 50  # Default
-        page_token = ""
+        try:
+            query = parse_list_options(request.options)
+        except ListQueryError as exc:
+            await context.abort(grpc.StatusCode.INVALID_ARGUMENT, str(exc))
 
-        if request.options and request.options.pagination:
-            if request.options.pagination.page_size:
-                page_size = request.options.pagination.page_size
-            if request.options.pagination.page_token:
-                page_token = request.options.pagination.page_token
-
-        # Query state backend
-        records, next_token = await self._state.list_documents(
-            tenant_id=request.tenant_context.tenant_id,
-            page_size=page_size,
-            page_token=page_token,
-        )
+        records, next_token = await self._state.list_documents(request.tenant_context.tenant_id, query)
 
         # Map records to proto messages
         documents = [self._record_to_proto(record) for record in records]
@@ -303,6 +343,7 @@ class IngestionServiceServicer(ingestion_pb2_grpc.IngestionServiceServicer):
             audit=audit,
             conversion_status=record.status,
             structured_json_uri=record.structured_json_uri,
+            attestation_uri=record.attestation_uri,
         )
 
         if error:

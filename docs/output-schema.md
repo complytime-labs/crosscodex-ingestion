@@ -7,7 +7,7 @@ For maintainers (back to the [README](../README.md)). The consumer-facing descri
 
 | Step       | Module                                                                                                             | Process                     | Adds                                                        |
 |------------|--------------------------------------------------------------------------------------------------------------------|-----------------------------|-------------------------------------------------------------|
-| Extraction | `extractor.py` (documents) or `structured.py` (structured sources, [structured-sources.md](structured-sources.md)) | sandboxed worker subprocess | `elements`, `metadata` except `processing_time_ms`          |
+| Extraction | `extractor.py` (documents) or `structured.py` (structured sources, [structured-sources.md](structured-sources.md)) | resource-limited worker subprocess | `elements`, `metadata` except `processing_time_ms`          |
 | Collection | `converter.py` (`convert_document`, `convert_structured`)                                                          | service                     | `metadata.processing_time_ms`, `schema_version` (first key) |
 | Validation | `worker.py` (`run_conversion`) via `output_schema.validate_output`                                                 | service                     | nothing; raises `OutputSchemaError`                         |
 | Storage    | `worker.py`                                                                                                        | service                     | nothing                                                     |

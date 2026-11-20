@@ -85,6 +85,56 @@ class TestValidateUrl:
         security.validate_url("https://example.com/file.pdf")
 
 
+class TestValidateUrlWithoutDns:
+    """validate_url_without_dns: the checks that need no resolver, run before any state is written."""
+
+    @pytest.mark.parametrize(
+        "url",
+        [
+            "http://127.0.0.1/",
+            "http://[::1]/",
+            "https://localhost/x.pdf",
+            "https://LOCALHOST./x.pdf",
+            "http://169.254.169.254/latest/meta-data",
+            "http://10.0.0.1/",
+            "http://192.168.1.1/",
+            "http://100.64.1.1/",
+            "http://[fc00::1]/",
+            "http://[::ffff:127.0.0.1]/",
+            "http://0.0.0.0/",
+        ],
+    )
+    @patch("socket.getaddrinfo")
+    def test_rejects_non_public_hosts_with_the_worker_message(self, mock_getaddrinfo, url):
+        with pytest.raises(ValueError, match="not a public internet address") as excinfo:
+            security.validate_url_without_dns(url)
+        assert str(excinfo.value) == security._NOT_PUBLIC_HOST
+        mock_getaddrinfo.assert_not_called()
+
+    @pytest.mark.parametrize("url", ["file:///etc/passwd", "ftp://example.com/x", "gopher://example.com/"])
+    def test_rejects_disallowed_schemes(self, url):
+        with pytest.raises(ValueError, match=r"scheme.*not allowed"):
+            security.validate_url_without_dns(url)
+
+    def test_rejects_url_with_no_hostname(self):
+        with pytest.raises(ValueError, match="no hostname"):
+            security.validate_url_without_dns("https://")
+
+    @pytest.mark.parametrize(
+        "url", ["https://example.org/x.pdf", "http://93.184.216.34/x.pdf", "https://internal.example/x"]
+    )
+    def test_accepts_public_literals_and_names_that_need_dns_without_resolving(self, url):
+        with patch("socket.getaddrinfo") as mock_getaddrinfo:
+            security.validate_url_without_dns(url)
+        mock_getaddrinfo.assert_not_called()
+
+    @patch("socket.getaddrinfo")
+    def test_validate_url_still_resolves_and_blocks_names_that_resolve_privately(self, mock_getaddrinfo):
+        mock_getaddrinfo.return_value = [(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("10.0.0.1", 443))]
+        with pytest.raises(ValueError, match="not a public internet address"):
+            security.validate_url("https://rebind.example/x")
+
+
 class TestSniffFormat:
     """Format detection via byte sniffing, MIME type, and URL extension."""
 

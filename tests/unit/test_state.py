@@ -2,18 +2,58 @@ import asyncio
 import json
 from dataclasses import asdict
 from datetime import UTC, datetime
+from fnmatch import fnmatchcase
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
 from crosscodex_ingestion.config import IngestionSettings
-from crosscodex_ingestion.proto.crosscodex.v1.common_pb2 import JobStatus
+from crosscodex_ingestion.listing import parse_list_options
+from crosscodex_ingestion.proto.crosscodex.v1.common_pb2 import (
+    FieldFilter,
+    JobStatus,
+    ListOptions,
+    Pagination,
+)
 from crosscodex_ingestion.state import (
     DocumentRecord,
     MemoryStateBackend,
     RedisStateBackend,
+    StateBackend,
     create_state_backend,
 )
+
+
+def _query(page_size: int = 0, page_token: str = "", filters: tuple[FieldFilter, ...] = ()):
+    return parse_list_options(
+        ListOptions(pagination=Pagination(page_size=page_size, page_token=page_token), filters=filters)
+    )
+
+
+class FakeRedis:
+    """Dict-backed stand-in for the redis.asyncio calls RedisStateBackend makes."""
+
+    def __init__(self) -> None:
+        self.hashes: dict[str, dict[str, str]] = {}
+
+    async def hset(self, key: str, field_name: str, value: str) -> None:
+        self.hashes.setdefault(key, {})[field_name] = value
+
+    async def hget(self, key: str, field_name: str) -> str | None:
+        return self.hashes.get(key, {}).get(field_name)
+
+    async def scan_iter(self, match: str):
+        for key in list(self.hashes):
+            if fnmatchcase(key, match):
+                yield key
+
+
+@pytest.fixture(params=["memory", "redis"])
+def backend(request: pytest.FixtureRequest) -> StateBackend:
+    if request.param == "memory":
+        return MemoryStateBackend()
+    with patch("crosscodex_ingestion.state.redis.from_url", return_value=FakeRedis()):
+        return RedisStateBackend("redis://localhost:6379")
 
 
 @pytest.fixture
@@ -32,9 +72,10 @@ def sample_record() -> DocumentRecord:
     )
 
 
-class TestMemoryStateBackend:
-    async def test_create_and_get(self, sample_record: DocumentRecord):
-        backend = MemoryStateBackend()
+class TestStateBackendContract:
+    """Behavior every backend must share; runs against memory and a fake Redis."""
+
+    async def test_create_and_get(self, backend: StateBackend, sample_record: DocumentRecord):
         await backend.create(sample_record)
 
         retrieved = await backend.get(sample_record.tenant_id, sample_record.document_id)
@@ -44,15 +85,16 @@ class TestMemoryStateBackend:
         assert retrieved.tenant_id == sample_record.tenant_id
         assert retrieved.status == sample_record.status
 
-    async def test_get_returns_none_for_missing(self):
-        backend = MemoryStateBackend()
+    async def test_update_missing_raises_keyerror(self, backend: StateBackend):
+        with pytest.raises(KeyError):
+            await backend.update("tenant-a", "absent", status=1)
 
+    async def test_get_returns_none_for_missing(self, backend: StateBackend):
         result = await backend.get("tenant-a", "nonexistent")
 
         assert result is None
 
-    async def test_update_changes_fields(self, sample_record: DocumentRecord):
-        backend = MemoryStateBackend()
+    async def test_update_changes_fields(self, backend: StateBackend, sample_record: DocumentRecord):
         await backend.create(sample_record)
 
         await backend.update(
@@ -67,9 +109,23 @@ class TestMemoryStateBackend:
         assert retrieved.status == JobStatus.JOB_STATUS_COMPLETED
         assert retrieved.structured_json_uri == "s3://bucket/doc-123.json"
 
-    async def test_list_documents_returns_only_tenant_records(self):
-        backend = MemoryStateBackend()
+    async def test_attestation_uri_defaults_empty_and_round_trips(
+        self, backend: StateBackend, sample_record: DocumentRecord
+    ):
+        await backend.create(sample_record)
+        before = await backend.get(sample_record.tenant_id, sample_record.document_id)
+        assert before is not None
+        assert before.attestation_uri == ""
 
+        await backend.update(
+            sample_record.tenant_id, sample_record.document_id, attestation_uri="s3://bucket/attestation.link"
+        )
+
+        after = await backend.get(sample_record.tenant_id, sample_record.document_id)
+        assert after is not None
+        assert after.attestation_uri == "s3://bucket/attestation.link"
+
+    async def test_list_documents_returns_only_tenant_records(self, backend: StateBackend):
         now = datetime.now(UTC).isoformat()
         for tenant in ["tenant-a", "tenant-b"]:
             for i in range(3):
@@ -85,15 +141,13 @@ class TestMemoryStateBackend:
                     )
                 )
 
-        records, next_token = await backend.list_documents("tenant-a", page_size=50)
+        records, next_token = await backend.list_documents("tenant-a", _query(page_size=50))
 
         assert len(records) == 3
         assert all(r.tenant_id == "tenant-a" for r in records)
         assert next_token == ""
 
-    async def test_list_documents_pagination(self):
-        backend = MemoryStateBackend()
-
+    async def test_list_documents_pagination(self, backend: StateBackend):
         now = datetime.now(UTC).isoformat()
         for i in range(5):
             await backend.create(
@@ -108,21 +162,32 @@ class TestMemoryStateBackend:
                 )
             )
 
-        page1, token1 = await backend.list_documents("tenant-a", page_size=2)
+        page1, token1 = await backend.list_documents("tenant-a", _query(page_size=2))
         assert len(page1) == 2
         assert token1 != ""
 
-        page2, token2 = await backend.list_documents("tenant-a", page_size=2, page_token=token1)
+        page2, token2 = await backend.list_documents("tenant-a", _query(page_size=2, page_token=token1))
         assert len(page2) == 2
         assert token2 != ""
 
-        page3, token3 = await backend.list_documents("tenant-a", page_size=2, page_token=token2)
+        page3, token3 = await backend.list_documents("tenant-a", _query(page_size=2, page_token=token2))
         assert len(page3) == 1
         assert token3 == ""
 
-    async def test_tenant_isolation(self):
-        backend = MemoryStateBackend()
+    async def test_list_documents_filters_by_status(self, backend: StateBackend):
+        await backend.create(
+            DocumentRecord(document_id="ok", tenant_id="tenant-a", status=JobStatus.JOB_STATUS_COMPLETED)
+        )
+        await backend.create(
+            DocumentRecord(document_id="bad", tenant_id="tenant-a", status=JobStatus.JOB_STATUS_FAILED)
+        )
+        failed = FieldFilter(field="status", operator="eq", value="JOB_STATUS_FAILED")
 
+        records, _ = await backend.list_documents("tenant-a", _query(filters=(failed,)))
+
+        assert [r.document_id for r in records] == ["bad"]
+
+    async def test_tenant_isolation(self, backend: StateBackend):
         now = datetime.now(UTC).isoformat()
         await backend.create(
             DocumentRecord(
@@ -155,6 +220,7 @@ class TestMemoryStateBackend:
 
 
 class TestMemoryStateBackendConcurrency:
+    # Memory only: these cover in-process atomicity of a dict store; Redis is a separate process.
     async def test_concurrent_writers_and_listers_stay_consistent(self):
         backend = MemoryStateBackend()
 
@@ -165,25 +231,36 @@ class TestMemoryStateBackendConcurrency:
 
         async def lister() -> None:
             for _ in range(20):
-                records, _ = await backend.list_documents("tenant-a", page_size=1000)
+                records, _ = await backend.list_documents("tenant-a", _query(page_size=1000))
                 ids = [r.document_id for r in records]
                 assert ids == sorted(ids)
                 await asyncio.sleep(0)
 
         await asyncio.gather(*(writer(i) for i in range(100)), *(lister() for _ in range(5)))
 
-        records, token = await backend.list_documents("tenant-a", page_size=1000)
+        records, token = await backend.list_documents("tenant-a", _query(page_size=1000))
         assert len(records) == 100
         assert token == ""
         assert all(r.status == 3 for r in records)
 
-    async def test_update_missing_raises_keyerror(self):
-        with pytest.raises(KeyError):
-            await MemoryStateBackend().update("tenant-a", "absent", status=1)
-
 
 def _record_json(record: DocumentRecord) -> str:
     return json.dumps(asdict(record))
+
+
+class TestLegacyRedisRecords:
+    async def test_record_stored_before_attestation_uri_existed_still_loads(self):
+        fake = FakeRedis()
+        with patch("crosscodex_ingestion.state.redis.from_url", return_value=fake):
+            backend = RedisStateBackend("redis://localhost:6379")
+        legacy = asdict(DocumentRecord(document_id="old", tenant_id="t", status=JobStatus.JOB_STATUS_COMPLETED))
+        del legacy["attestation_uri"]
+        await fake.hset("doc:t:old", "data", json.dumps(legacy))
+
+        record = await backend.get("t", "old")
+
+        assert record is not None
+        assert record.attestation_uri == ""
 
 
 class TestRedisStateBackend:
@@ -248,27 +325,21 @@ class TestRedisStateBackend:
         mock_redis.hset.assert_not_awaited()
 
     @patch("crosscodex_ingestion.state.redis.from_url")
-    async def test_list_documents_scans_sorts_and_paginates(self, mock_redis_from_url: MagicMock):
-        records = {
-            f"doc:tenant-a:doc-{i}": DocumentRecord(document_id=f"doc-{i}", tenant_id="tenant-a", status=1)
-            for i in (2, 0, 1)
-        }
+    async def test_list_documents_scans_only_the_tenant_prefix(self, mock_redis_from_url: MagicMock):
+        patterns: list[str] = []
 
         async def scan_iter(match: str):
-            assert match == "doc:tenant-a:*"
-            for key in records:
-                yield key
+            patterns.append(match)
+            return
+            yield
 
         mock_redis = AsyncMock()
         mock_redis.scan_iter = scan_iter
-        mock_redis.hget.side_effect = lambda key, _field: _record_json(records[key])
         mock_redis_from_url.return_value = mock_redis
 
-        backend = RedisStateBackend("redis://localhost:6379")
-        page, next_page = await backend.list_documents("tenant-a", page_size=2)
+        page, token = await RedisStateBackend("redis://localhost:6379").list_documents("tenant-a", _query())
 
-        assert [r.document_id for r in page] == ["doc-0", "doc-1"]
-        assert next_page == "2"
+        assert (patterns, page, token) == (["doc:tenant-a:*"], [], "")
 
     @patch("crosscodex_ingestion.state.redis.from_url")
     async def test_slow_redis_call_does_not_block_event_loop(self, mock_redis_from_url: MagicMock):

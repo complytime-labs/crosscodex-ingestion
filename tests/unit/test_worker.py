@@ -10,10 +10,12 @@ from unittest.mock import AsyncMock, Mock, patch
 import pytest
 from prometheus_client import REGISTRY as PROMETHEUS
 
+from crosscodex_ingestion.audit import AuditUnavailableError
 from crosscodex_ingestion.config import IngestionSettings
 from crosscodex_ingestion.converter import ConversionError, ConversionTimeout, DocumentLimitError
 from crosscodex_ingestion.html_profile import load_html_profiles
 from crosscodex_ingestion.mapping import load_registry
+from crosscodex_ingestion.nats_connection import NATS_UNAVAILABLE_MESSAGE
 from crosscodex_ingestion.output_schema import SCHEMA_VERSION
 from crosscodex_ingestion.state import DocumentRecord, MemoryStateBackend
 from crosscodex_ingestion.storage import FilesystemStorage
@@ -22,6 +24,7 @@ from crosscodex_ingestion.worker import (
     ERROR_CODE_UNAVAILABLE,
     JOB_STATUS_FAILED,
     SHUTDOWN_ERROR,
+    record_failure,
     run_conversion,
 )
 from tests.unit.output_samples import conforming_output, structured_output
@@ -725,6 +728,22 @@ async def test_internal_failures_return_generic_message_and_log_detail(
 
 
 @pytest.mark.asyncio
+async def test_user_caused_value_error_logs_a_warning_without_a_traceback(
+    settings, state_backend, storage_backend, audit_publisher, caplog
+):
+    """A mistake the caller made is not a server fault: WARNING, no stack trace."""
+    with caplog.at_level("DEBUG"):
+        await _failed_error_with(
+            ValueError("Unknown mapping 'nope'"), settings, state_backend, storage_backend, audit_publisher
+        )
+
+    failure_logs = [r for r in caplog.records if "Conversion failed for document doc-t" in r.getMessage()]
+    assert [r.levelname for r in failure_logs] == ["WARNING"]
+    assert "Unknown mapping 'nope'" in failure_logs[0].getMessage()
+    assert failure_logs[0].exc_info is None
+
+
+@pytest.mark.asyncio
 async def test_user_caused_value_error_keeps_specific_message(
     settings, state_backend, storage_backend, audit_publisher
 ):
@@ -815,6 +834,48 @@ async def test_cancelled_conversion_is_failed_with_retryable_error_and_audited(
     event = audit_publisher.publish.call_args.kwargs["event"]
     assert event["status"] == "failed"
     assert event["error"] == SHUTDOWN_ERROR
+
+
+@pytest.mark.asyncio
+async def test_record_failure_with_nats_down_keeps_failed_state_and_warns(state_backend, audit_publisher, caplog):
+    """NATS dropped mid-job: the FAILED state is what callers see, so a lost audit event must not raise."""
+    await state_backend.create(DocumentRecord(document_id="doc-t", tenant_id="tenant-t", status=1, metadata={}))
+    audit_publisher.publish.side_effect = AuditUnavailableError("NATS at nats://nats:4222 is unavailable")
+
+    with caplog.at_level("WARNING"):
+        await record_failure(state_backend, audit_publisher, "tenant-t", "doc-t", {}, SHUTDOWN_ERROR, "shutdown", "pdf")
+
+    record = await state_backend.get("tenant-t", "doc-t")
+    assert record.status == JOB_STATUS_FAILED
+    assert record.error == SHUTDOWN_ERROR
+    warnings = [r for r in caplog.records if "doc-t" in r.getMessage()]
+    assert [r.levelname for r in warnings] == ["WARNING"]
+    assert warnings[0].exc_info is None
+    assert "audit event was not recorded" in warnings[0].getMessage()
+
+
+@pytest.mark.asyncio
+async def test_record_failure_propagates_other_audit_errors(state_backend, audit_publisher):
+    """Only the known NATS-down case is downgraded to a warning."""
+    await state_backend.create(DocumentRecord(document_id="doc-t", tenant_id="tenant-t", status=1, metadata={}))
+    audit_publisher.publish.side_effect = RuntimeError("unexpected")
+
+    with pytest.raises(RuntimeError, match="unexpected"):
+        await record_failure(state_backend, audit_publisher, "tenant-t", "doc-t", {}, SHUTDOWN_ERROR, "shutdown", "pdf")
+
+
+@pytest.mark.asyncio
+async def test_conversion_with_nats_down_ends_failed_without_raising(
+    settings, state_backend, storage_backend, audit_publisher
+):
+    """Every audit publish fails: the job is FAILED and run_conversion returns, so no task exception is left."""
+    audit_publisher.publish.side_effect = AuditUnavailableError("NATS at nats://nats:4222 is unavailable")
+
+    with patch("crosscodex_ingestion.worker.convert_document", side_effect=ConversionError("boom")):
+        await _run_pdf_conversion(settings, state_backend, storage_backend, audit_publisher)
+
+    record = await state_backend.get("tenant-t", "doc-t")
+    assert record.status == JOB_STATUS_FAILED
 
 
 @pytest.mark.asyncio
@@ -1123,6 +1184,62 @@ class TestStructuredConversion:
             ASVS.sha256,
         )
 
+    async def test_link_byproducts_record_who_submitted_the_job(self, state_backend, storage_backend, audit_publisher):
+        attestation = Mock()
+        attestation.create_link.return_value = {"signed": {}, "signatures": []}
+        metadata = {"mapping_id": ASVS.id, "mapping_sha256": ASVS.sha256}
+        await state_backend.create(
+            DocumentRecord(
+                document_id="doc-s", tenant_id="tenant-s", status=1, metadata=metadata, audit={"created_by": "gateway"}
+            )
+        )
+
+        with patch("crosscodex_ingestion.worker.convert_structured", return_value=structured_output()):
+            await run_conversion(
+                document_id="doc-s",
+                tenant_id="tenant-s",
+                content=ASVS_JSON,
+                source_uri=None,
+                metadata=metadata,
+                settings=IngestionSettings(),
+                state=state_backend,
+                storage=storage_backend,
+                attestation=attestation,
+                audit=audit_publisher,
+                mappings=REGISTRY,
+                html_profiles=PROFILES,
+            )
+
+        assert attestation.create_link.call_args.kwargs["byproducts"]["created_by"] == "gateway"
+
+    async def test_attestation_uri_is_stored_on_the_record(self, state_backend, storage_backend, audit_publisher):
+        attestation = Mock()
+        attestation.create_link.return_value = {"signed": {}, "signatures": []}
+
+        with patch("crosscodex_ingestion.worker.convert_document", return_value=conforming_output()):
+            record = await _run_structured(
+                state_backend,
+                storage_backend,
+                audit_publisher,
+                content=b"%PDF-1.4",
+                metadata={},
+                attestation=attestation,
+            )
+
+        assert record.attestation_uri
+        assert record.attestation_uri.endswith("attestation.link")
+
+    async def test_attestation_uri_is_empty_when_attestation_is_disabled(
+        self, state_backend, storage_backend, audit_publisher
+    ):
+        with patch("crosscodex_ingestion.worker.convert_document", return_value=conforming_output()):
+            record = await _run_structured(
+                state_backend, storage_backend, audit_publisher, content=b"%PDF-1.4", metadata={}
+            )
+
+        assert record.status == 3
+        assert record.attestation_uri == ""
+
     async def test_documents_are_attested_without_mapping_fields(self, state_backend, storage_backend, audit_publisher):
         attestation = Mock()
         attestation.create_link.return_value = {"signed": {}, "signatures": []}
@@ -1321,3 +1438,25 @@ async def test_run_conversion_passes_the_html_profiles_to_the_converter(tmp_path
         )
 
     assert document.call_args.args[-1] is PROFILES
+
+
+@pytest.mark.asyncio
+async def test_completion_audit_with_nats_down_fails_unavailable_without_traceback(
+    settings, state_backend, storage_backend, audit_publisher, caplog
+):
+    """NATS drops at the completion audit: UNAVAILABLE with the URL-free message, warned without a traceback."""
+    audit_publisher.publish.side_effect = AuditUnavailableError("NATS at nats://nats:4222 is unavailable")
+
+    with (
+        caplog.at_level("WARNING"),
+        patch("crosscodex_ingestion.worker.convert_document", return_value=conforming_output()),
+    ):
+        await _run_pdf_conversion(settings, state_backend, storage_backend, audit_publisher)
+
+    record = await state_backend.get("tenant-t", "doc-t")
+    assert record.status == JOB_STATUS_FAILED
+    assert record.error == {"code": 7, "message": NATS_UNAVAILABLE_MESSAGE}
+    assert "nats://" not in record.error["message"]
+    assert all(r.exc_info is None for r in caplog.records)
+    assert not [r for r in caplog.records if r.levelname == "ERROR"]
+    assert any("doc-t" in r.getMessage() and r.levelname == "WARNING" for r in caplog.records)

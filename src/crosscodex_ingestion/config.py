@@ -55,9 +55,9 @@ class IngestionSettings(BaseSettings):
     structured_rlimit_as_mb: int = Field(default=4096, ge=0)
     structured_rlimit_cpu: int = Field(default=300, ge=0)
 
-    # Directory holding pre-downloaded Docling models (layout, table, OCR). The sandboxed
+    # Directory holding pre-downloaded Docling models (layout, table, OCR). The resource-limited
     # worker runs offline, so the server refuses to start if this is unset or not a directory.
-    # Fetch models with: docling-tools models download -o <dir>
+    # Fetch models with: uv run python scripts/download_models.py <dir>
     docling_artifacts_path: str = ""
 
     # RLIMIT_AS bounds virtual address space only, not resident memory. Importing torch alone
@@ -99,6 +99,8 @@ class IngestionSettings(BaseSettings):
     otel_exporter_otlp_protocol: str = "grpc"
     otel_service_name: str = "crosscodex-ingestion"
     otel_traces_sampler: str = "parentbased_always_on"
+    # Ratio from 0 to 1 for the traceidratio samplers; empty means 1.0. Validated at startup.
+    otel_traces_sampler_arg: str = ""
 
     @property
     def allowed_formats_set(self) -> set[str]:

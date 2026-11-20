@@ -12,7 +12,7 @@ For maintainers (back to the [README](../README.md)). How to request a conversio
 | Dispatch | `dispatch.py` | service | The metadata carries the mapping, through NATS as well. |
 | Resolve | `worker._request_mapping` | worker | Looks the mapping up in the worker's own registry; a missing mapping or another hash is `MappingSkewError` (`UNAVAILABLE`, retryable). |
 | Fetch / format | `worker.run_conversion` (`_check_format`, in a thread), `security.confirm_structured_format` | worker | With a mapping its format is the expected one: uploads need no MIME type, and URL downloads skip the 512-byte sniff (`fetch_url(expected_format=…)`); the complete bytes must confirm the format, which must be in `ALLOWED_FORMATS`. Without a mapping, a JSON/CSV/XLSX input is recognised only by the workbook's ZIP contents, `metadata.mime_type` or the URL extension, and fails with the list of registered mappings; bare JSON or CSV without either fails as "Cannot determine file type", whose message says JSON and CSV need a mapping. |
-| Convert | `converter.convert_structured` -> `structured.run_job` | sandboxed structured worker | Reader -> `build_tree` -> `emit_elements` (below). |
+| Convert | `converter.convert_structured` -> `structured.run_job` | resource-limited structured worker | Reader -> `build_tree` -> `emit_elements` (below). |
 | Validate, store, attest | `worker.run_conversion` | worker | The same `validate_output` as for documents; the attestation's byproducts add `mapping_id` and `mapping_sha256`. |
 
 Inside the structured worker (`structured.convert_source`):
@@ -156,7 +156,7 @@ without an extension (GitHub release downloads redirect to such URLs).
 
 All structured input is untrusted. Defences, in the order they apply:
 
-- **Service process** (not sandboxed): `MAX_DOCUMENT_SIZE` / `MAX_URL_BYTES`.
+- **Service process** (not resource-limited like the worker): `MAX_DOCUMENT_SIZE` / `MAX_URL_BYTES`.
   - Untrusted bytes are never handed to `zipfile` here: it walks every record within the directory size the
     end record declares, whatever entry count that record gives, so a forged end record makes it build a
     million `ZipInfo` objects.
@@ -170,7 +170,7 @@ All structured input is untrusted. Defences, in the order they apply:
     workbooks and documents checked meet these rules.
   - Sniffing and confirmation run in a thread (`asyncio.to_thread`), not on the event loop.
   - The CSV-vs-JSON check is a match on JSON's first token, not a parse. Nothing else is parsed here.
-- **Worker sandbox**: separate process and session, `STRUCTURED_RLIMIT_AS_MB`, `STRUCTURED_RLIMIT_CPU`,
+- **Worker limits**: separate process and session, `STRUCTURED_RLIMIT_AS_MB`, `STRUCTURED_RLIMIT_CPU`,
   `RLIMIT_FSIZE_MB`, `STRUCTURED_MAX_PROCESSING_TIME`, minimal environment.
 - **JSON**: strict UTF-8; a depth scan before parsing (`MAX_JSON_DEPTH`), one left-to-right tokenizing
   pass in which brackets inside strings don't count and an unterminated string ends the scan (retrying

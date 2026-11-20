@@ -2,6 +2,7 @@
 
 import asyncio
 import base64
+import gc
 import json
 from unittest.mock import AsyncMock, Mock, patch
 
@@ -17,6 +18,7 @@ from crosscodex_ingestion.dispatch import (
 )
 from crosscodex_ingestion.html_profile import load_html_profiles
 from crosscodex_ingestion.mapping import MappingRegistry
+from crosscodex_ingestion.nats_connection import NatsConnection, NatsUnavailableError
 from crosscodex_ingestion.state import StateBackend
 from crosscodex_ingestion.storage import StorageBackend
 
@@ -138,6 +140,44 @@ class TestEmbeddedDispatch:
             )
 
     @pytest.mark.asyncio
+    async def test_a_failed_conversion_task_is_logged_not_left_unretrieved(
+        self, mock_settings, mock_state, mock_storage, mock_attestation, mock_audit, caplog
+    ):
+        """An exception escaping run_conversion is retrieved and logged with the document ID."""
+        dispatcher = EmbeddedDispatch(
+            settings=mock_settings,
+            state=mock_state,
+            storage=mock_storage,
+            attestation=mock_attestation,
+            audit=mock_audit,
+            mappings=REGISTRY,
+            html_profiles=PROFILES,
+        )
+        loop = asyncio.get_running_loop()
+        unretrieved: list[dict] = []
+        loop.set_exception_handler(lambda _loop, ctx: unretrieved.append(ctx))
+
+        with (
+            patch("crosscodex_ingestion.dispatch.run_conversion", side_effect=RuntimeError("state store down")),
+            caplog.at_level("ERROR"),
+        ):
+            await dispatcher.dispatch(
+                document_id="doc-err", tenant_id="tenant-1", content=b"x", source_uri=None, metadata={}
+            )
+            (task,) = dispatcher._tasks
+            await asyncio.wait([task])
+            await asyncio.sleep(0)  # done callbacks run on the next loop turn
+
+        errors = [r for r in caplog.records if "doc-err" in r.getMessage()]
+        assert len(errors) == 1
+        assert errors[0].levelname == "ERROR"
+        assert "state store down" in str(errors[0].exc_info[1])
+        assert dispatcher._tasks == set()
+        del task
+        gc.collect()
+        assert unretrieved == []
+
+    @pytest.mark.asyncio
     async def test_semaphore_limits_concurrency(
         self, mock_settings, mock_state, mock_storage, mock_attestation, mock_audit
     ):
@@ -257,106 +297,109 @@ class TestEmbeddedDispatch:
             assert len(dispatcher._tasks) == 0
 
 
+def _nats_connection(available: bool = True) -> tuple[Mock, AsyncMock]:
+    """A shared NatsConnection whose client hands out the returned JetStream context."""
+    mock_js = AsyncMock()
+    connection = Mock(spec=NatsConnection)
+    connection.client = AsyncMock()
+    # jetstream() is synchronous, not async
+    connection.client.jetstream = Mock(return_value=mock_js)
+    connection.available = available
+    connection.url = "nats://localhost:4222"
+    return connection, mock_js
+
+
 class TestNatsDispatch:
     """Test the NATS JetStream dispatch backend."""
 
     @pytest.mark.asyncio
-    async def test_dispatch_publishes_to_nats(self, mock_settings):
+    async def test_dispatch_publishes_to_nats(self):
         """Test that dispatch publishes serialized job to NATS."""
-        mock_nc = AsyncMock()
-        mock_js = AsyncMock()
-        # jetstream() is synchronous, not async
-        mock_nc.jetstream = Mock(return_value=mock_js)
+        connection, mock_js = _nats_connection()
+        dispatcher = NatsDispatch(connection)
 
-        with patch("crosscodex_ingestion.dispatch.nats.connect", return_value=mock_nc):
-            dispatcher = NatsDispatch(settings=mock_settings)
-            await dispatcher._connect()
+        # Dispatch a job
+        await dispatcher.dispatch(
+            document_id="doc-123",
+            tenant_id="tenant-1",
+            content=b"test content",
+            source_uri="https://example.com/doc.pdf",
+            metadata={"mime_type": "application/pdf"},
+        )
 
-            # Dispatch a job
-            await dispatcher.dispatch(
-                document_id="doc-123",
-                tenant_id="tenant-1",
-                content=b"test content",
-                source_uri="https://example.com/doc.pdf",
-                metadata={"mime_type": "application/pdf"},
-            )
+        # Verify publish was called
+        mock_js.publish.assert_called_once()
 
-            # Verify publish was called
-            mock_js.publish.assert_called_once()
+        # Verify subject and payload (using keyword arguments)
+        call_kwargs = mock_js.publish.call_args.kwargs
+        assert call_kwargs["subject"] == "ingestion.jobs"
 
-            # Verify subject and payload (using keyword arguments)
-            call_kwargs = mock_js.publish.call_args.kwargs
-            assert call_kwargs["subject"] == "ingestion.jobs"
-
-            # Verify payload structure
-            payload = json.loads(call_kwargs["payload"])
-            assert payload["document_id"] == "doc-123"
-            assert payload["tenant_id"] == "tenant-1"
-            assert payload["content"] == base64.b64encode(b"test content").decode("utf-8")
-            assert payload["source_uri"] == "https://example.com/doc.pdf"
-            assert payload["metadata"] == {"mime_type": "application/pdf"}
+        # Verify payload structure
+        payload = json.loads(call_kwargs["payload"])
+        assert payload["document_id"] == "doc-123"
+        assert payload["tenant_id"] == "tenant-1"
+        assert payload["content"] == base64.b64encode(b"test content").decode("utf-8")
+        assert payload["source_uri"] == "https://example.com/doc.pdf"
+        assert payload["metadata"] == {"mime_type": "application/pdf"}
 
     @pytest.mark.asyncio
-    async def test_job_carries_the_mapping_id_and_hash(self, mock_settings):
+    async def test_job_carries_the_mapping_id_and_hash(self):
         """The consuming worker re-checks the hash against its own mappings (worker.MappingSkewError)."""
-        mock_nc = AsyncMock()
-        mock_js = AsyncMock()
-        mock_nc.jetstream = Mock(return_value=mock_js)
+        connection, mock_js = _nats_connection()
         metadata = {"mapping_id": "owasp-asvs-5.0.0-json", "mapping_sha256": "a" * 64}
 
-        with patch("crosscodex_ingestion.dispatch.nats.connect", return_value=mock_nc):
-            dispatcher = NatsDispatch(settings=mock_settings)
-            await dispatcher.dispatch(
-                document_id="doc-123", tenant_id="tenant-1", content=b"{}", source_uri=None, metadata=metadata
-            )
+        dispatcher = NatsDispatch(connection)
+        await dispatcher.dispatch(
+            document_id="doc-123", tenant_id="tenant-1", content=b"{}", source_uri=None, metadata=metadata
+        )
 
         payload = json.loads(mock_js.publish.call_args.kwargs["payload"])
         assert payload["metadata"] == metadata
 
     @pytest.mark.asyncio
-    async def test_dispatch_with_null_content(self, mock_settings):
+    async def test_dispatch_with_null_content(self):
         """Test that dispatch handles None content correctly."""
-        mock_nc = AsyncMock()
-        mock_js = AsyncMock()
-        # jetstream() is synchronous, not async
-        mock_nc.jetstream = Mock(return_value=mock_js)
+        connection, mock_js = _nats_connection()
+        dispatcher = NatsDispatch(connection)
 
-        with patch("crosscodex_ingestion.dispatch.nats.connect", return_value=mock_nc):
-            dispatcher = NatsDispatch(settings=mock_settings)
-            await dispatcher._connect()
+        # Dispatch with None content
+        await dispatcher.dispatch(
+            document_id="doc-123",
+            tenant_id="tenant-1",
+            content=None,
+            source_uri="https://example.com/doc.pdf",
+            metadata={},
+        )
 
-            # Dispatch with None content
-            await dispatcher.dispatch(
-                document_id="doc-123",
-                tenant_id="tenant-1",
-                content=None,
-                source_uri="https://example.com/doc.pdf",
-                metadata={},
-            )
-
-            # Verify payload
-            call_args = mock_js.publish.call_args
-            payload = json.loads(call_args[1]["payload"])
-            assert payload["content"] is None
+        # Verify payload
+        call_args = mock_js.publish.call_args
+        payload = json.loads(call_args[1]["payload"])
+        assert payload["content"] is None
 
     @pytest.mark.asyncio
-    async def test_shutdown_closes_nats(self, mock_settings):
-        """Test that shutdown closes the NATS connection."""
-        mock_nc = AsyncMock()
-        mock_js = AsyncMock()
-        # jetstream() is synchronous, not async
-        mock_nc.jetstream = Mock(return_value=mock_js)
+    async def test_dispatch_while_nats_is_unavailable_raises(self):
+        """The servicer rejects submissions first; this covers NATS dropping between that check and here."""
+        connection, mock_js = _nats_connection(available=False)
+        dispatcher = NatsDispatch(connection)
 
-        with patch("crosscodex_ingestion.dispatch.nats.connect", return_value=mock_nc):
-            dispatcher = NatsDispatch(settings=mock_settings)
-            await dispatcher._connect()
+        with pytest.raises(NatsUnavailableError, match=r"NATS at nats://localhost:4222 is unavailable.*doc-123"):
+            await dispatcher.dispatch(
+                document_id="doc-123", tenant_id="tenant-1", content=b"x", source_uri=None, metadata={}
+            )
 
-            # Shutdown
-            await dispatcher.shutdown(grace_seconds=5)
+        mock_js.publish.assert_not_called()
 
-            # Verify drain and close were called
-            mock_nc.drain.assert_called_once()
-            mock_nc.close.assert_called_once()
+    @pytest.mark.asyncio
+    async def test_shutdown_leaves_the_shared_connection_open(self):
+        """The connection also carries audit events; server.serve() closes it after the dispatch shuts down."""
+        connection, _ = _nats_connection()
+        dispatcher = NatsDispatch(connection)
+
+        await dispatcher.shutdown(grace_seconds=5)
+
+        connection.client.drain.assert_not_called()
+        connection.client.close.assert_not_called()
+        connection.close.assert_not_called()
 
 
 class TestCreateDispatch:
@@ -385,6 +428,7 @@ class TestCreateDispatch:
         settings = Mock(spec=IngestionSettings)
         settings.execution_mode = "distributed"
         settings.nats_url = "nats://localhost:4222"
+        connection, _ = _nats_connection()
 
         dispatcher = create_dispatch(
             settings=settings,
@@ -394,9 +438,27 @@ class TestCreateDispatch:
             audit=mock_audit,
             mappings=REGISTRY,
             html_profiles=PROFILES,
+            nats=connection,
         )
 
         assert isinstance(dispatcher, NatsDispatch)
+
+    def test_distributed_mode_without_nats_is_rejected(self, mock_state, mock_storage, mock_attestation, mock_audit):
+        """Distributed mode publishes every job to NATS, so it cannot run without NATS_URL."""
+        settings = Mock(spec=IngestionSettings)
+        settings.execution_mode = "distributed"
+
+        with pytest.raises(ValueError, match="NATS_URL"):
+            create_dispatch(
+                settings=settings,
+                state=mock_state,
+                storage=mock_storage,
+                attestation=mock_attestation,
+                audit=mock_audit,
+                mappings=REGISTRY,
+                html_profiles=PROFILES,
+                nats=None,
+            )
 
     def test_create_dispatch_invalid_mode(self, mock_state, mock_storage, mock_attestation, mock_audit):
         """Test that create_dispatch raises error for invalid execution mode."""

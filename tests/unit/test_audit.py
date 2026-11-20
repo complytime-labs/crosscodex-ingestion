@@ -1,107 +1,132 @@
 """
-test_audit.py — Tests for audit event publishing to NATS JetStream with logging fallback.
+test_audit.py — Tests for audit event publishing over core NATS, with a logging fallback when NATS_URL is unset.
 """
 
 import json
 from hashlib import sha256
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, Mock
 
 import pytest
 
-from crosscodex_ingestion.audit import AuditPublisher
+from crosscodex_ingestion.audit import AuditPublisher, AuditUnavailableError
 from crosscodex_ingestion.config import IngestionSettings
+from crosscodex_ingestion.nats_connection import NatsConnection, NatsUnavailableError
+
+
+def _connection(available: bool = True) -> Mock:
+    connection = Mock(spec=NatsConnection)
+    connection.client = AsyncMock()
+    connection.available = available
+    connection.url = "nats://localhost:4222"
+    return connection
 
 
 @pytest.mark.asyncio
 async def test_nats_publish_sends_correct_subject_and_payload():
     """Test that publish sends to correct NATS subject with correct payload."""
     settings = IngestionSettings(nats_url="nats://localhost:4222")
+    connection = _connection()
+    publisher = AuditPublisher(settings, connection)
 
-    with patch("nats.connect", new_callable=AsyncMock) as mock_connect:
-        mock_nc = AsyncMock()
-        mock_connect.return_value = mock_nc
+    event = {"action": "document_ingested", "doc_id": "12345"}
+    await publisher.publish(
+        tenant_id="tenant-a",
+        event=event,
+        trace_id="trace-123",
+        span_id="span-456",
+    )
 
-        publisher = AuditPublisher(settings)
-        await publisher.connect()
+    # Verify publish was called
+    assert connection.client.publish.call_count == 1
+    call_args = connection.client.publish.call_args
 
-        event = {"action": "document_ingested", "doc_id": "12345"}
-        await publisher.publish(
-            tenant_id="tenant-a",
-            event=event,
-            trace_id="trace-123",
-            span_id="span-456",
-        )
+    # Check subject
+    assert call_args[0][0] == "tenant.tenant-a.audit.ingestion"
 
-        # Verify publish was called
-        assert mock_nc.publish.call_count == 1
-        call_args = mock_nc.publish.call_args
-
-        # Check subject
-        assert call_args[0][0] == "tenant.tenant-a.audit.ingestion"
-
-        # Check payload is JSON-encoded event
-        payload = call_args[0][1]
-        assert json.loads(payload) == event
+    # Check payload is JSON-encoded event
+    payload = call_args[0][1]
+    assert json.loads(payload) == event
 
 
 @pytest.mark.asyncio
 async def test_nats_publish_includes_all_required_headers():
     """Test that all 5 required headers are present."""
     settings = IngestionSettings(nats_url="nats://localhost:4222")
+    connection = _connection()
+    publisher = AuditPublisher(settings, connection)
 
-    with patch("nats.connect", new_callable=AsyncMock) as mock_connect:
-        mock_nc = AsyncMock()
-        mock_connect.return_value = mock_nc
+    event = {"action": "test"}
+    await publisher.publish(
+        tenant_id="tenant-b",
+        event=event,
+        trace_id="trace-abc",
+        span_id="span-def",
+    )
 
-        publisher = AuditPublisher(settings)
-        await publisher.connect()
+    # Extract headers from publish call
+    headers = connection.client.publish.call_args[1]["headers"]
 
-        event = {"action": "test"}
-        await publisher.publish(
-            tenant_id="tenant-b",
-            event=event,
-            trace_id="trace-abc",
-            span_id="span-def",
-        )
+    # Verify all required headers
+    assert "X-Trace-Id" in headers
+    assert "X-Span-Id" in headers
+    assert "X-Tenant-Id" in headers
+    assert "X-Timestamp" in headers
+    assert "X-Content-SHA256" in headers
 
-        # Extract headers from publish call
-        headers = mock_nc.publish.call_args[1]["headers"]
-
-        # Verify all required headers
-        assert "X-Trace-Id" in headers
-        assert "X-Span-Id" in headers
-        assert "X-Tenant-Id" in headers
-        assert "X-Timestamp" in headers
-        assert "X-Content-SHA256" in headers
-
-        assert headers["X-Trace-Id"] == "trace-abc"
-        assert headers["X-Span-Id"] == "span-def"
-        assert headers["X-Tenant-Id"] == "tenant-b"
+    assert headers["X-Trace-Id"] == "trace-abc"
+    assert headers["X-Span-Id"] == "span-def"
+    assert headers["X-Tenant-Id"] == "tenant-b"
 
 
 @pytest.mark.asyncio
 async def test_nats_publish_content_sha256_is_correct():
     """Test that X-Content-SHA256 header contains correct SHA-256 of payload."""
     settings = IngestionSettings(nats_url="nats://localhost:4222")
+    connection = _connection()
+    publisher = AuditPublisher(settings, connection)
 
-    with patch("nats.connect", new_callable=AsyncMock) as mock_connect:
-        mock_nc = AsyncMock()
-        mock_connect.return_value = mock_nc
+    event = {"action": "audit_test", "value": 42}
+    await publisher.publish(tenant_id="tenant-c", event=event)
 
-        publisher = AuditPublisher(settings)
-        await publisher.connect()
+    # Get payload and headers
+    payload = connection.client.publish.call_args[0][1]
+    headers = connection.client.publish.call_args[1]["headers"]
 
-        event = {"action": "audit_test", "value": 42}
-        await publisher.publish(tenant_id="tenant-c", event=event)
+    # Compute expected SHA-256
+    expected_sha256 = sha256(payload).hexdigest()
 
-        # Get payload and headers
-        payload = mock_nc.publish.call_args[0][1]
-        headers = mock_nc.publish.call_args[1]["headers"]
+    assert headers["X-Content-SHA256"] == expected_sha256
 
-        # Compute expected SHA-256
-        expected_sha256 = sha256(payload).hexdigest()
 
-        assert headers["X-Content-SHA256"] == expected_sha256
+@pytest.mark.asyncio
+async def test_publish_while_nats_is_unavailable_raises_instead_of_dropping(caplog):
+    """A configured but disconnected NATS must not lose the event silently or log it as if delivered."""
+    settings = IngestionSettings(nats_url="nats://localhost:4222")
+    connection = _connection(available=False)
+    publisher = AuditPublisher(settings, connection)
+
+    with pytest.raises(AuditUnavailableError, match=r"NATS at nats://localhost:4222 is unavailable"):
+        await publisher.publish(tenant_id="tenant-d", event={"action": "lost"})
+
+    connection.client.publish.assert_not_called()
+    assert not [r for r in caplog.records if "lost" in r.getMessage()]
+
+
+def test_audit_unavailable_is_a_nats_unavailable_error():
+    """Callers that handle any NATS outage (the servicer) catch both with one except clause."""
+    assert issubclass(AuditUnavailableError, NatsUnavailableError)
+    assert issubclass(AuditUnavailableError, RuntimeError)
+
+
+@pytest.mark.asyncio
+async def test_publish_before_the_first_connect_raises():
+    settings = IngestionSettings(nats_url="nats://localhost:4222")
+    connection = _connection(available=False)
+    connection.client = None
+    publisher = AuditPublisher(settings, connection)
+
+    with pytest.raises(AuditUnavailableError):
+        await publisher.publish(tenant_id="tenant-e", event={"action": "early"})
 
 
 @pytest.mark.asyncio
@@ -109,8 +134,7 @@ async def test_log_fallback_when_no_nats_url(caplog):
     """Test that when nats_url is empty, publish logs the event instead."""
     settings = IngestionSettings(nats_url="")
 
-    publisher = AuditPublisher(settings)
-    await publisher.connect()
+    publisher = AuditPublisher(settings, None)
 
     event = {"action": "document_processed", "size": 1024}
 
@@ -133,64 +157,3 @@ async def test_log_fallback_when_no_nats_url(caplog):
     log_text = " ".join([r.message for r in caplog.records])
     assert "tenant-log" in log_text
     assert "document_processed" in log_text
-
-
-@pytest.mark.asyncio
-async def test_close_cleans_up_nats_connection():
-    """Test that close() properly closes the NATS connection."""
-    settings = IngestionSettings(nats_url="nats://localhost:4222")
-
-    with patch("nats.connect", new_callable=AsyncMock) as mock_connect:
-        mock_nc = AsyncMock()
-        mock_connect.return_value = mock_nc
-
-        publisher = AuditPublisher(settings)
-        await publisher.connect()
-        await publisher.close()
-
-        # Verify close was called
-        mock_nc.close.assert_called_once()
-
-
-@pytest.mark.asyncio
-async def test_tls_connection_when_certs_provided():
-    """Test that TLS SSLContext is created when cert/key/ca are provided."""
-    settings = IngestionSettings(
-        nats_url="nats://localhost:4222",
-        nats_tls_cert="/path/to/cert.pem",
-        nats_tls_key="/path/to/key.pem",
-        nats_tls_ca="/path/to/ca.pem",
-    )
-
-    with (
-        patch("nats.connect", new_callable=AsyncMock) as mock_connect,
-        patch("ssl.create_default_context") as mock_ssl_context,
-    ):
-        mock_ctx = MagicMock()
-        mock_ssl_context.return_value = mock_ctx
-        mock_nc = AsyncMock()
-        mock_connect.return_value = mock_nc
-
-        publisher = AuditPublisher(settings)
-        await publisher.connect()
-
-        # Verify SSL context was created
-        mock_ssl_context.assert_called_once()
-
-        # Verify connect was called with tls parameter
-        mock_connect.assert_called_once()
-        call_kwargs = mock_connect.call_args[1]
-        assert "tls" in call_kwargs
-        assert call_kwargs["tls"] == mock_ctx
-
-
-@pytest.mark.asyncio
-async def test_close_is_noop_for_log_fallback():
-    """Test that close() is a no-op when using log fallback."""
-    settings = IngestionSettings(nats_url="")
-
-    publisher = AuditPublisher(settings)
-    await publisher.connect()
-
-    # Should not raise
-    await publisher.close()

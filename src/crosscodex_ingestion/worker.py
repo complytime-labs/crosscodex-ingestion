@@ -23,7 +23,7 @@ from typing import Any
 from opentelemetry import trace
 
 from crosscodex_ingestion.attestation import AttestationManager
-from crosscodex_ingestion.audit import AuditPublisher
+from crosscodex_ingestion.audit import AuditPublisher, AuditUnavailableError
 from crosscodex_ingestion.config import IngestionSettings
 from crosscodex_ingestion.converter import (
     ConversionError,
@@ -41,6 +41,7 @@ from crosscodex_ingestion.metrics import (
     REQUESTS_TOTAL,
     STRUCTURE_WARNINGS,
 )
+from crosscodex_ingestion.nats_connection import NATS_UNAVAILABLE_MESSAGE, NatsUnavailableError
 from crosscodex_ingestion.output_schema import SCHEMA_VERSION, OutputSchemaError, Violation, validate_output
 from crosscodex_ingestion.quality import measure_structure
 from crosscodex_ingestion.security import (
@@ -201,17 +202,21 @@ async def record_failure(
         error=error,
     )
 
-    await audit.publish(
-        tenant_id=tenant_id,
-        event={
-            "document_id": document_id,
-            "tenant_id": tenant_id,
-            "status": "failed",
-            "error": audit_error or error,
-        },
-        trace_id=metadata.get("correlation_id", ""),
-        span_id="",
-    )
+    try:
+        await audit.publish(
+            tenant_id=tenant_id,
+            event={
+                "document_id": document_id,
+                "tenant_id": tenant_id,
+                "status": "failed",
+                "error": audit_error or error,
+            },
+            trace_id=metadata.get("correlation_id", ""),
+            span_id="",
+        )
+    except AuditUnavailableError as exc:
+        # The FAILED state above is what callers see; a lost audit event must not also fail the task.
+        logger.warning("Document %s marked FAILED, but its audit event was not recorded: %s", document_id, exc)
 
 
 async def run_conversion(
@@ -338,7 +343,7 @@ async def run_conversion(
             mime_type = metadata.get("mime_type", "")
             source_uri_for_validation = source_uri or metadata.get("source_uri", "")
 
-            # Reads the untrusted bytes in this (unsandboxed) process: keep it off the event loop.
+            # Reads the untrusted bytes in this (not resource-limited) process: keep it off the event loop.
             validated_format = await asyncio.to_thread(
                 _check_format,
                 input_bytes,
@@ -430,7 +435,7 @@ async def run_conversion(
             )
 
         # Step 8: Create attestation link (if enabled)
-        attestation_uri = None
+        attestation_uri = ""
         if attestation:
             with tracer.start_as_current_span("ingestion.attest") as span:
                 span.set_attribute("document.id", document_id)
@@ -453,10 +458,14 @@ async def run_conversion(
                         "sha256": output_hash,
                     }
                 }
+                # The submitting caller is recorded on the state record at submission (also in
+                # distributed mode, where the record lives in the shared state backend).
+                submitted = await state.get(tenant_id, document_id)
                 byproducts = {
                     "document_id": document_id,
                     "tenant_id": tenant_id,
                     "format": validated_format,
+                    "created_by": submitted.audit.get("created_by", "unknown") if submitted else "unknown",
                 }
                 if mapping:
                     byproducts["mapping_id"] = mapping.id
@@ -509,6 +518,7 @@ async def run_conversion(
             document_id,
             status=JOB_STATUS_COMPLETED,
             structured_json_uri=structured_json_uri,
+            attestation_uri=attestation_uri,
         )
 
         # Record metrics for successful conversion
@@ -524,6 +534,12 @@ async def run_conversion(
             logger.warning("Conversion failed for document %s: %s", document_id, exc.redacted()[0])
         elif isinstance(exc, DocumentLimitError):
             logger.warning("Conversion failed for document %s: %s", document_id, exc.redacted_message)
+        elif isinstance(exc, ValueError):
+            # The caller's mistake (unknown mapping, wrong format, hash mismatch): not a server fault
+            logger.warning("Conversion failed for document %s: %s", document_id, exc)
+        elif isinstance(exc, NatsUnavailableError):
+            # NATS dropped at the completion audit: an outage, not a bug. The message names the URL, so log only.
+            logger.warning("Conversion of document %s failed, NATS is unavailable: %s", document_id, exc)
         else:
             logger.exception("Conversion failed for document %s", document_id)
 
@@ -549,6 +565,10 @@ async def run_conversion(
             error_code = ERROR_CODE_UNAVAILABLE
             error_message = str(exc)
             error_type = "mapping_skew"
+        elif isinstance(exc, NatsUnavailableError):
+            error_code = ERROR_CODE_UNAVAILABLE
+            error_message = NATS_UNAVAILABLE_MESSAGE
+            error_type = "nats_unavailable"
         elif isinstance(exc, ConversionTimeout):
             error_code = ERROR_CODE_RESOURCE_EXHAUSTED
             error_message = str(exc)

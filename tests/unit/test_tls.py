@@ -14,7 +14,7 @@ from cryptography.x509.oid import ExtendedKeyUsageOID, NameOID
 from crosscodex_ingestion.config import IngestionSettings
 from crosscodex_ingestion.proto.crosscodex.v1 import ingestion_pb2, ingestion_pb2_grpc
 from crosscodex_ingestion.server import create_grpc_server
-from crosscodex_ingestion.tls import build_server_credentials
+from crosscodex_ingestion.tls import ClientAllowlistInterceptor, build_server_credentials, client_identity
 
 
 @dataclass(frozen=True)
@@ -213,3 +213,111 @@ def test_mutual_with_unreadable_file_refuses_to_start(pki):
 def test_allowlist_with_tls_off_refuses_to_start():
     with pytest.raises(ValueError, match="GRPC_ALLOWED_CLIENTS"):
         build_server_credentials(IngestionSettings(grpc_tls_mode="off", grpc_allowed_clients="gateway"))
+
+
+class _AuthContext:
+    """Minimal servicer context exposing only auth_context(), as gRPC populates it."""
+
+    def __init__(self, auth: dict[str, list[bytes]]):
+        self._auth = auth
+
+    def auth_context(self) -> dict[str, list[bytes]]:
+        return self._auth
+
+
+def test_client_identity_is_none_without_tls():
+    assert client_identity(_AuthContext({})) is None
+
+
+def test_client_identity_is_none_for_tls_without_client_certificate():
+    assert client_identity(_AuthContext({"transport_security_type": [b"ssl"]})) is None
+
+
+def test_client_identity_prefers_common_name_over_san():
+    auth = {
+        "transport_security_type": [b"ssl"],
+        "x509_common_name": [b"gateway"],
+        "x509_subject_alternative_name": [b"gateway.internal"],
+    }
+    assert client_identity(_AuthContext(auth)) == "gateway"
+
+
+def test_client_identity_falls_back_to_san():
+    auth = {"transport_security_type": [b"ssl"], "x509_subject_alternative_name": [b"gateway.internal"]}
+    assert client_identity(_AuthContext(auth)) == "gateway.internal"
+
+
+async def test_client_identity_reads_the_verified_certificate_over_the_wire(pki):
+    seen: list[str | None] = []
+
+    class Recording(_Servicer):
+        async def GetDocument(self, request, context):
+            seen.append(client_identity(context))
+            return ingestion_pb2.GetDocumentResponse()
+
+    server, port = create_grpc_server(IngestionSettings(grpc_tls_mode="mutual", **pki.server_paths), "127.0.0.1:0")
+    ingestion_pb2_grpc.add_IngestionServiceServicer_to_server(Recording(), server)
+    await server.start()
+    try:
+        await _call(port, pki, pki.client)
+    finally:
+        await server.stop(grace=0)
+    assert seen == ["gateway"]
+
+
+async def test_client_identity_is_none_over_plaintext():
+    seen: list[str | None] = []
+
+    class Recording(_Servicer):
+        async def GetDocument(self, request, context):
+            seen.append(client_identity(context))
+            return ingestion_pb2.GetDocumentResponse()
+
+    server, port = create_grpc_server(IngestionSettings(grpc_tls_mode="off"), "127.0.0.1:0")
+    ingestion_pb2_grpc.add_IngestionServiceServicer_to_server(Recording(), server)
+    await server.start()
+    try:
+        async with grpc.aio.insecure_channel(f"127.0.0.1:{port}") as channel:
+            await ingestion_pb2_grpc.IngestionServiceStub(channel).GetDocument(
+                ingestion_pb2.GetDocumentRequest(), timeout=5
+            )
+    finally:
+        await server.stop(grace=0)
+    assert seen == [None]
+
+
+def test_client_identity_without_allowlist_is_the_common_name_even_with_sans():
+    auth = {
+        "transport_security_type": [b"ssl"],
+        "x509_common_name": [b"foo"],
+        "x509_subject_alternative_name": [b"gateway"],
+    }
+    assert client_identity(_AuthContext(auth), set()) == "foo"
+
+
+def test_client_identity_with_allowlist_is_the_allowlisted_san_not_the_common_name():
+    auth = {
+        "transport_security_type": [b"ssl"],
+        "x509_common_name": [b"foo"],
+        "x509_subject_alternative_name": [b"gateway"],
+    }
+    assert client_identity(_AuthContext(auth), {"gateway"}) == "gateway"
+
+
+def test_client_identity_with_allowlist_picks_the_second_san_when_only_it_is_listed():
+    auth = {
+        "transport_security_type": [b"ssl"],
+        "x509_common_name": [b"foo"],
+        "x509_subject_alternative_name": [b"other.internal", b"gateway"],
+    }
+    assert client_identity(_AuthContext(auth), {"gateway"}) == "gateway"
+
+
+def test_client_identity_with_allowlist_is_none_when_nothing_is_listed():
+    auth = {"transport_security_type": [b"ssl"], "x509_common_name": [b"foo"]}
+    assert client_identity(_AuthContext(auth), {"gateway"}) is None
+
+
+def test_interceptor_refuses_an_empty_allowlist():
+    with pytest.raises(ValueError, match="non-empty allowlist"):
+        ClientAllowlistInterceptor(set())

@@ -1,14 +1,16 @@
 """Tests for converter module — subprocess isolation."""
 
 import asyncio
+import io
 import json
 import os
+import runpy
 import signal
 import subprocess
 import sys
 import tempfile
 from pathlib import Path
-from unittest.mock import AsyncMock, Mock, patch
+from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
 import pytest
 
@@ -26,7 +28,7 @@ from crosscodex_ingestion.converter import (
 from crosscodex_ingestion.html_profile import HtmlProfile, HtmlProfileRegistry, load_html_profiles
 from crosscodex_ingestion.mapping import load_registry
 from crosscodex_ingestion.output_schema import SCHEMA_VERSION
-from crosscodex_ingestion.structured import INPUT_ERROR_EXIT_CODE, StructuredSourceError
+from crosscodex_ingestion.structured import ERROR_FILE_NAME, INPUT_ERROR_EXIT_CODE, StructuredSourceError
 from tests.unit.process_helpers import SLEEPER_SCRIPT, is_running, wait_for_pids
 
 PROFILES = load_html_profiles("")
@@ -418,7 +420,7 @@ class TestOfflineModels:
 
 class TestValidateArtifactsPath:
     def test_unset_path_is_refused_with_download_instructions(self):
-        with pytest.raises(ValueError, match=r"DOCLING_ARTIFACTS_PATH.*docling-tools models download -o"):
+        with pytest.raises(ValueError, match=r"DOCLING_ARTIFACTS_PATH.*scripts/download_models.py"):
             validate_artifacts_path("")
 
     def test_missing_directory_is_refused(self, tmp_path):
@@ -832,3 +834,126 @@ class TestRealWorkerProfileProvenance:
 
         assert result["conversion_warnings"] == ["html_profile_ambiguous"]
         assert "html_profile" not in result["metadata"]
+
+
+class TestPlainText:
+    """text/plain is paragraphs: Docling's sniffer must not turn CSV-, HTML- or Markdown-looking text into structure."""
+
+    @staticmethod
+    async def _convert_text(tmp_path: Path, name: str, text: str) -> dict:
+        source = tmp_path / name
+        source.write_text(text)
+        return await convert_document(str(source), "txt", IngestionSettings(), PROFILES)
+
+    async def test_csv_looking_text_is_paragraphs_and_no_table(self, tmp_path):
+        result = await self._convert_text(tmp_path, "people.txt", "name,role\nalice,admin\nbob,user\n")
+
+        assert [e["type"] for e in result["elements"]] == ["paragraph"]
+        assert "alice,admin" in result["elements"][0]["content"]
+
+    async def test_html_looking_text_has_no_heading(self, tmp_path):
+        result = await self._convert_text(tmp_path, "page.txt", "<h1>x</h1>\n")
+
+        assert [e["type"] for e in result["elements"]] == ["paragraph"]
+        assert result["elements"][0]["content"] == "<h1>x</h1>"
+
+    async def test_markdown_looking_text_has_no_heading_or_table(self, tmp_path):
+        result = await self._convert_text(tmp_path, "notes.txt", "# Title\n\n| a | b |\n|---|---|\n| 1 | 2 |\n")
+
+        assert {e["type"] for e in result["elements"]} == {"paragraph"}
+        assert result["elements"][0]["content"] == "# Title"
+
+    async def test_blank_lines_separate_paragraphs(self, tmp_path):
+        result = await self._convert_text(tmp_path, "two.txt", "first line\nsecond line\n\n\n  \nthird\n")
+
+        assert [e["content"] for e in result["elements"]] == ["first line\nsecond line", "third"]
+
+    async def test_windows_line_endings_separate_paragraphs_too(self, tmp_path):
+        source = tmp_path / "crlf.txt"
+        source.write_bytes(b"first\r\n\r\nsecond\r\n")
+
+        result = await convert_document(str(source), "txt", IngestionSettings(), PROFILES)
+
+        assert [e["content"] for e in result["elements"]] == ["first", "second"]
+
+    async def test_two_kilobyte_json_array_completes(self, tmp_path):
+        body = json.dumps([{"id": n, "name": f"item-{n}"} for n in range(120)])
+        assert len(body) > 2048
+
+        result = await self._convert_text(tmp_path, "data.txt", body)
+
+        assert [e["type"] for e in result["elements"]] == ["paragraph"]
+
+    async def test_empty_text_converts_to_no_elements(self, tmp_path):
+        result = await self._convert_text(tmp_path, "empty.txt", "\n\n")
+
+        assert result["elements"] == []
+
+
+class TestInputParseFailure:
+    """A Docling backend failure on input whose format the service validated is the caller's problem."""
+
+    async def test_corrupt_docx_is_an_invalid_argument_naming_the_format(self, tmp_path):
+        source = tmp_path / "broken.docx"
+        source.write_bytes(b"PK\x03\x04 not really a zip archive")
+
+        with pytest.raises(ValueError, match=r"^The input could not be parsed as docx: .+") as excinfo:
+            await convert_document(str(source), "docx", IngestionSettings(), PROFILES)
+
+        assert str(tmp_path) not in str(excinfo.value)
+
+    @patch("crosscodex_ingestion.converter.asyncio.create_subprocess_exec", new_callable=AsyncMock)
+    @patch("crosscodex_ingestion.converter.shutil.copy2")
+    async def test_unexpected_worker_exit_stays_a_conversion_error(self, mock_copy2, mock_subprocess_run):
+        mock_subprocess_run.return_value = _proc(1, "Traceback: boom")
+
+        with pytest.raises(ConversionError):
+            await convert_document("/tmp/x.pdf", "pdf", IngestionSettings(), PROFILES)
+
+    @patch("crosscodex_ingestion.converter.asyncio.create_subprocess_exec", new_callable=AsyncMock)
+    @patch("crosscodex_ingestion.converter.shutil.copy2")
+    async def test_parse_exit_without_a_reason_file_is_a_conversion_error(self, mock_copy2, mock_subprocess_run):
+        mock_subprocess_run.return_value = _proc(converter.INPUT_PARSE_EXIT_CODE)
+
+        with pytest.raises(ConversionError, match="no reason"):
+            await convert_document("/tmp/x.pdf", "pdf", IngestionSettings(), PROFILES)
+
+    @pytest.mark.parametrize("message", ["", "  \n ", None])
+    def test_worker_falls_back_to_unknown_error_for_a_blank_docling_message(self, tmp_path, monkeypatch, message):
+        """Docling can fail with an empty message; the worker must still exit as a parse failure, not crash."""
+        failed = MagicMock()
+        failed.status = "failure"
+        failed.input.page_count = 1
+        failed.errors = [MagicMock(error_message=message)] if message is not None else []
+        fake_docling = {
+            name: MagicMock()
+            for name in (
+                "docling",
+                "docling.datamodel",
+                "docling.datamodel.base_models",
+                "docling.datamodel.pipeline_options",
+                "docling.document_converter",
+                "docling_core",
+                "docling_core.types",
+                "docling_core.types.doc",
+                "crosscodex_ingestion.extractor",
+                "crosscodex_ingestion.html_backend",
+            )
+        }
+        fake_docling["docling.document_converter"].DocumentConverter.return_value.convert.return_value = failed
+        for name, module in fake_docling.items():
+            monkeypatch.setitem(sys.modules, name, module)
+        output = tmp_path / "out.json"
+        argv = ["worker.py", str(tmp_path / "in.pdf"), str(output), "pdf", "0", "0", "0", str(tmp_path), "10"]
+        monkeypatch.setattr(sys, "argv", argv)
+        monkeypatch.setattr(sys, "stdin", io.StringIO("[]"))
+
+        script = tmp_path / "worker.py"
+        script.write_text(converter._WORKER_SCRIPT)
+
+        with pytest.raises(SystemExit) as excinfo:
+            runpy.run_path(str(script), run_name="__main__")
+
+        assert excinfo.value.code == converter.INPUT_PARSE_EXIT_CODE
+        reason_file = tmp_path / ERROR_FILE_NAME
+        assert json.loads(reason_file.read_text()) == {"reason": "unknown error"}

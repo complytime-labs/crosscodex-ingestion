@@ -50,6 +50,13 @@ class ConversionTimeout(Exception):
 # Worker exit code meaning "Docling rejected the document for exceeding max_pages".
 PAGE_LIMIT_EXIT_CODE = 3
 
+# Worker exit code meaning "Docling's backend could not parse input of the format the service validated";
+# the worker leaves the reason in ERROR_FILE_NAME.
+INPUT_PARSE_EXIT_CODE = 4
+
+# Longest parse-failure reason relayed to the client; Docling's own messages can be long tracebacks' worth.
+_MAX_PARSE_REASON = 200
+
 # The worker's hard CPU limit sits this far above the soft one. The kernel sends SIGXCPU at the
 # soft limit, so a CPU death is told apart from a SIGKILL (OOM killer) by its signal.
 CPU_KILL_GRACE_SECONDS = 5
@@ -69,7 +76,8 @@ class DocumentLimitError(ValueError):
 
 
 # Worker script executed in the subprocess
-_WORKER_SCRIPT = """
+_WORKER_SCRIPT = (
+    """
 import json
 import resource
 import sys
@@ -102,37 +110,60 @@ def main():
         resource.setrlimit(resource.RLIMIT_FSIZE, (rlimit_fsize, rlimit_fsize))
 
     # Import after setting rlimits
+    import re
+    from pathlib import Path
+
     from crosscodex_ingestion.extractor import extract_elements
     from docling.datamodel.base_models import ConversionStatus, InputFormat
     from docling.datamodel.pipeline_options import PdfPipelineOptions
     from docling.document_converter import DocumentConverter, HTMLFormatOption, PdfFormatOption
+    from docling_core.types.doc import DocItemLabel, DoclingDocument
     from crosscodex_ingestion.html_backend import html_backend_for
     from crosscodex_ingestion.html_profile import HtmlProfile
+    from crosscodex_ingestion.structured import ERROR_FILE_NAME
 
     # The profiles are JSON on stdin; the backend class records which one a conversion applied.
     backend = html_backend_for([HtmlProfile.from_json(profile) for profile in json.load(sys.stdin)])
 
-    # Models come from the pre-downloaded artifacts directory; HF_HUB_OFFLINE=1 in the
-    # environment guarantees nothing is fetched from the network.
-    pdf_options = PdfPipelineOptions(artifacts_path=artifacts_path)
-    converter = DocumentConverter(
-        format_options={
-            InputFormat.PDF: PdfFormatOption(pipeline_options=pdf_options),
-            InputFormat.HTML: HTMLFormatOption(backend=backend),
-        }
-    )
-    # Docling fails (rather than truncates) a document longer than max_num_pages. Any status
-    # other than SUCCESS is a failure: a PARTIAL_SUCCESS would silently drop pages.
-    result = converter.convert(input_path, max_num_pages=max_pages, raises_on_error=False)
-    if result.status != ConversionStatus.SUCCESS:
-        for error in result.errors:
-            print(error.error_message, file=sys.stderr)
-        # Docling's POLICY category also covers "file format not allowed", so check the
-        # page count itself rather than reporting every policy failure as the page limit.
-        if result.input.page_count > max_pages:
-            sys.exit(@PAGE_LIMIT_EXIT_CODE@)
-        sys.exit(1)
-    doc = result.document
+    if format_hint == "txt":
+        # No Docling format reads text verbatim: its Markdown backend would turn "# x" into a heading
+        # and its sniffer would call CSV-looking text a table. Plain text is paragraphs.
+        doc = DoclingDocument(name=Path(input_path).stem)
+        with open(input_path, encoding="utf-8", errors="replace") as f:
+            for paragraph in re.split(r"\\n\\s*\\n", f.read()):
+                if paragraph.strip():
+                    doc.add_text(label=DocItemLabel.TEXT, text=paragraph.strip())
+    else:
+        # Models come from the pre-downloaded artifacts directory; HF_HUB_OFFLINE=1 in the
+        # environment guarantees nothing is fetched from the network.
+        pdf_options = PdfPipelineOptions(artifacts_path=artifacts_path)
+        # Only the format the service validated is allowed, so Docling cannot sniff another one.
+        input_format = {"pdf": InputFormat.PDF, "docx": InputFormat.DOCX, "html": InputFormat.HTML}[format_hint]
+        converter = DocumentConverter(
+            allowed_formats=[input_format],
+            format_options={
+                InputFormat.PDF: PdfFormatOption(pipeline_options=pdf_options),
+                InputFormat.HTML: HTMLFormatOption(backend=backend),
+            },
+        )
+        # Docling fails (rather than truncates) a document longer than max_num_pages. Any status
+        # other than SUCCESS is a failure: a PARTIAL_SUCCESS would silently drop pages.
+        result = converter.convert(input_path, max_num_pages=max_pages, raises_on_error=False)
+        if result.status != ConversionStatus.SUCCESS:
+            for error in result.errors:
+                print(error.error_message, file=sys.stderr)
+            # Docling's POLICY category also covers "file format not allowed", so check the
+            # page count itself rather than reporting every policy failure as the page limit.
+            if result.input.page_count > max_pages:
+                sys.exit(@PAGE_LIMIT_EXIT_CODE@)
+            # The service validated the format, so what failed is parsing this input. Relay the
+            # first error's first line, minus the temp directory it may name, for the caller to fix.
+            reason = result.errors[0].error_message if result.errors else ""
+            reason = reason.replace(str(Path(input_path).parent), "").strip()
+            reason = reason.splitlines()[0] if reason else "unknown error"
+            Path(output_path).with_name(ERROR_FILE_NAME).write_text(json.dumps({"reason": reason}))
+            sys.exit(@INPUT_PARSE_EXIT_CODE@)
+        doc = result.document
 
     # Extract elements; the extractor exports Markdown itself, only if it needs the fallback.
     extraction_result = extract_elements(doc, None, format_hint)
@@ -153,8 +184,9 @@ def main():
 
 if __name__ == "__main__":
     main()
-""".replace("@PAGE_LIMIT_EXIT_CODE@", str(PAGE_LIMIT_EXIT_CODE)).replace(
-    "@CPU_KILL_GRACE_SECONDS@", str(CPU_KILL_GRACE_SECONDS)
+""".replace("@PAGE_LIMIT_EXIT_CODE@", str(PAGE_LIMIT_EXIT_CODE))
+    .replace("@INPUT_PARSE_EXIT_CODE@", str(INPUT_PARSE_EXIT_CODE))
+    .replace("@CPU_KILL_GRACE_SECONDS@", str(CPU_KILL_GRACE_SECONDS))
 )
 
 # Structured-source worker: limits first, then structured.run_job with the job read from stdin.
@@ -193,12 +225,12 @@ def validate_artifacts_path(artifacts_path: str) -> None:
     if not artifacts_path:
         raise ValueError(
             "DOCLING_ARTIFACTS_PATH is not set. Download the Docling models with "
-            "`docling-tools models download -o <dir>` and set DOCLING_ARTIFACTS_PATH=<dir>."
+            "`uv run python scripts/download_models.py <dir>` and set DOCLING_ARTIFACTS_PATH=<dir>."
         )
     if not Path(artifacts_path).is_dir():
         raise ValueError(
             f"DOCLING_ARTIFACTS_PATH {artifacts_path!r} is not a directory. Download the Docling models with "
-            "`docling-tools models download -o <dir>` and point DOCLING_ARTIFACTS_PATH at <dir>."
+            "`uv run python scripts/download_models.py <dir>` and point DOCLING_ARTIFACTS_PATH at <dir>."
         )
 
 
@@ -238,7 +270,7 @@ async def _run_worker(
     settings: IngestionSettings,
     stdin_data: bytes | None = None,
 ) -> _WorkerResult:
-    """Run *script* on a copy of *input_path* in a sandboxed subprocess; return what it left behind.
+    """Run *script* on a copy of *input_path* in a resource-limited subprocess; return what it left behind.
 
     The command is [python, script, input, output, *args]; *args* include the worker's rlimits
     (see _rlimits). The subprocess runs in its own session so that on
@@ -265,7 +297,7 @@ async def _run_worker(
             *args,
         ]
 
-        # Minimal environment: HF_HUB_OFFLINE keeps the sandboxed worker off the network.
+        # Minimal environment: HF_HUB_OFFLINE stops Docling fetching models; it is not a network block.
         env = {"PATH": os.environ.get("PATH", ""), "HF_HUB_OFFLINE": "1"}
         # The worker must import the same packages as this process; the FIPS image finds them
         # only via PYTHONPATH.
@@ -389,6 +421,8 @@ async def convert_document(
         When subprocess exceeds max_processing_time.
     DocumentLimitError
         When the document exceeds max_pages or the output exceeds max_extraction_length.
+    ValueError
+        When Docling cannot parse input of *format_hint* (the client sees the reason).
     ConversionError
         When subprocess fails (non-zero exit code).
     """
@@ -411,6 +445,8 @@ async def convert_document(
     )
     if result.returncode == PAGE_LIMIT_EXIT_CODE:
         raise DocumentLimitError(f"Document exceeds the maximum of {settings.max_pages} pages")
+    if result.returncode == INPUT_PARSE_EXIT_CODE:
+        raise _parse_error(result.error_file, format_hint)
     _raise_for_exit(result, limits)
     return _stamp(result)
 
@@ -422,6 +458,24 @@ def _stamp(result: _WorkerResult) -> dict[str, Any]:
     output["metadata"]["processing_time_ms"] = result.processing_time_ms
     # The version leads the document so a reader sees it before anything it must interpret.
     return {"schema_version": SCHEMA_VERSION, **output}
+
+
+def _parse_error(error_file: bytes | None, format_hint: str) -> ValueError:
+    """The client-facing error for a Docling parse failure; ConversionError if the worker's reason is unusable.
+
+    The reason file is the worker's output on untrusted input, so it is size-checked and truncated here.
+    """
+    try:
+        if error_file is None:
+            raise ValueError("no reason file")
+        if len(error_file) > _MAX_ERROR_FILE_BYTES:
+            raise ValueError("reason file too large")
+        reason = json.loads(error_file)["reason"]
+        if not isinstance(reason, str) or not reason:
+            raise TypeError("reason is not a non-empty string")
+    except (ValueError, KeyError, TypeError) as exc:
+        raise ConversionError(f"The Docling worker reported a parse failure with no reason ({exc})") from exc
+    return ValueError(f"The input could not be parsed as {format_hint}: {reason[:_MAX_PARSE_REASON]}")
 
 
 def _input_error(error_file: bytes, mapping: Mapping) -> ValueError:

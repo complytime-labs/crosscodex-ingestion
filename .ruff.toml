@@ -38,6 +38,12 @@ ignore = [
 "scripts/devpki.py" = [
     "T201",   # command-line script reports results on stdout/stderr
 ]
+"scripts/check_lock_parity.py" = [
+    "T201",   # command-line script reports results on stdout/stderr
+]
+"scripts/verify_attestation.py" = [
+    "T201",   # command-line script reports results on stdout/stderr
+]
 "tests/fixtures/generate_fixtures.py" = [
     "T201",   # command-line script reports progress on stdout
 ]

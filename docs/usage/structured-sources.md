@@ -15,11 +15,13 @@ file as `content` or `source_uri` as usual. This example sets `$G` as in
 [ASVS 5.0.0 release JSON](https://github.com/OWASP/ASVS/releases/download/v5.0.0_release/OWASP_Application_Security_Verification_Standard_5.0.0_en.json):
 
 ```bash
-$G -d "{\"tenant_context\": {\"tenant_id\": \"default\"},
-        \"content\": \"$(base64 -w0 OWASP_Application_Security_Verification_Standard_5.0.0_en.json)\",
-        \"mapping\": \"owasp-asvs-5.0.0-json\"}" \
-  localhost:8080 crosscodex.v1.IngestionService/ConvertDocument
+printf '{"tenant_context": {"tenant_id": "default"}, "content": "%s", "mapping": "owasp-asvs-5.0.0-json"}' \
+  "$(base64 -w0 OWASP_Application_Security_Verification_Standard_5.0.0_en.json)" |
+  $G -d @ localhost:8080 crosscodex.v1.IngestionService/ConvertDocument
 ```
+
+The request goes in on stdin (`-d @`) because a shell limits a single argument to 128 KiB, and the ASVS file is
+larger once base64-encoded.
 
 - The mapping must be registered, or `ConvertDocument` fails at once with `INVALID_ARGUMENT` listing the
   registered IDs. Mappings can't be sent inline or by URL.
@@ -241,7 +243,7 @@ it.
 
 ## Limits
 
-Structured input is untrusted. It runs in its own sandboxed worker subprocess, which imports no Docling or
+Structured input is untrusted. It runs in its own resource-limited worker subprocess (not a security sandbox: it runs as the service's uid), which imports no Docling or
 torch and so has much lower resource limits than the Docling worker. `MAX_DOCUMENT_SIZE`, `MAX_URL_BYTES`,
 `MAX_EXTRACTION_LENGTH`, `RLIMIT_FSIZE_MB` and `ALLOWED_FORMATS` apply as for documents.
 

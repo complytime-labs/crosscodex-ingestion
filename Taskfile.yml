@@ -18,9 +18,10 @@ tasks:
   proto:
     desc: Generate Python stubs from proto files
     cmds:
-      - mkdir -p {{.PROTO_OUT}}
+      - mkdir -p {{.PROTO_OUT}}/crosscodex/v1
+      # An earlier version of this task created crosscodex/__init__.py as a directory; the touch below recreates it as a file.
+      - rm -rf {{.PROTO_OUT}}/crosscodex/__init__.py
       - touch {{.PROTO_OUT}}/__init__.py
-      - mkdir -p {{.PROTO_OUT}}/crosscodex/__init__.py || true
       - >-
         uv run python -m grpc_tools.protoc
         --proto_path={{.PROTO_DIR}}
@@ -56,13 +57,10 @@ tasks:
       - uv run python scripts/devpki.py --verify --out {{.CERTS_DIR}}
 
   compose:up:
-    desc: Start the compose stack with mutual TLS and attestation (generates certs first)
+    desc: Start the compose stack with mutual TLS and attestation (generates certs first); fails if ingestion did not run
     deps: [certs]
     cmds:
-      # --force-recreate: podman-compose recreates only on a compose config change, so
-      # without it a regenerated PKI never reaches the running service (it keeps
-      # trusting the old CA) and a rebuilt image is not picked up.
-      - CERTS_DIR={{.CERTS_DIR}} podman-compose -f docker-compose.yml up --build --force-recreate
+      - CERTS_DIR={{.CERTS_DIR}} scripts/compose_up.sh
 
   build:
     desc: Build Python package
@@ -75,6 +73,6 @@ tasks:
       - uv run python -m crosscodex_ingestion
 
   clean:
-    desc: Remove generated files, test artifacts, and virtualenv
+    desc: Remove generated files, virtualenv and .test-output/ (including the dev CA and downloaded models)
     cmds:
       - rm -rf {{.PROTO_OUT}} .test-output/ dist/ build/ *.egg-info .venv

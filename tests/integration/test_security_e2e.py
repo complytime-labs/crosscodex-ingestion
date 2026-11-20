@@ -4,6 +4,7 @@ import grpc
 import pytest
 
 from crosscodex_ingestion.config import IngestionSettings
+from crosscodex_ingestion.listing import parse_list_options
 from crosscodex_ingestion.proto.crosscodex.v1 import common_pb2, ingestion_pb2, ingestion_pb2_grpc
 
 
@@ -24,7 +25,7 @@ async def test_missing_tenant_id_is_rejected(grpc_server_and_channel, server_sta
         await stub.ConvertDocument(request)
     assert exc.value.code() == grpc.StatusCode.INVALID_ARGUMENT
     assert "tenant_id" in exc.value.details()
-    stored, _ = await server_state.list_documents("")
+    stored, _ = await server_state.list_documents("", parse_list_options(common_pb2.ListOptions()))
     assert stored == []
 
 
