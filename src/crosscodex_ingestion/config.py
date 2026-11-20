@@ -99,6 +99,8 @@ class IngestionSettings(BaseSettings):
     otel_exporter_otlp_protocol: str = "grpc"
     otel_service_name: str = "crosscodex-ingestion"
     otel_traces_sampler: str = "parentbased_always_on"
+    # Ratio from 0 to 1 for the traceidratio samplers; empty means 1.0. Validated at startup.
+    otel_traces_sampler_arg: str = ""
 
     @property
     def allowed_formats_set(self) -> set[str]:

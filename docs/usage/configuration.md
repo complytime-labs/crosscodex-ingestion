@@ -6,7 +6,7 @@ For operators who deploy and configure the service. Back to the [README](../../R
 |---------------------------------------------------------------------------|---------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `DOCLING_ARTIFACTS_PATH`                                                  | (required)          | Directory with pre-downloaded Docling models; server refuses to start without it                                                                                                                                                 |
 | `GRPC_PORT`                                                               | `8080`              | gRPC server port                                                                                                                                                                                                                 |
-| `METRICS_PORT`                                                            | `9090`              | Prometheus metrics port                                                                                                                                                                                                          |
+| `METRICS_PORT`                                                            | `9090`              | Prometheus metrics port; startup fails if it cannot be bound                                                                                                                                                                                                        |
 | `LOG_LEVEL`                                                               | `info`              | Log level                                                                                                                                                                                                                        |
 | `EXECUTION_MODE`                                                          | `embedded`          | `embedded` or `distributed` (NATS)                                                                                                                                                                                               |
 | `MAX_CONCURRENT_CONVERSIONS`                                              | `4`                 | Conversions running at once (each is a separate subprocess)                                                                                                                                                                      |
@@ -41,9 +41,43 @@ For operators who deploy and configure the service. Back to the [README](../../R
 | `REDIS_URL`                                                               | (empty)             | Redis URL for state backend                                                                                                                                                                                                      |
 | `S3_ENDPOINT`, `S3_BUCKET`, `S3_ACCESS_KEY`, `S3_SECRET_KEY`, `S3_REGION` | (see `config.py`)   | S3 storage backend settings                                                                                                                                                                                                      |
 | `OTEL_EXPORTER_OTLP_ENDPOINT`                                             | (empty)             | OTLP endpoint for OpenTelemetry traces; tracing is off when empty                                                                                                                                                                |
-| `OTEL_EXPORTER_OTLP_PROTOCOL`, `OTEL_SERVICE_NAME`, `OTEL_TRACES_SAMPLER` | (see `config.py`)   | OTLP protocol (`grpc`), service name (`crosscodex-ingestion`) and sampler (`parentbased_always_on`) for tracing                                                                                                                  |
+| `OTEL_EXPORTER_OTLP_PROTOCOL`, `OTEL_SERVICE_NAME` | (see `config.py`) | OTLP protocol (`grpc`) and service name (`crosscodex-ingestion`) for tracing |
+| `OTEL_TRACES_SAMPLER` | `parentbased_always_on` | One of `always_on`, `always_off`, `traceidratio`, `parentbased_always_on`, `parentbased_always_off`, `parentbased_traceidratio`; any other value is a startup error |
+| `OTEL_TRACES_SAMPLER_ARG` | (empty, meaning `1.0`) | Sampling ratio from 0 to 1 for the `traceidratio` and `parentbased_traceidratio` samplers; ignored by the others |
 
 See `src/crosscodex_ingestion/config.py` for the full list.
+
+## Command line
+
+`python -m crosscodex_ingestion --help` prints usage and `--version` prints `crosscodex-ingestion <version>`;
+both exit without starting the server. There are no other flags: the service is configured only through the
+environment variables above.
+
+## Startup checks
+
+The server checks all of its configuration before it opens a port: the models directory, mappings, HTML
+profiles, attestation keys, gRPC and NATS TLS, `NATS_URL` in distributed mode, the sampler settings and
+`METRICS_PORT`. It reports every problem at once and exits with a non-zero status:
+
+```text
+Configuration errors:
+  - DOCLING_ARTIFACTS_PATH is not set ...
+  - OTEL_TRACES_SAMPLER 'bogus' is not one of: always_on, ...
+```
+
+A single problem is reported as `Configuration error: <message>`. A `METRICS_PORT` that cannot be bound is a
+startup error: the service does not run without its metrics. Every log line, including these checks'
+warnings, is JSON on stderr.
+
+## Metrics
+
+Prometheus metrics are served on `METRICS_PORT`.
+
+- `ingestion_requests_total{format,status}`: `format` is the format of the declared MIME type (`pdf`, `html`,
+  `docx`, `txt`, `json`, `csv`, `xlsx`), `mapping` when the request names a mapping, or `unknown`. Caller text
+  such as `format_version` is never a label value.
+- `ingestion_document_size_bytes` buckets: 1 KB, 10 KB, 100 KB, 1 MB, 10 MB, 50 MB, 100 MB.
+- `ingestion_duration_seconds` buckets: 1, 5, 15, 30, 60, 120, 300, 600, 1200, 1800 seconds.
 
 ## Limits and resource sizing
 

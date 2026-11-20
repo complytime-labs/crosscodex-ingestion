@@ -5,6 +5,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import grpc
 import pytest
+from prometheus_client import REGISTRY as PROMETHEUS_REGISTRY
 
 from crosscodex_ingestion.config import IngestionSettings
 from crosscodex_ingestion.listing import parse_list_options
@@ -922,3 +923,65 @@ class TestTenantIdValidation:
 
         assert context.abort_code == grpc.StatusCode.INVALID_ARGUMENT
         assert "document_id" in context.abort_details
+
+
+def _requests_total(format_label: str) -> float:
+    return (
+        PROMETHEUS_REGISTRY.get_sample_value("ingestion_requests_total", {"format": format_label, "status": "pending"})
+        or 0.0
+    )
+
+
+class TestRequestMetricLabels:
+    """ingestion_requests_total{format} takes a bounded value, never text the caller chose."""
+
+    async def _convert(self, servicer, **fields) -> None:
+        request = ingestion_pb2.ConvertDocumentRequest(
+            tenant_context=common_pb2.TenantContext(tenant_id="tenant-a"), content=b"x", **fields
+        )
+        await servicer.ConvertDocument(request, MockServicerContext())
+
+    @pytest.mark.asyncio
+    async def test_free_text_format_version_never_becomes_a_label(self, servicer):
+        before = _requests_total("unknown")
+
+        await self._convert(servicer, metadata=common_pb2.ContentMetadata(format_version="zz-1795120790608977744"))
+
+        assert _requests_total("zz-1795120790608977744") == 0.0
+        assert _requests_total("unknown") == before + 1
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        ("mime_type", "label"),
+        [
+            ("application/pdf", "pdf"),
+            ("Text/HTML; charset=utf-8", "html"),
+            ("application/x-attacker-1234", "unknown"),
+            ("", "unknown"),
+        ],
+    )
+    async def test_declared_mime_type_maps_to_a_known_format_or_unknown(self, servicer, mime_type, label):
+        before = _requests_total(label)
+
+        await self._convert(servicer, metadata=common_pb2.ContentMetadata(mime_type=mime_type))
+
+        assert _requests_total(label) == before + 1
+
+    @pytest.mark.asyncio
+    async def test_a_named_mapping_is_labelled_mapping(self, servicer):
+        before = _requests_total("mapping")
+
+        await self._convert(
+            servicer,
+            mapping="owasp-asvs-5.0.0-json",
+            metadata=common_pb2.ContentMetadata(mime_type="application/json"),
+        )
+
+        assert _requests_total("mapping") == before + 1
+
+
+def test_histogram_buckets_fit_document_sizes_and_conversion_times():
+    from crosscodex_ingestion.metrics import DOC_SIZE, DURATION
+
+    assert DOC_SIZE._upper_bounds == [1e3, 1e4, 1e5, 1e6, 1e7, 5e7, 1e8, float("inf")]
+    assert DURATION._upper_bounds == [1, 5, 15, 30, 60, 120, 300, 600, 1200, 1800, float("inf")]

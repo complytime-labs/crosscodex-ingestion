@@ -727,6 +727,22 @@ async def test_internal_failures_return_generic_message_and_log_detail(
 
 
 @pytest.mark.asyncio
+async def test_user_caused_value_error_logs_a_warning_without_a_traceback(
+    settings, state_backend, storage_backend, audit_publisher, caplog
+):
+    """A mistake the caller made is not a server fault: WARNING, no stack trace."""
+    with caplog.at_level("DEBUG"):
+        await _failed_error_with(
+            ValueError("Unknown mapping 'nope'"), settings, state_backend, storage_backend, audit_publisher
+        )
+
+    failure_logs = [r for r in caplog.records if "Conversion failed for document doc-t" in r.getMessage()]
+    assert [r.levelname for r in failure_logs] == ["WARNING"]
+    assert "Unknown mapping 'nope'" in failure_logs[0].getMessage()
+    assert failure_logs[0].exc_info is None
+
+
+@pytest.mark.asyncio
 async def test_user_caused_value_error_keeps_specific_message(
     settings, state_backend, storage_backend, audit_publisher
 ):

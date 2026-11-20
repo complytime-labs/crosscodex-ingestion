@@ -2,18 +2,23 @@
 
 import asyncio
 import logging
+import math
 import signal
 import socket
+from collections.abc import Callable
+from wsgiref.simple_server import WSGIServer
 
 import grpc
 from opentelemetry import trace
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.sdk.trace.sampling import ParentBasedTraceIdRatio
+from opentelemetry.sdk.trace.export import BatchSpanProcessor
+from opentelemetry.sdk.trace.sampling import ALWAYS_OFF, ALWAYS_ON, ParentBased, Sampler, TraceIdRatioBased
 from prometheus_client import start_http_server
 from pythonjsonlogger.json import JsonFormatter
 
+from crosscodex_ingestion import __version__
 from crosscodex_ingestion.attestation import create_attestation_manager
 from crosscodex_ingestion.audit import AuditPublisher
 from crosscodex_ingestion.config import IngestionSettings
@@ -46,29 +51,50 @@ async def serve() -> None:
     # Load settings from environment
     settings = IngestionSettings()
 
-    try:
-        validate_artifacts_path(settings.docling_artifacts_path)
-        # Every mapping is validated now: a request can only name one that was valid at startup.
-        mappings = load_registry(settings.mappings_path)
-        # Same for HTML profiles: the workers are only ever sent profiles that were valid at startup.
-        html_profiles = load_html_profiles(settings.html_profiles_path)
-    except (ValueError, MappingError, HtmlProfileError) as exc:
-        raise SystemExit(f"Configuration error: {exc}") from exc
+    # JSON logging comes first so every later line, warnings from the checks below included, is JSON
+    _configure_logging(settings)
 
-    # Fail closed on unverifiable attestations and unauthenticated callers before opening anything
+    # Check everything before opening anything, and report every problem at once: fixing one,
+    # restarting and meeting the next made a first start a loop. Each check fails closed.
     listen_addr = f"[::]:{settings.grpc_port}"
-    try:
-        attestation_manager = create_attestation_manager(settings)
-        # Builds the NATS TLS context now; connecting waits until after telemetry is set up
-        nats_connection = NatsConnection(settings) if settings.nats_url else None
-        if settings.execution_mode == "distributed" and nats_connection is None:
-            raise ValueError("EXECUTION_MODE=distributed publishes jobs to NATS, so NATS_URL must be set")
-        server, _ = create_grpc_server(settings, listen_addr)
-    except (ValueError, OSError) as exc:
-        raise SystemExit(f"Configuration error: {exc}") from exc
+    errors: list[str] = []
+    _attempt(errors, lambda: validate_artifacts_path(settings.docling_artifacts_path), ValueError)
+    # Every mapping is validated now: a request can only name one that was valid at startup.
+    mappings = _attempt(errors, lambda: load_registry(settings.mappings_path), ValueError, MappingError)
+    # Same for HTML profiles: the workers are only ever sent profiles that were valid at startup.
+    html_profiles = _attempt(
+        errors, lambda: load_html_profiles(settings.html_profiles_path), ValueError, HtmlProfileError
+    )
+    # Unverifiable attestations and unauthenticated callers are refused here
+    attestation_manager = _attempt(errors, lambda: create_attestation_manager(settings), ValueError, OSError)
+    # Builds the NATS TLS context now; connecting waits until after telemetry is set up
+    nats_connection = _attempt(
+        errors, lambda: NatsConnection(settings) if settings.nats_url else None, ValueError, OSError
+    )
+    if settings.execution_mode == "distributed" and not settings.nats_url:
+        errors.append("EXECUTION_MODE=distributed publishes jobs to NATS, so NATS_URL must be set")
+    grpc_server = _attempt(errors, lambda: create_grpc_server(settings, listen_addr), ValueError, OSError)
+    sampler = _attempt(
+        errors,
+        lambda: _build_sampler(settings.otel_traces_sampler, settings.otel_traces_sampler_arg),
+        ValueError,
+    )
+    # Bound last, and only to prove the port is free: a failed start must not leave it held
+    metrics_server = _attempt(errors, lambda: _start_metrics_server(settings.metrics_port), ValueError)
+    # mappings and the rest are None only when a check above failed, so errors is non-empty then
+    if errors or mappings is None or html_profiles is None or sampler is None or grpc_server is None:
+        if metrics_server is not None:
+            metrics_server.shutdown()
+            metrics_server.server_close()
+        raise SystemExit(
+            f"Configuration error: {errors[0]}"
+            if len(errors) == 1
+            else "Configuration errors:\n" + "\n".join(f"  - {error}" for error in errors)
+        )
+    server, _ = grpc_server
 
-    # Initialize telemetry (OTel + metrics + structured logging)
-    _init_telemetry(settings)
+    _init_tracing(settings, sampler)
+    logger.info("Prometheus metrics server started on port %s", settings.metrics_port)
 
     logger.info(
         "Starting CrossCodex Ingestion Service",
@@ -198,70 +224,64 @@ def create_grpc_server(settings: IngestionSettings, listen_addr: str) -> tuple[g
     return server, server.add_secure_port(listen_addr, credentials)
 
 
-def _init_telemetry(settings: IngestionSettings) -> None:
-    """Initialize OpenTelemetry tracing, Prometheus metrics, and structured logging.
-
-    Args:
-        settings: Configuration settings.
-    """
-    # Step 1: Initialize OpenTelemetry tracing
-    if settings.otel_exporter_otlp_endpoint:
-        # Create resource with service metadata
-        resource = Resource.create(
-            attributes={
-                "service.name": settings.otel_service_name,
-                "service.version": "0.1.0",  # static; not read from package metadata
-                "host.name": socket.gethostname(),
-            }
-        )
-
-        # Create sampler
-        sampler_map = {
-            "always_on": ParentBasedTraceIdRatio(1.0),
-            "parentbased_always_on": ParentBasedTraceIdRatio(1.0),
-        }
-        sampler = sampler_map.get(
-            settings.otel_traces_sampler.lower(),
-            ParentBasedTraceIdRatio(1.0),
-        )
-
-        # Create OTLP exporter
-        otlp_exporter = OTLPSpanExporter(
-            endpoint=settings.otel_exporter_otlp_endpoint,
-            insecure=True,  # plaintext OTLP; TLS is not configurable yet
-        )
-
-        # Create and configure TracerProvider
-        provider = TracerProvider(
-            resource=resource,
-            sampler=sampler,
-        )
-        from opentelemetry.sdk.trace.export import BatchSpanProcessor
-
-        provider.add_span_processor(BatchSpanProcessor(otlp_exporter))
-
-        # Set global tracer provider
-        trace.set_tracer_provider(provider)
-
-        logger.info(
-            "OpenTelemetry tracing initialized",
-            extra={
-                "endpoint": settings.otel_exporter_otlp_endpoint,
-                "service_name": settings.otel_service_name,
-            },
-        )
-    else:
-        # Use NoOp tracer provider (default behavior when not configured)
-        logger.info("OpenTelemetry tracing not configured (no OTLP endpoint)")
-
-    # Step 2: Start Prometheus metrics HTTP server
+def _attempt[T](errors: list[str], check: Callable[[], T], *failures: type[Exception]) -> T | None:
+    """Run a startup check; a failure it raises is recorded in *errors* and yields None."""
     try:
-        start_http_server(settings.metrics_port)
-        logger.info("Prometheus metrics server started on port %s", settings.metrics_port)
-    except OSError as e:
-        logger.warning("Failed to start Prometheus metrics server: %s", e)
+        return check()
+    except failures as exc:
+        errors.append(str(exc))
+        return None
 
-    # Step 3: Configure structured JSON logging
+
+# OTEL_TRACES_SAMPLER names (OpenTelemetry spec) to a sampler built from the OTEL_TRACES_SAMPLER_ARG ratio.
+_SAMPLERS: dict[str, Callable[[float], Sampler]] = {
+    "always_on": lambda _ratio: ALWAYS_ON,
+    "always_off": lambda _ratio: ALWAYS_OFF,
+    "traceidratio": TraceIdRatioBased,
+    "parentbased_always_on": lambda _ratio: ParentBased(ALWAYS_ON),
+    "parentbased_always_off": lambda _ratio: ParentBased(ALWAYS_OFF),
+    "parentbased_traceidratio": lambda ratio: ParentBased(TraceIdRatioBased(ratio)),
+}
+
+
+def _build_sampler(name: str, arg: str) -> Sampler:
+    """The OpenTelemetry sampler for OTEL_TRACES_SAMPLER and OTEL_TRACES_SAMPLER_ARG.
+
+    The argument is a ratio in [0, 1] (default 1.0) used by the traceidratio variants and ignored
+    by the rest.
+
+    Raises:
+        ValueError: If the name is not a standard sampler or the argument is not a ratio in [0, 1].
+    """
+    factory = _SAMPLERS.get(name.strip().lower())
+    if factory is None:
+        raise ValueError(f"OTEL_TRACES_SAMPLER {name!r} is not one of: {', '.join(_SAMPLERS)}")
+    if not arg.strip():
+        return factory(1.0)
+    try:
+        ratio = float(arg)
+    except ValueError:
+        ratio = math.nan
+    if not 0.0 <= ratio <= 1.0:
+        raise ValueError(f"OTEL_TRACES_SAMPLER_ARG {arg!r} is not a number from 0 to 1")
+    return factory(ratio)
+
+
+def _start_metrics_server(port: int) -> WSGIServer:
+    """Serve Prometheus metrics on *port*.
+
+    Raises:
+        ValueError: If the port cannot be bound; a service without metrics is not left running.
+    """
+    try:
+        httpd, _ = start_http_server(port)
+    except OSError as exc:
+        raise ValueError(f"Cannot bind the Prometheus metrics port {port} (METRICS_PORT): {exc}") from exc
+    return httpd
+
+
+def _configure_logging(settings: IngestionSettings) -> None:
+    """Send every log line to stderr as JSON, at the configured level."""
     level_map = {
         "debug": logging.DEBUG,
         "info": logging.INFO,
@@ -297,3 +317,50 @@ def _init_telemetry(settings: IngestionSettings) -> None:
     logging.getLogger("nats").setLevel(logging.WARNING)
     logging.getLogger("botocore").setLevel(logging.WARNING)
     logging.getLogger("boto3").setLevel(logging.WARNING)
+
+
+def _init_tracing(settings: IngestionSettings, sampler: Sampler) -> None:
+    """Initialize OpenTelemetry tracing when an OTLP endpoint is configured.
+
+    Args:
+        settings: Configuration settings.
+        sampler: The sampler built from OTEL_TRACES_SAMPLER.
+    """
+    if not settings.otel_exporter_otlp_endpoint:
+        # Use NoOp tracer provider (default behavior when not configured)
+        logger.info("OpenTelemetry tracing not configured (no OTLP endpoint)")
+        return
+
+    # Create resource with service metadata
+    resource = Resource.create(
+        attributes={
+            "service.name": settings.otel_service_name,
+            "service.version": __version__,
+            "host.name": socket.gethostname(),
+        }
+    )
+
+    # Create OTLP exporter
+    otlp_exporter = OTLPSpanExporter(
+        endpoint=settings.otel_exporter_otlp_endpoint,
+        insecure=True,  # plaintext OTLP; TLS is not configurable yet
+    )
+
+    # Create and configure TracerProvider
+    provider = TracerProvider(
+        resource=resource,
+        sampler=sampler,
+    )
+    provider.add_span_processor(BatchSpanProcessor(otlp_exporter))
+
+    # Set global tracer provider
+    trace.set_tracer_provider(provider)
+
+    logger.info(
+        "OpenTelemetry tracing initialized",
+        extra={
+            "endpoint": settings.otel_exporter_otlp_endpoint,
+            "service_name": settings.otel_service_name,
+            "sampler": sampler.get_description(),
+        },
+    )

@@ -267,6 +267,11 @@ def _looks_like_json(text: str) -> bool:
     return _JSON_START.match(text) is not None
 
 
+def declared_format(mime_type: str) -> str | None:
+    """The format a Content-Type names ('pdf', 'html', ...), or None if it is not one the service knows."""
+    return _CT_MAP.get(mime_type.lower().split(";")[0].strip())
+
+
 def sniff_format(content: bytes, mime_type: str = "", url: str = "") -> str:
     """Return a format string (e.g. 'pdf', 'html', 'docx', 'txt', 'json', 'csv', 'xlsx').
 
@@ -298,7 +303,7 @@ def sniff_format(content: bytes, mime_type: str = "", url: str = "") -> str:
 
     # Content-Type header
     ct = mime_type.lower().split(";")[0].strip()
-    detected = _CT_MAP.get(ct)
+    detected = declared_format(mime_type)
     if detected:
         return detected
 

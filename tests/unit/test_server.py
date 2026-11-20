@@ -1,5 +1,7 @@
 """Unit tests for server startup checks and shutdown."""
 
+import json
+import logging
 import os
 import signal
 import socket
@@ -11,7 +13,7 @@ import grpc
 import pytest
 
 from crosscodex_ingestion.config import IngestionSettings
-from crosscodex_ingestion.server import _GRPC_REQUEST_OVERHEAD, create_grpc_server, serve
+from crosscodex_ingestion.server import _GRPC_REQUEST_OVERHEAD, _build_sampler, create_grpc_server, serve
 
 
 @pytest.mark.asyncio
@@ -58,6 +60,8 @@ async def test_serve_refuses_to_start_with_a_malformed_mapping(monkeypatch, star
     mappings.mkdir()
     (mappings / "broken-1.0-json.yaml").write_text("mapping_version: 1\nid: [unclosed\n")
     monkeypatch.setenv("MAPPINGS_PATH", str(mappings))
+    monkeypatch.setenv("GRPC_TLS_MODE", "off")
+    monkeypatch.setenv("ATTESTATION_ENABLED", "false")
 
     with pytest.raises(
         SystemExit, match=r"Configuration error: Mapping .*broken-1\.0-json\.yaml: invalid YAML at line"
@@ -80,6 +84,8 @@ async def test_serve_refuses_to_start_when_the_html_profiles_path_is_not_a_direc
     not_a_directory = tmp_path / "profiles.yaml"
     not_a_directory.write_text("not a directory")
     monkeypatch.setenv("HTML_PROFILES_PATH", str(not_a_directory))
+    monkeypatch.setenv("GRPC_TLS_MODE", "off")
+    monkeypatch.setenv("ATTESTATION_ENABLED", "false")
 
     with pytest.raises(SystemExit, match=r"Configuration error: .*HTML_PROFILES_PATH"):
         await serve()
@@ -243,3 +249,122 @@ async def test_receive_limit_is_max_document_size_plus_request_overhead():
             assert exc.value.code() == grpc.StatusCode.RESOURCE_EXHAUSTED
     finally:
         await server.stop(None)
+
+
+@pytest.fixture
+def restore_logging():
+    """serve() replaces the root logger's handlers; put them back so other tests keep pytest's capture."""
+    root = logging.getLogger()
+    handlers, level = root.handlers[:], root.level
+    yield
+    root.handlers[:] = handlers
+    root.setLevel(level)
+
+
+@pytest.mark.parametrize(
+    ("name", "arg", "description"),
+    [
+        ("always_on", "", "AlwaysOnSampler"),
+        ("always_off", "", "AlwaysOffSampler"),
+        ("traceidratio", "", "TraceIdRatioBased{1.0}"),
+        ("traceidratio", "0.25", "TraceIdRatioBased{0.25}"),
+        ("parentbased_always_on", "", "ParentBased{root:AlwaysOnSampler,"),
+        ("parentbased_always_off", "", "ParentBased{root:AlwaysOffSampler,"),
+        ("parentbased_traceidratio", "0.5", "ParentBased{root:TraceIdRatioBased{0.5},"),
+        ("PARENTBASED_ALWAYS_ON", "", "ParentBased{root:AlwaysOnSampler,"),
+        ("parentbased_traceidratio", "", "ParentBased{root:TraceIdRatioBased{1.0},"),
+    ],
+)
+def test_sampler_name_maps_to_the_standard_sampler(name, arg, description):
+    assert _build_sampler(name, arg).get_description().startswith(description)
+
+
+@pytest.mark.parametrize(
+    ("name", "arg", "message"),
+    [
+        ("bogus", "", "OTEL_TRACES_SAMPLER 'bogus'"),
+        ("traceidratio", "lots", "OTEL_TRACES_SAMPLER_ARG 'lots'"),
+        ("traceidratio", "1.5", "OTEL_TRACES_SAMPLER_ARG '1.5'"),
+        ("parentbased_traceidratio", "-0.1", "OTEL_TRACES_SAMPLER_ARG '-0.1'"),
+        ("traceidratio", "nan", "OTEL_TRACES_SAMPLER_ARG 'nan'"),
+    ],
+)
+def test_bad_sampler_settings_are_refused(name, arg, message):
+    with pytest.raises(ValueError, match=message):
+        _build_sampler(name, arg)
+
+
+@pytest.mark.asyncio
+async def test_serve_refuses_an_unknown_sampler(monkeypatch, startable_env, restore_logging):
+    monkeypatch.setenv("GRPC_TLS_MODE", "off")
+    monkeypatch.setenv("ATTESTATION_ENABLED", "false")
+    monkeypatch.setenv("OTEL_TRACES_SAMPLER", "bogus")
+
+    with pytest.raises(SystemExit, match=r"^Configuration error: OTEL_TRACES_SAMPLER 'bogus'"):
+        await serve()
+
+
+@pytest.mark.asyncio
+async def test_serve_reports_every_configuration_error_at_once(monkeypatch, tmp_path, restore_logging):
+    monkeypatch.delenv("DOCLING_ARTIFACTS_PATH", raising=False)
+    monkeypatch.delenv("ATTESTATION_ENABLED", raising=False)
+    monkeypatch.delenv("GRPC_TLS_MODE", raising=False)
+    monkeypatch.setenv("MAPPINGS_PATH", str(tmp_path / "absent"))
+    monkeypatch.setenv("OTEL_TRACES_SAMPLER", "bogus")
+
+    with pytest.raises(SystemExit) as exit_info:
+        await serve()
+
+    lines = str(exit_info.value).splitlines()
+    assert lines[0] == "Configuration errors:"
+    problems = lines[1:]
+    assert all(line.startswith("  - ") for line in problems)
+    for expected in ("DOCLING_ARTIFACTS_PATH", "MAPPINGS_PATH", "ATTESTATION_PRIVATE_KEY_PATH", "GRPC_TLS", "bogus"):
+        assert sum(expected in line for line in problems) == 1, expected
+    assert len(problems) == 5
+
+
+@pytest.mark.asyncio
+async def test_serve_reports_distributed_mode_without_nats_alongside_other_errors(
+    monkeypatch, startable_env, restore_logging
+):
+    monkeypatch.setenv("GRPC_TLS_MODE", "off")
+    monkeypatch.setenv("ATTESTATION_ENABLED", "false")
+    monkeypatch.setenv("EXECUTION_MODE", "distributed")
+    monkeypatch.setenv("OTEL_TRACES_SAMPLER", "bogus")
+
+    with pytest.raises(SystemExit) as exit_info:
+        await serve()
+
+    message = str(exit_info.value)
+    assert message.startswith("Configuration errors:\n  - ")
+    assert "NATS_URL" in message
+    assert "bogus" in message
+
+
+@pytest.mark.asyncio
+async def test_serve_refuses_an_occupied_metrics_port(monkeypatch, startable_env, restore_logging):
+    monkeypatch.setenv("GRPC_TLS_MODE", "off")
+    monkeypatch.setenv("ATTESTATION_ENABLED", "false")
+    with socket.socket() as holder:
+        holder.bind(("0.0.0.0", 0))  # noqa: S104 - start_http_server listens on every interface
+        holder.listen()
+        monkeypatch.setenv("METRICS_PORT", str(holder.getsockname()[1]))
+
+        with pytest.raises(SystemExit, match=r"^Configuration error: .*metrics.*"):
+            await serve()
+
+
+@pytest.mark.asyncio
+async def test_every_log_line_from_a_refused_start_is_json(monkeypatch, restore_logging, capsys):
+    """The TLS-off warning used to print as plain text because JSON logging was set up after it."""
+    monkeypatch.delenv("DOCLING_ARTIFACTS_PATH", raising=False)
+    monkeypatch.setenv("GRPC_TLS_MODE", "off")
+    monkeypatch.setenv("GRPC_PORT", "0")
+
+    with pytest.raises(SystemExit):
+        await serve()
+
+    lines = [line for line in capsys.readouterr().err.splitlines() if line.strip()]
+    records = [json.loads(line) for line in lines]
+    assert any(r["levelname"] == "WARNING" and "plaintext" in r["message"] for r in records)

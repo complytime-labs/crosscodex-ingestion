@@ -13,7 +13,7 @@ from crosscodex_ingestion.mapping import MappingRegistry
 from crosscodex_ingestion.metrics import DOC_SIZE, ERRORS_TOTAL, REQUESTS_TOTAL
 from crosscodex_ingestion.nats_connection import NatsConnection, NatsUnavailableError
 from crosscodex_ingestion.proto.crosscodex.v1 import common_pb2, ingestion_pb2, ingestion_pb2_grpc
-from crosscodex_ingestion.security import validate_document_id, validate_tenant_id
+from crosscodex_ingestion.security import declared_format, validate_document_id, validate_tenant_id
 from crosscodex_ingestion.state import DocumentRecord, StateBackend
 from crosscodex_ingestion.tls import client_identity
 
@@ -169,8 +169,9 @@ class IngestionServiceServicer(ingestion_pb2_grpc.IngestionServiceServicer):
             )
             await context.abort(grpc.StatusCode.UNAVAILABLE, NATS_UNAVAILABLE_MESSAGE)
 
-        # Record metrics
-        format_label = metadata.get("format_version", "unknown")
+        # Record metrics. The label is bounded: a named mapping, a format from the declared MIME type, or
+        # "unknown". Never text the caller chose, which would be unbounded cardinality.
+        format_label = "mapping" if request.mapping else declared_format(request.metadata.mime_type) or "unknown"
         REQUESTS_TOTAL.labels(format=format_label, status="pending").inc()
 
         logger.info(

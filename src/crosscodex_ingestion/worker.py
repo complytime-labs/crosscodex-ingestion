@@ -533,6 +533,9 @@ async def run_conversion(
             logger.warning("Conversion failed for document %s: %s", document_id, exc.redacted()[0])
         elif isinstance(exc, DocumentLimitError):
             logger.warning("Conversion failed for document %s: %s", document_id, exc.redacted_message)
+        elif isinstance(exc, ValueError):
+            # The caller's mistake (unknown mapping, wrong format, hash mismatch): not a server fault
+            logger.warning("Conversion failed for document %s: %s", document_id, exc)
         else:
             logger.exception("Conversion failed for document %s", document_id)
 
