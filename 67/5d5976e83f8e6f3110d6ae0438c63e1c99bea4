@@ -1,0 +1,26 @@
+Dockerfile.fips
+  s_f9a2b80e7c80d9::t_ec72f6f450c549 27-28,30-31
+Dockerfile
+  s_f9a2b80e7c80d9::t_ec72f6f450c549 23-24,26-27
+pyproject.toml
+  s_f9a2b80e7c80d9::t_54efa94e89a371 29-30,47-57
+  s_f9a2b80e7c80d9::t_68046cba9e2645 58
+uv.lock
+  s_f9a2b80e7c80d9::t_666aa1794d3001 7-8,11-12,15-16,19-20,34-35,579-582,622-625,793-796,884-887,3145-3146,3407-3420,3445-3482,3487-3500,3504,3511-3530
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "675d5976e83f8e6f3110d6ae0438c63e1c99bea4",
+  "prompts": {},
+  "sessions": {
+    "s_f9a2b80e7c80d9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6ef32b60-ef82-43ba-bc6b-baaa3546e8da",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "LLM (riotbox) <llm@riotbox>"
+    }
+  }
+}
