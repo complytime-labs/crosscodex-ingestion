@@ -851,6 +851,70 @@ class TestNatsAvailability:
         assert context.abort_code == grpc.StatusCode.INVALID_ARGUMENT
 
     @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "fields",
+        [
+            {"source_uri": "http://127.0.0.1/x.pdf"},
+            {"mapping": "no-such-mapping", "content": b"x"},
+            {},
+        ],
+        ids=["bad-url", "unknown-mapping", "no-source"],
+    )
+    async def test_non_retryable_bad_request_gets_invalid_argument_while_nats_is_down(
+        self, settings, state_backend, mock_dispatch, fields
+    ):
+        """A request that can never succeed must not be told to retry just because NATS is down."""
+        servicer = IngestionServiceServicer(
+            settings=settings,
+            state_backend=state_backend,
+            dispatch_backend=mock_dispatch,
+            mappings=REGISTRY,
+            nats=_nats(available=False),
+        )
+        request = ingestion_pb2.ConvertDocumentRequest(
+            tenant_context=common_pb2.TenantContext(tenant_id="tenant-a"), **fields
+        )
+        context = MockServicerContext()
+
+        with pytest.raises(grpc.RpcError):
+            await servicer.ConvertDocument(request, context)
+
+        assert context.abort_code == grpc.StatusCode.INVALID_ARGUMENT
+        mock_dispatch.dispatch.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_unexpected_dispatch_failure_fails_the_record_and_aborts_internal(
+        self, settings, state_backend, mock_dispatch, caplog
+    ):
+        """E.g. nats MaxPayloadError for a large document: no PENDING record is left, no internals reach the client."""
+        mock_dispatch.dispatch.side_effect = RuntimeError("max payload exceeded at nats://nats.internal:4222")
+        servicer = IngestionServiceServicer(
+            settings=settings,
+            state_backend=state_backend,
+            dispatch_backend=mock_dispatch,
+            mappings=REGISTRY,
+            nats=_nats(available=True),
+        )
+        request = ingestion_pb2.ConvertDocumentRequest(
+            tenant_context=common_pb2.TenantContext(tenant_id="tenant-a"),
+            content=b"fake PDF content",
+        )
+        context = MockServicerContext()
+
+        with pytest.raises(grpc.RpcError):
+            await servicer.ConvertDocument(request, context)
+
+        assert context.abort_code == grpc.StatusCode.INTERNAL
+        assert "nats.internal" not in context.abort_details
+        assert "max payload" in caplog.text
+        records, _ = await state_backend.list_documents("tenant-a", _ALL)
+        assert len(records) == 1
+        assert records[0].status == common_pb2.JOB_STATUS_FAILED
+        assert records[0].error["code"] == common_pb2.ERROR_CODE_INTERNAL
+        assert "nats.internal" not in records[0].error["message"]
+        assert records[0].error["message"] == context.abort_details
+
+    @pytest.mark.asyncio
     async def test_convert_while_nats_is_available_is_accepted(self, settings, state_backend, mock_dispatch):
         servicer = IngestionServiceServicer(
             settings=settings,

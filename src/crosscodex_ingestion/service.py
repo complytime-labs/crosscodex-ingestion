@@ -11,7 +11,7 @@ from crosscodex_ingestion.dispatch import DispatchBackend
 from crosscodex_ingestion.listing import ListQueryError, parse_list_options
 from crosscodex_ingestion.mapping import MappingRegistry
 from crosscodex_ingestion.metrics import DOC_SIZE, ERRORS_TOTAL, REQUESTS_TOTAL
-from crosscodex_ingestion.nats_connection import NatsConnection, NatsUnavailableError
+from crosscodex_ingestion.nats_connection import NATS_UNAVAILABLE_MESSAGE, NatsConnection, NatsUnavailableError
 from crosscodex_ingestion.proto.crosscodex.v1 import common_pb2, ingestion_pb2, ingestion_pb2_grpc
 from crosscodex_ingestion.security import (
     declared_format,
@@ -23,9 +23,8 @@ from crosscodex_ingestion.state import DocumentRecord, StateBackend
 from crosscodex_ingestion.tls import client_identity
 
 logger = logging.getLogger(__name__)
-
-# Sent to clients while NATS is down. CWE-209: the broker's address goes to the log only.
-NATS_UNAVAILABLE_MESSAGE = "NATS is unavailable; audit events cannot be recorded. Retry later."
+# Sent to clients when the job could not be handed to a worker for a reason that is not theirs to fix.
+DISPATCH_FAILED_MESSAGE = "The document could not be queued for conversion; contact the operator."
 
 
 class IngestionServiceServicer(ingestion_pb2_grpc.IngestionServiceServicer):
@@ -74,11 +73,6 @@ class IngestionServiceServicer(ingestion_pb2_grpc.IngestionServiceServicer):
                 UNAVAILABLE while NATS is configured but not connected.
         """
         await self._require_valid_tenant(request.tenant_context.tenant_id, context)
-
-        # Every job ends in an audit event; refuse work whose outcome could not be recorded.
-        if self._nats is not None and not self._nats.available:
-            logger.warning("Rejected ConvertDocument: NATS at %s is unavailable", self._nats.url)
-            await context.abort(grpc.StatusCode.UNAVAILABLE, NATS_UNAVAILABLE_MESSAGE)
 
         # Validate that either content or source_uri is provided
         has_content = request.WhichOneof("source") == "content"
@@ -147,6 +141,12 @@ class IngestionServiceServicer(ingestion_pb2_grpc.IngestionServiceServicer):
             "created_by": client_identity(context, self._settings.grpc_allowed_clients_set) or "unauthenticated",
         }
 
+        # Every job ends in an audit event; refuse work whose outcome could not be recorded. This comes after
+        # the request validation (a bad request is not retryable) and before any state write.
+        if self._nats is not None and not self._nats.available:
+            logger.warning("Rejected ConvertDocument: NATS at %s is unavailable", self._nats.url)
+            await context.abort(grpc.StatusCode.UNAVAILABLE, NATS_UNAVAILABLE_MESSAGE)
+
         # Create DocumentRecord in state backend
         record = DocumentRecord(
             document_id=document_id,
@@ -180,6 +180,17 @@ class IngestionServiceServicer(ingestion_pb2_grpc.IngestionServiceServicer):
                 error={"code": common_pb2.ERROR_CODE_UNAVAILABLE, "message": NATS_UNAVAILABLE_MESSAGE},
             )
             await context.abort(grpc.StatusCode.UNAVAILABLE, NATS_UNAVAILABLE_MESSAGE)
+        except Exception:
+            # E.g. a document over the NATS max payload, or a missing stream. Fail the record rather than
+            # leave it PENDING forever; the client gets no internals (CWE-209), the log gets the traceback.
+            logger.exception("Dispatch of document %s failed", document_id)
+            await self._state.update(
+                request.tenant_context.tenant_id,
+                document_id,
+                status=common_pb2.JOB_STATUS_FAILED,
+                error={"code": common_pb2.ERROR_CODE_INTERNAL, "message": DISPATCH_FAILED_MESSAGE},
+            )
+            await context.abort(grpc.StatusCode.INTERNAL, DISPATCH_FAILED_MESSAGE)
 
         # Record metrics. The label is bounded: a named mapping, a format from the declared MIME type, or
         # "unknown". Never text the caller chose, which would be unbounded cardinality.

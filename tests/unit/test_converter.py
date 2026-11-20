@@ -1,14 +1,16 @@
 """Tests for converter module — subprocess isolation."""
 
 import asyncio
+import io
 import json
 import os
+import runpy
 import signal
 import subprocess
 import sys
 import tempfile
 from pathlib import Path
-from unittest.mock import AsyncMock, Mock, patch
+from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
 import pytest
 
@@ -26,7 +28,7 @@ from crosscodex_ingestion.converter import (
 from crosscodex_ingestion.html_profile import HtmlProfile, HtmlProfileRegistry, load_html_profiles
 from crosscodex_ingestion.mapping import load_registry
 from crosscodex_ingestion.output_schema import SCHEMA_VERSION
-from crosscodex_ingestion.structured import INPUT_ERROR_EXIT_CODE, StructuredSourceError
+from crosscodex_ingestion.structured import ERROR_FILE_NAME, INPUT_ERROR_EXIT_CODE, StructuredSourceError
 from tests.unit.process_helpers import SLEEPER_SCRIPT, is_running, wait_for_pids
 
 PROFILES = load_html_profiles("")
@@ -915,3 +917,43 @@ class TestInputParseFailure:
 
         with pytest.raises(ConversionError, match="no reason"):
             await convert_document("/tmp/x.pdf", "pdf", IngestionSettings(), PROFILES)
+
+    @pytest.mark.parametrize("message", ["", "  \n ", None])
+    def test_worker_falls_back_to_unknown_error_for_a_blank_docling_message(self, tmp_path, monkeypatch, message):
+        """Docling can fail with an empty message; the worker must still exit as a parse failure, not crash."""
+        failed = MagicMock()
+        failed.status = "failure"
+        failed.input.page_count = 1
+        failed.errors = [MagicMock(error_message=message)] if message is not None else []
+        fake_docling = {
+            name: MagicMock()
+            for name in (
+                "docling",
+                "docling.datamodel",
+                "docling.datamodel.base_models",
+                "docling.datamodel.pipeline_options",
+                "docling.document_converter",
+                "docling_core",
+                "docling_core.types",
+                "docling_core.types.doc",
+                "crosscodex_ingestion.extractor",
+                "crosscodex_ingestion.html_backend",
+            )
+        }
+        fake_docling["docling.document_converter"].DocumentConverter.return_value.convert.return_value = failed
+        for name, module in fake_docling.items():
+            monkeypatch.setitem(sys.modules, name, module)
+        output = tmp_path / "out.json"
+        argv = ["worker.py", str(tmp_path / "in.pdf"), str(output), "pdf", "0", "0", "0", str(tmp_path), "10"]
+        monkeypatch.setattr(sys, "argv", argv)
+        monkeypatch.setattr(sys, "stdin", io.StringIO("[]"))
+
+        script = tmp_path / "worker.py"
+        script.write_text(converter._WORKER_SCRIPT)
+
+        with pytest.raises(SystemExit) as excinfo:
+            runpy.run_path(str(script), run_name="__main__")
+
+        assert excinfo.value.code == converter.INPUT_PARSE_EXIT_CODE
+        reason_file = tmp_path / ERROR_FILE_NAME
+        assert json.loads(reason_file.read_text()) == {"reason": "unknown error"}

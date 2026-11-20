@@ -158,8 +158,9 @@ def main():
                 sys.exit(@PAGE_LIMIT_EXIT_CODE@)
             # The service validated the format, so what failed is parsing this input. Relay the
             # first error's first line, minus the temp directory it may name, for the caller to fix.
-            reason = result.errors[0].error_message if result.errors else "unknown error"
-            reason = reason.replace(str(Path(input_path).parent), "").strip().splitlines()[0]
+            reason = result.errors[0].error_message if result.errors else ""
+            reason = reason.replace(str(Path(input_path).parent), "").strip()
+            reason = reason.splitlines()[0] if reason else "unknown error"
             Path(output_path).with_name(ERROR_FILE_NAME).write_text(json.dumps({"reason": reason}))
             sys.exit(@INPUT_PARSE_EXIT_CODE@)
         doc = result.document

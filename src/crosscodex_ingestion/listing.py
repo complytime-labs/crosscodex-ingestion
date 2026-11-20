@@ -25,6 +25,8 @@ if TYPE_CHECKING:
 DEFAULT_PAGE_SIZE = 50
 MAX_PAGE_SIZE = 1000
 TOKEN_VERSION = 1
+# Real tokens are a few hundred characters; a longer one is hostile (deeply nested JSON exhausts the parser).
+MAX_TOKEN_LENGTH = 1024
 BAD_CURSOR_MESSAGE = "page_token is invalid or belongs to a different query"
 
 # Records with an empty timestamp sort before every real one and never match a time filter.
@@ -140,9 +142,11 @@ def _query_hash(filters: tuple[Filter, ...], sort: tuple[SortKey, ...]) -> str:
 def _decode_token(token: str, filters: tuple[Filter, ...], sort: tuple[SortKey, ...]) -> tuple:
     """Return the token's key tuple, or raise ListQueryError if malformed or for another query."""
     invalid = ListQueryError(BAD_CURSOR_MESSAGE)
+    if len(token) > MAX_TOKEN_LENGTH:
+        raise invalid
     try:
         payload = json.loads(base64.urlsafe_b64decode(token))
-    except (binascii.Error, ValueError):
+    except (binascii.Error, ValueError, RecursionError):
         raise invalid from None
     if not isinstance(payload, dict) or payload.get("v") != TOKEN_VERSION:
         raise invalid

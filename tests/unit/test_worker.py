@@ -15,6 +15,7 @@ from crosscodex_ingestion.config import IngestionSettings
 from crosscodex_ingestion.converter import ConversionError, ConversionTimeout, DocumentLimitError
 from crosscodex_ingestion.html_profile import load_html_profiles
 from crosscodex_ingestion.mapping import load_registry
+from crosscodex_ingestion.nats_connection import NATS_UNAVAILABLE_MESSAGE
 from crosscodex_ingestion.output_schema import SCHEMA_VERSION
 from crosscodex_ingestion.state import DocumentRecord, MemoryStateBackend
 from crosscodex_ingestion.storage import FilesystemStorage
@@ -1437,3 +1438,25 @@ async def test_run_conversion_passes_the_html_profiles_to_the_converter(tmp_path
         )
 
     assert document.call_args.args[-1] is PROFILES
+
+
+@pytest.mark.asyncio
+async def test_completion_audit_with_nats_down_fails_unavailable_without_traceback(
+    settings, state_backend, storage_backend, audit_publisher, caplog
+):
+    """NATS drops at the completion audit: UNAVAILABLE with the URL-free message, warned without a traceback."""
+    audit_publisher.publish.side_effect = AuditUnavailableError("NATS at nats://nats:4222 is unavailable")
+
+    with (
+        caplog.at_level("WARNING"),
+        patch("crosscodex_ingestion.worker.convert_document", return_value=conforming_output()),
+    ):
+        await _run_pdf_conversion(settings, state_backend, storage_backend, audit_publisher)
+
+    record = await state_backend.get("tenant-t", "doc-t")
+    assert record.status == JOB_STATUS_FAILED
+    assert record.error == {"code": 7, "message": NATS_UNAVAILABLE_MESSAGE}
+    assert "nats://" not in record.error["message"]
+    assert all(r.exc_info is None for r in caplog.records)
+    assert not [r for r in caplog.records if r.levelname == "ERROR"]
+    assert any("doc-t" in r.getMessage() and r.levelname == "WARNING" for r in caplog.records)

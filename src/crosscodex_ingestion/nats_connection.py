@@ -26,6 +26,10 @@ INITIAL_BACKOFF_SECONDS = 1
 MAX_BACKOFF_SECONDS = 60
 
 
+# Sent to clients while NATS is down. CWE-209: the broker's address goes to the log only.
+NATS_UNAVAILABLE_MESSAGE = "NATS is unavailable; audit events cannot be recorded. Retry later."
+
+
 class NatsUnavailableError(RuntimeError):
     """NATS is configured but not connected. The message names the URL, so log it; do not send it to clients."""
 

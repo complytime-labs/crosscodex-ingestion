@@ -311,6 +311,7 @@ async def test_serve_reports_every_configuration_error_at_once(monkeypatch, tmp_
     monkeypatch.delenv("GRPC_TLS_MODE", raising=False)
     monkeypatch.setenv("MAPPINGS_PATH", str(tmp_path / "absent"))
     monkeypatch.setenv("OTEL_TRACES_SAMPLER", "bogus")
+    monkeypatch.setenv("METRICS_PORT", str(_free_port()))
 
     with pytest.raises(SystemExit) as exit_info:
         await serve()
@@ -343,6 +344,30 @@ async def test_serve_reports_distributed_mode_without_nats_alongside_other_error
 
 
 @pytest.mark.asyncio
+async def test_serve_reports_mistyped_settings_as_configuration_errors(monkeypatch, startable_env):
+    """GRPC_PORT=abc used to escape as a raw pydantic traceback; every bad variable is named, no value is echoed."""
+    monkeypatch.setenv("GRPC_PORT", "abc")
+    monkeypatch.setenv("MAX_DOCUMENT_SIZE", "secret-not-a-number")
+
+    with pytest.raises(SystemExit) as exit_info:
+        await serve()
+
+    lines = str(exit_info.value).splitlines()
+    assert lines[0] == "Configuration errors:"
+    assert sorted(line.split(":")[0] for line in lines[1:]) == ["  - GRPC_PORT", "  - MAX_DOCUMENT_SIZE"]
+    assert "abc" not in str(exit_info.value)
+    assert "secret-not-a-number" not in str(exit_info.value)
+
+
+@pytest.mark.asyncio
+async def test_serve_reports_one_mistyped_setting_on_one_line(monkeypatch, startable_env):
+    monkeypatch.setenv("GRPC_PORT", "abc")
+
+    with pytest.raises(SystemExit, match=r"^Configuration error: GRPC_PORT: .+$"):
+        await serve()
+
+
+@pytest.mark.asyncio
 async def test_serve_refuses_an_occupied_metrics_port(monkeypatch, startable_env, restore_logging):
     monkeypatch.setenv("GRPC_TLS_MODE", "off")
     monkeypatch.setenv("ATTESTATION_ENABLED", "false")
@@ -361,6 +386,7 @@ async def test_every_log_line_from_a_refused_start_is_json(monkeypatch, restore_
     monkeypatch.delenv("DOCLING_ARTIFACTS_PATH", raising=False)
     monkeypatch.setenv("GRPC_TLS_MODE", "off")
     monkeypatch.setenv("GRPC_PORT", "0")
+    monkeypatch.setenv("METRICS_PORT", str(_free_port()))
 
     with pytest.raises(SystemExit):
         await serve()

@@ -41,6 +41,7 @@ from crosscodex_ingestion.metrics import (
     REQUESTS_TOTAL,
     STRUCTURE_WARNINGS,
 )
+from crosscodex_ingestion.nats_connection import NATS_UNAVAILABLE_MESSAGE, NatsUnavailableError
 from crosscodex_ingestion.output_schema import SCHEMA_VERSION, OutputSchemaError, Violation, validate_output
 from crosscodex_ingestion.quality import measure_structure
 from crosscodex_ingestion.security import (
@@ -342,7 +343,7 @@ async def run_conversion(
             mime_type = metadata.get("mime_type", "")
             source_uri_for_validation = source_uri or metadata.get("source_uri", "")
 
-            # Reads the untrusted bytes in this (unsandboxed) process: keep it off the event loop.
+            # Reads the untrusted bytes in this (not resource-limited) process: keep it off the event loop.
             validated_format = await asyncio.to_thread(
                 _check_format,
                 input_bytes,
@@ -536,6 +537,9 @@ async def run_conversion(
         elif isinstance(exc, ValueError):
             # The caller's mistake (unknown mapping, wrong format, hash mismatch): not a server fault
             logger.warning("Conversion failed for document %s: %s", document_id, exc)
+        elif isinstance(exc, NatsUnavailableError):
+            # NATS dropped at the completion audit: an outage, not a bug. The message names the URL, so log only.
+            logger.warning("Conversion of document %s failed, NATS is unavailable: %s", document_id, exc)
         else:
             logger.exception("Conversion failed for document %s", document_id)
 
@@ -561,6 +565,10 @@ async def run_conversion(
             error_code = ERROR_CODE_UNAVAILABLE
             error_message = str(exc)
             error_type = "mapping_skew"
+        elif isinstance(exc, NatsUnavailableError):
+            error_code = ERROR_CODE_UNAVAILABLE
+            error_message = NATS_UNAVAILABLE_MESSAGE
+            error_type = "nats_unavailable"
         elif isinstance(exc, ConversionTimeout):
             error_code = ERROR_CODE_RESOURCE_EXHAUSTED
             error_message = str(exc)

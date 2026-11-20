@@ -248,6 +248,21 @@ class TestErrors:
         with pytest.raises(ListQueryError, match=BAD_CURSOR_MESSAGE):
             parse_list_options(_options(page_token="garbage"))
 
+    def test_deeply_nested_token_is_rejected_before_it_is_parsed(self):
+        token = base64.urlsafe_b64encode(b"[" * 100_000).decode()
+
+        with pytest.raises(ListQueryError, match=BAD_CURSOR_MESSAGE):
+            parse_list_options(_options(page_token=token))
+
+    def test_token_that_overflows_the_json_parser_stack_is_rejected(self, monkeypatch):
+        def too_deep(_data):
+            raise RecursionError
+
+        monkeypatch.setattr("crosscodex_ingestion.listing.json.loads", too_deep)
+
+        with pytest.raises(ListQueryError, match=BAD_CURSOR_MESSAGE):
+            parse_list_options(_options(page_token="Wy4uLl0="))
+
     @pytest.mark.parametrize(
         "payload",
         [

@@ -190,7 +190,8 @@ Retry such a request after a delay. `GetDocument` and `ListDocuments` keep worki
 In `distributed` mode, NATS can drop after this check but before the job is published. In that case the
 request also gets `UNAVAILABLE`, and the document record it created is marked `FAILED` with the same message,
 so it does not stay `PENDING`. A conversion that is already running when NATS drops is marked `FAILED`
-because its audit event cannot be published. The lost audit event is logged at WARNING.
+when its completion audit event cannot be published. Its error code is `UNAVAILABLE`, with the same message
+(resubmit the document). Each lost audit event is logged at WARNING.
 
 TLS to NATS depends on which `NATS_TLS_*` variables are set:
 

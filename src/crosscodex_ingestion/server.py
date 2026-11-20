@@ -16,6 +16,7 @@ from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
 from opentelemetry.sdk.trace.sampling import ALWAYS_OFF, ALWAYS_ON, ParentBased, Sampler, TraceIdRatioBased
 from prometheus_client import start_http_server
+from pydantic import ValidationError
 from pythonjsonlogger.json import JsonFormatter
 
 from crosscodex_ingestion import __version__
@@ -48,8 +49,17 @@ async def serve() -> None:
 
     The server runs until interrupted by a signal.
     """
-    # Load settings from environment
-    settings = IngestionSettings()
+    # Load settings from environment. A mistyped value (GRPC_PORT=abc) is a configuration error, not a crash.
+    try:
+        settings = IngestionSettings()
+    except ValidationError as exc:
+        # Name the variable and the rule, never the rejected value: it may be a secret path or key.
+        raise _configuration_exit(
+            [
+                f"{'.'.join(str(part) for part in err['loc']).upper() or 'settings'}: {err['msg']}"
+                for err in exc.errors()
+            ]
+        ) from exc
 
     # JSON logging comes first so every later line, warnings from the checks below included, is JSON
     _configure_logging(settings)
@@ -86,11 +96,7 @@ async def serve() -> None:
         if metrics_server is not None:
             metrics_server.shutdown()
             metrics_server.server_close()
-        raise SystemExit(
-            f"Configuration error: {errors[0]}"
-            if len(errors) == 1
-            else "Configuration errors:\n" + "\n".join(f"  - {error}" for error in errors)
-        )
+        raise _configuration_exit(errors)
     server, _ = grpc_server
 
     _init_tracing(settings, sampler)
@@ -222,6 +228,15 @@ def create_grpc_server(settings: IngestionSettings, listen_addr: str) -> tuple[g
     if credentials is None:
         return server, server.add_insecure_port(listen_addr)
     return server, server.add_secure_port(listen_addr, credentials)
+
+
+def _configuration_exit(errors: list[str]) -> SystemExit:
+    """The SystemExit that reports every startup *errors* entry: one line for one, a list for several."""
+    return SystemExit(
+        f"Configuration error: {errors[0]}"
+        if len(errors) == 1
+        else "Configuration errors:\n" + "\n".join(f"  - {error}" for error in errors)
+    )
 
 
 def _attempt[T](errors: list[str], check: Callable[[], T], *failures: type[Exception]) -> T | None:
