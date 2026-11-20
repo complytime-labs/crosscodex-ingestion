@@ -1,0 +1,21 @@
+proto/crosscodex/v1/common.proto
+  s_47c52e29a0091e::t_5c3615aa0d4ad9 74-75,79-80
+proto/crosscodex/v1/ingestion.proto
+  s_47c52e29a0091e::t_5c3615aa0d4ad9 54-57
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "85030d54d85a44db305ff3b819f07c9788423a5f",
+  "prompts": {},
+  "sessions": {
+    "s_47c52e29a0091e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6185c496-3966-4afd-9809-4a24f4b0d963",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "LLM (riotbox) <llm@riotbox>"
+    }
+  }
+}
