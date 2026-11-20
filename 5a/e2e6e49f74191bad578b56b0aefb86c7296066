@@ -1,0 +1,50 @@
+docs/usage/configuration.md
+  s_f9a2b80e7c80d9::t_71a7f053f5de50 194
+  s_f9a2b80e7c80d9::t_05ede928ca7ec5 193
+src/crosscodex_ingestion/nats_connection.py
+  s_f9a2b80e7c80d9::t_c29bfef07f68d3 29-32
+tests/unit/test_converter.py
+  s_f9a2b80e7c80d9::t_47f32c6505bf67 7,951-953,955
+  s_f9a2b80e7c80d9::t_89e470d22dcd8e 13,31,920-948,950,954,956-959
+  s_f9a2b80e7c80d9::t_4dff2a4701419c 4,949
+tests/unit/test_service.py
+  s_f9a2b80e7c80d9::t_21ed8a83f7fd51 853-916
+src/crosscodex_ingestion/service.py
+  s_f9a2b80e7c80d9::t_5f3635314333cc 26-27,144-149,183-193
+  s_f9a2b80e7c80d9::t_c29bfef07f68d3 14
+src/crosscodex_ingestion/server.py
+  s_f9a2b80e7c80d9::t_0178ea8139e41a 19,52-62,99,233-239
+  s_f9a2b80e7c80d9::t_9ca8cebd95c6b1 240-241
+tests/unit/test_listing.py
+  s_f9a2b80e7c80d9::t_ef576412b94f74 251-265
+src/crosscodex_ingestion/worker.py
+  s_f9a2b80e7c80d9::t_c82bd23ce52efc 44,540-542,568-571
+  s_f9a2b80e7c80d9::t_833d8e86a4684e 346
+src/crosscodex_ingestion/converter.py
+  s_f9a2b80e7c80d9::t_4dff2a4701419c 161-163
+tests/unit/test_server.py
+  s_f9a2b80e7c80d9::t_0178ea8139e41a 358
+  s_f9a2b80e7c80d9::t_6f8a69f59768c6 314,346-357,359-369,389
+tests/unit/test_worker.py
+  s_f9a2b80e7c80d9::t_909e4e25cca874 1441-1449,1453-1462
+  s_f9a2b80e7c80d9::t_41f9fe594c6182 1450-1452
+  s_f9a2b80e7c80d9::t_c29bfef07f68d3 18
+src/crosscodex_ingestion/listing.py
+  s_f9a2b80e7c80d9::t_ef43c2b5338b00 28-29,145-146,149
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "5ae2e6e49f74191bad578b56b0aefb86c7296066",
+  "prompts": {},
+  "sessions": {
+    "s_f9a2b80e7c80d9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6ef32b60-ef82-43ba-bc6b-baaa3546e8da",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "LLM (riotbox) <llm@riotbox>"
+    }
+  }
+}
