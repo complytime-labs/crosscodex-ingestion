@@ -832,3 +832,86 @@ class TestRealWorkerProfileProvenance:
 
         assert result["conversion_warnings"] == ["html_profile_ambiguous"]
         assert "html_profile" not in result["metadata"]
+
+
+class TestPlainText:
+    """text/plain is paragraphs: Docling's sniffer must not turn CSV-, HTML- or Markdown-looking text into structure."""
+
+    @staticmethod
+    async def _convert_text(tmp_path: Path, name: str, text: str) -> dict:
+        source = tmp_path / name
+        source.write_text(text)
+        return await convert_document(str(source), "txt", IngestionSettings(), PROFILES)
+
+    async def test_csv_looking_text_is_paragraphs_and_no_table(self, tmp_path):
+        result = await self._convert_text(tmp_path, "people.txt", "name,role\nalice,admin\nbob,user\n")
+
+        assert [e["type"] for e in result["elements"]] == ["paragraph"]
+        assert "alice,admin" in result["elements"][0]["content"]
+
+    async def test_html_looking_text_has_no_heading(self, tmp_path):
+        result = await self._convert_text(tmp_path, "page.txt", "<h1>x</h1>\n")
+
+        assert [e["type"] for e in result["elements"]] == ["paragraph"]
+        assert result["elements"][0]["content"] == "<h1>x</h1>"
+
+    async def test_markdown_looking_text_has_no_heading_or_table(self, tmp_path):
+        result = await self._convert_text(tmp_path, "notes.txt", "# Title\n\n| a | b |\n|---|---|\n| 1 | 2 |\n")
+
+        assert {e["type"] for e in result["elements"]} == {"paragraph"}
+        assert result["elements"][0]["content"] == "# Title"
+
+    async def test_blank_lines_separate_paragraphs(self, tmp_path):
+        result = await self._convert_text(tmp_path, "two.txt", "first line\nsecond line\n\n\n  \nthird\n")
+
+        assert [e["content"] for e in result["elements"]] == ["first line\nsecond line", "third"]
+
+    async def test_windows_line_endings_separate_paragraphs_too(self, tmp_path):
+        source = tmp_path / "crlf.txt"
+        source.write_bytes(b"first\r\n\r\nsecond\r\n")
+
+        result = await convert_document(str(source), "txt", IngestionSettings(), PROFILES)
+
+        assert [e["content"] for e in result["elements"]] == ["first", "second"]
+
+    async def test_two_kilobyte_json_array_completes(self, tmp_path):
+        body = json.dumps([{"id": n, "name": f"item-{n}"} for n in range(120)])
+        assert len(body) > 2048
+
+        result = await self._convert_text(tmp_path, "data.txt", body)
+
+        assert [e["type"] for e in result["elements"]] == ["paragraph"]
+
+    async def test_empty_text_converts_to_no_elements(self, tmp_path):
+        result = await self._convert_text(tmp_path, "empty.txt", "\n\n")
+
+        assert result["elements"] == []
+
+
+class TestInputParseFailure:
+    """A Docling backend failure on input whose format the service validated is the caller's problem."""
+
+    async def test_corrupt_docx_is_an_invalid_argument_naming_the_format(self, tmp_path):
+        source = tmp_path / "broken.docx"
+        source.write_bytes(b"PK\x03\x04 not really a zip archive")
+
+        with pytest.raises(ValueError, match=r"^The input could not be parsed as docx: .+") as excinfo:
+            await convert_document(str(source), "docx", IngestionSettings(), PROFILES)
+
+        assert str(tmp_path) not in str(excinfo.value)
+
+    @patch("crosscodex_ingestion.converter.asyncio.create_subprocess_exec", new_callable=AsyncMock)
+    @patch("crosscodex_ingestion.converter.shutil.copy2")
+    async def test_unexpected_worker_exit_stays_a_conversion_error(self, mock_copy2, mock_subprocess_run):
+        mock_subprocess_run.return_value = _proc(1, "Traceback: boom")
+
+        with pytest.raises(ConversionError):
+            await convert_document("/tmp/x.pdf", "pdf", IngestionSettings(), PROFILES)
+
+    @patch("crosscodex_ingestion.converter.asyncio.create_subprocess_exec", new_callable=AsyncMock)
+    @patch("crosscodex_ingestion.converter.shutil.copy2")
+    async def test_parse_exit_without_a_reason_file_is_a_conversion_error(self, mock_copy2, mock_subprocess_run):
+        mock_subprocess_run.return_value = _proc(converter.INPUT_PARSE_EXIT_CODE)
+
+        with pytest.raises(ConversionError, match="no reason"):
+            await convert_document("/tmp/x.pdf", "pdf", IngestionSettings(), PROFILES)

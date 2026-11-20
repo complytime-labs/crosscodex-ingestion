@@ -5,7 +5,9 @@ They may be slow and may fail if Docling model downloads are blocked.
 """
 
 import asyncio
+import json
 import sys
+from pathlib import Path
 
 import pytest
 
@@ -123,6 +125,51 @@ async def test_convert_txt_end_to_end(grpc_server_and_channel, sample_txt):
 
     assert final_response.document.conversion_status == common_pb2.JOB_STATUS_COMPLETED
     assert final_response.document.structured_json_uri
+
+
+@pytest.mark.integration
+@pytest.mark.skipif(not DOCLING_AVAILABLE, reason="Docling not available in this environment")
+@pytest.mark.asyncio
+async def test_csv_looking_text_is_converted_as_plain_text(grpc_server_and_channel):
+    """Docling's sniffer would read this as a CSV table; text/plain is paragraphs."""
+    _server, channel = grpc_server_and_channel
+    stub = ingestion_pb2_grpc.IngestionServiceStub(channel)
+
+    convert_response = await stub.ConvertDocument(
+        ingestion_pb2.ConvertDocumentRequest(
+            tenant_context=common_pb2.TenantContext(tenant_id="tenant-csv-text"),
+            content=b"name,role\nalice,admin\nbob,user\n",
+            metadata=common_pb2.ContentMetadata(mime_type="text/plain"),
+        )
+    )
+    final = await poll_until_complete(stub, "tenant-csv-text", convert_response.document_id, timeout_seconds=120)
+
+    assert final.document.conversion_status == common_pb2.JOB_STATUS_COMPLETED, final.document.error.message
+    stored = json.loads(Path(final.document.structured_json_uri.removeprefix("file://")).read_text())
+    assert [e["type"] for e in stored["elements"]] == ["paragraph"]
+    assert "alice,admin" in stored["elements"][0]["content"]
+
+
+@pytest.mark.integration
+@pytest.mark.skipif(not DOCLING_AVAILABLE, reason="Docling not available in this environment")
+@pytest.mark.asyncio
+async def test_corrupt_pdf_is_an_invalid_argument_not_internal(grpc_server_and_channel):
+    """The %PDF header passes format validation; Docling's PDF backend then cannot parse the body."""
+    _server, channel = grpc_server_and_channel
+    stub = ingestion_pb2_grpc.IngestionServiceStub(channel)
+
+    convert_response = await stub.ConvertDocument(
+        ingestion_pb2.ConvertDocumentRequest(
+            tenant_context=common_pb2.TenantContext(tenant_id="tenant-corrupt-pdf"),
+            content=b"%PDF-1.7\nthis is not a PDF body\n",
+            metadata=common_pb2.ContentMetadata(mime_type="application/pdf"),
+        )
+    )
+    final = await poll_until_complete(stub, "tenant-corrupt-pdf", convert_response.document_id, timeout_seconds=120)
+
+    assert final.document.conversion_status == common_pb2.JOB_STATUS_FAILED
+    assert final.document.error.code == common_pb2.ERROR_CODE_INVALID_ARGUMENT
+    assert final.document.error.message.startswith("The input could not be parsed as pdf: ")
 
 
 @pytest.mark.integration
