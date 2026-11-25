@@ -1,0 +1,78 @@
+src/crosscodex_ingestion/mappings/nist-csf-2.0-core-xlsx.yaml
+  s_716be8e6f6d133::t_d42e75693fe028 9-11
+tests/unit/test_mapping.py
+  s_716be8e6f6d133::t_8d951daf8c0819 81-82
+  s_716be8e6f6d133::t_2fcf88471f936f 73-80,83-94,196-214
+tests/fixtures/structured/owasp-asvs-5.0.0/expected.json
+  s_716be8e6f6d133::t_2819ffb9f6a2ee 12-14,28-30,42-44,58-60,74-76,90-92,104-106,120-122,136-138,152-154,166-168,182-184,198-200,214-216,230-232,246-248,262-264,278-280,294-296,310-312,326-328,342-344,358-360,372-374,388-390,404-406,420-422,436-438,452-454,468-470,484-486,500-502,514-516,530-532,546-548,562-564,578-580,594-596,610-612,624-626,640-642,656-658,672-674,688-690,704-706,720-722,736-738,752-754,766-768,782-784,798-800,814-816,830-832,844-846,860-862,876-878,890-892,906-908,922-924,938-940,960
+  s_716be8e6f6d133::t_c9f5f1aa3160a6 957
+src/crosscodex_ingestion/mappings/nist-sp800-53r5-catalog-xlsx.yaml
+  s_716be8e6f6d133::t_41c5e6ac4a9e83 6
+src/crosscodex_ingestion/mappings/owasp-asvs-5.0.0-json.yaml
+  s_716be8e6f6d133::t_7369ff7f6116be 7-9
+tests/fixtures/structured/nist-csf-2.0/expected.json
+  s_716be8e6f6d133::t_e440fe55d488ea 383
+  s_716be8e6f6d133::t_fb35d5ef22d99d 12-14,38-40,64-66,81-83,98-100,115-117,132-134,149-151,175-177,192-194,209-211,226-228,243-245,260-262,277-279,294-296,320-322,346-348,363-365,386
+tests/unit/test_output_schema.py
+  s_716be8e6f6d133::t_9d660f215bd173 256-257,268,270,320-321,326-404,415,417
+tests/integration/test_structured_e2e.py
+  s_716be8e6f6d133::t_25dc4373f391a2 88-93,99,105
+docs/usage/output-format.md
+  s_716be8e6f6d133::t_e906b50c82de13 11,52-54,56,226
+src/crosscodex_ingestion/mappings/mitre-attack-enterprise-17.1-techniques-xlsx.yaml
+  s_716be8e6f6d133::t_3ce3b28e09b72a 6
+src/crosscodex_ingestion/structured.py
+  s_716be8e6f6d133::t_f10a8ddc637445 227,885,890-894,896-897,1008,1014,1045
+  s_716be8e6f6d133::t_b0b662ae92860b 895
+src/crosscodex_ingestion/mappings/owasp-asvs-5.0.0-csv.yaml
+  s_716be8e6f6d133::t_16f6f1e5141395 8-10
+docs/usage/structured-sources.md
+  s_716be8e6f6d133::t_b0375bf417ecda 60-61,181-182
+  s_716be8e6f6d133::t_ba81e2de155792 58
+tests/fixtures/structured/owasp-asvs-5.0.0-csv/expected.json
+  s_716be8e6f6d133::t_94d914fc9ce361 953
+  s_716be8e6f6d133::t_218a2c3d3177d9 12-14,26-28,40-42,56-58,72-74,86-88,100-102,116-118,132-134,148-150,162-164,178-180,194-196,210-212,226-228,242-244,258-260,274-276,290-292,306-308,322-324,338-340,354-356,368-370,384-386,400-402,416-418,432-434,448-450,464-466,480-482,496-498,510-512,526-528,542-544,558-560,574-576,590-592,606-608,620-622,636-638,652-654,668-670,684-686,700-702,716-718,732-734,748-750,762-764,778-780,794-796,810-812,826-828,840-842,856-858,872-874,886-888,902-904,918-920,934-936,956
+tests/unit/test_structured.py
+  s_716be8e6f6d133::t_115125ea69e659 1383-1391
+  s_716be8e6f6d133::t_819d312ef3d1c0 43-53,221,254,265,268,273,280,285,292,295-296,303-304,311,320,327,333,340,346-348,351-353,356,371,379,382,385,387,393,400,403,408,413-414,419,424,427,433,442,450,456,463,469-472,480,487,495,504,507,512,515,521,526,534-536,544,548,965,969,972,983,1312-1382,1392-1434
+  s_716be8e6f6d133::t_9549feed91187c 174-181
+  s_716be8e6f6d133::t_6924e98244a24f 173
+tests/fixtures/structured/mitre-attack-enterprise-17.1/expected.json
+  s_716be8e6f6d133::t_e12d7410fc8233 12-14,41,43,60,62,79-81,108,110,127,129,146-148,175,177,194,196,219
+  s_716be8e6f6d133::t_32d4ca7f529bbc 216
+src/crosscodex_ingestion/schemas/mapping-v1.schema.json
+  s_716be8e6f6d133::t_3b979505ff088f 18
+  s_716be8e6f6d133::t_e35bb75b350066 19
+tests/fixtures/structured/nist-sp800-53r5/expected.json
+  s_716be8e6f6d133::t_e711e6a986a9c6 12,14,29-31,56,58,73,75,90,92,107,109,130
+  s_716be8e6f6d133::t_c1a36060fd2a1f 127
+src/crosscodex_ingestion/output_schema.py
+  s_716be8e6f6d133::t_63734f66695e8b 25
+tests/unit/output_samples.py
+  s_716be8e6f6d133::t_43c0b5fea1acdd 57-59,81,83
+docs/output-schema.md
+  s_716be8e6f6d133::t_6cad1d98107d60 174
+  s_716be8e6f6d133::t_23c260e6368f82 172
+  s_716be8e6f6d133::t_11258dab776568 153-171,175-181
+  s_716be8e6f6d133::t_bc9b11258f517a 173
+src/crosscodex_ingestion/schemas/structured-output-v1.json
+  s_716be8e6f6d133::t_f0ea86c4f0574a 69,178
+  s_716be8e6f6d133::t_9ad259b1427ed7 12,66-68,70-74,83-99,108,177,179-180
+  s_716be8e6f6d133::t_2571c2d8c2ff5b 65
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "bd1ccfdb4a1bc48d27b767ec3c75045369a25e16",
+  "prompts": {},
+  "sessions": {
+    "s_716be8e6f6d133": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "422310a8-cbba-4c80-ad5a-6a1823316b83",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "LLM (riotbox) <llm@riotbox>"
+    }
+  }
+}
