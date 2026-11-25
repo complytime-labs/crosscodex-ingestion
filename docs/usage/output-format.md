@@ -8,7 +8,7 @@ which is also installed with the package (`crosscodex_ingestion/schemas/structur
 
 ```json
 {
-  "schema_version": "1.2",
+  "schema_version": "1.3",
   "elements": [
     {"element_id": "e-001", "type": "heading", "content": "Access Control", "page": 3,
      "level": 1, "parent_id": null, "style": {}},
@@ -49,9 +49,11 @@ For an HTML page that matched a profile, `metadata` also carries the profile tha
 | `metadata.processing_time_ms` | Wall time of the conversion worker.                                                                                                                       |
 | `metadata.dropped`            | Source content that was not emitted as an element, each with `type`, `page` and `reason`. Empty when nothing was dropped.                                 |
 | `id` (1.1)                    | The element's ID in the source (structured sources only); unique among non-null ids. `null` on an element without an ID of its own. Absent for documents. |
-| `title` (1.1)                 | The source node's title, on a non-heading element whose `content` is its text (a heading's title is its `content`).                                       |
+| `title` (1.1)                 | The source node's title. Since 1.3, an element with a string `id` always carries it (`null` when the node has no title), headings included.               |
+| `role` (1.3)                  | `group` or `control`, on every element with a string `id` from a structured source; the mapping decides (see "Writing a mapping" in Structured sources).  |
+| `text` (1.3)                  | The node's own text, or `null` when it has none; on every element with a string `id`. Don't read the id-less paragraph that follows a heading for this.    |
 | `properties` (1.1)            | Extra source fields the mapping names, as `name: string`.                                                                                                 |
-| `metadata.source` (1.1)       | Present for structured sources: `kind` (`structured`), `format`, `mapping` (`id`, `sha256`, `mapping_version`), `node_count`, `unmapped_fields`.          |
+| `metadata.source` (1.1)       | Present for structured sources: `kind` (`structured`), `format`, `mapping` (`id`, `sha256`, `mapping_version`), `node_count`, `unmapped_fields`; since 1.3 also `catalog_version`, the mapping's `version` or `null`. |
 | `metadata.structure` (1.2)    | Structure signals: `heading_count`, `table_count`, `max_heading_depth`, `unparented_count`, `fragment_count`, and `warnings` (open-ended codes such as `no_headings`). |
 | `metadata.html_profile` (1.2) | Present when an HTML profile shaped the conversion: `id` and the `sha256` of the profile file (see "HTML profiles").                                      |
 
@@ -221,3 +223,4 @@ major (`-v1`).
 | 1.0 | Elements (`heading`, `paragraph`, `list_item`, `table`) with `element_id`, `parent_id`, `level`, `page`; `metadata`. |
 | 1.1 | Optional element fields `id`, `title`, `properties` and optional `metadata.source`, emitted for structured sources. Documents converted by Docling are unchanged apart from the version. |
 | 1.2 | Optional `metadata.structure` (structure signals) and `metadata.html_profile` (the HTML profile applied, with its hash). |
+| 1.3 | Optional element fields `role`, `text` (and `title` on headings) on elements with a string `id`, and optional `metadata.source.catalog_version`, emitted for structured sources. |

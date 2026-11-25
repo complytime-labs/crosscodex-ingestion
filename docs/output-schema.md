@@ -150,3 +150,32 @@ which is why consumers must validate against a schema at least as new as the out
   change.
 - `metadata.html_profile` is `{id, sha256}` and is present only when an HTML profile was applied. It
   mirrors `metadata.source.mapping`: the SHA-256 identifies the exact profile file used.
+
+## 1.3: element roles
+
+`role`, `text`, `metadata.source.catalog_version`, and `title` on headings are optional, so 1.0 to 1.2
+outputs still validate and older readers still work. The Docling path emits none of them.
+
+Roles are declared by the mapping because the shape of a source does not say what a node is:
+
+| Mapping | Inner node | Has text | Meaning |
+|---|---|---|---|
+| `owasp-asvs-5.0.0-json` | `V5`, `V5.4` | no | group |
+| `nist-sp800-53r5-catalog-xlsx` | `AC-2` (children `AC-2(1)`) | yes | control with enhancements |
+| `mitre-attack-enterprise-17.1-techniques-xlsx` | `T1055` (sub-techniques) | yes | control with children |
+| `nist-csf-2.0-core-xlsx` | `GV`, `GV.OC` | yes | group |
+
+A structural guess is wrong for some publisher (CSF groups have text), so the mapping's `group_levels`
+names the group levels and, when absent, there are no groups. The producer sets `role` in
+`structured.build_tree` once depth is known, and fails the conversion for a childless group.
+
+- `role` and `text` are allowed only with a string `id`; `title` is forbidden only on a heading without
+  one (1.1 forbade it on every heading). The schema does not require them, so 1.1 and 1.2 outputs with IDs validate. The producer
+  always emits all three on an element with a string `id`, and its tests check it.
+- Nullable: `title`, `text` and `metadata.source.catalog_version` are a non-blank string or `null`. `role`
+  is never null. `catalog_version` is `null` when the mapping has no `version`.
+- A node with children is still a heading followed by an id-less text paragraph, so 1.0 to 1.2 readers see
+  the same document. A reader of `role` skips id-less elements and takes `title` and `text` from the
+  element with the `id`; the paragraph's text is the same text, repeated.
+- `role` is an enum (`group`, `control`) so a later minor can add values; readers should tolerate a value
+  they don't know.

@@ -224,6 +224,7 @@ class TreeNode:
     text: str | None
     properties: dict[str, str]
     children: list["TreeNode"] = field(default_factory=list)
+    role: str = "control"  # "group" for nodes within the mapping's group_levels, else "control"
 
 
 class _Invalid:
@@ -881,10 +882,19 @@ def build_tree(
                 f"nor text ({_echo(node_text_field) if node_text_field else 'not mapped'})."
             )
 
+    group_levels = int(mapping.document.get("group_levels", 0))  # absent: no groups
     stack = [(root, 1) for root in reversed(roots)]
     while stack:
         node, depth = stack.pop()
         problems.at(node.index, node.location)
+        if depth <= group_levels:
+            node.role = "group"
+            if not node.children:
+                problems.add(
+                    f"Node {_echo(node.id)} (at {node.location}) is at level {depth}, within group_levels "
+                    f"({group_levels}), so it is a group, but it has no children. A group must have children: "
+                    "lower group_levels in the mapping or check the source."
+                )
         if depth > MAX_DEPTH:
             problems.add(
                 f"Node {_echo(node.id)} (at {node.location}) is nested {depth} levels deep; at most {MAX_DEPTH} "
@@ -995,16 +1005,13 @@ def emit_elements(roots: list[TreeNode]) -> list[dict[str, Any]]:
         node, depth, parent_id = stack.pop()
         if node.children:
             heading = element("heading", node.title or "", depth, parent_id)
-            heading.update(id=node.id, properties=node.properties)
+            heading.update(id=node.id, role=node.role, title=node.title, text=node.text, properties=node.properties)
             if node.text is not None:
                 element("paragraph", node.text, None, heading["element_id"])["id"] = None
             stack.extend((child, depth + 1, heading["element_id"]) for child in reversed(node.children))
         else:
             leaf = element("paragraph", node.text if node.text is not None else node.title or "", None, parent_id)
-            leaf["id"] = node.id
-            if node.text is not None and node.title is not None:
-                leaf["title"] = node.title
-            leaf["properties"] = node.properties
+            leaf.update(id=node.id, role=node.role, title=node.title, text=node.text, properties=node.properties)
     return elements
 
 
@@ -1035,6 +1042,7 @@ def convert_source(data: bytes, mapping: Mapping, limits: StructuredLimits) -> d
                 "kind": "structured",
                 "format": mapping.format,
                 "mapping": {"id": mapping.id, "sha256": mapping.sha256, "mapping_version": mapping.mapping_version},
+                "catalog_version": mapping.document.get("version"),
                 "node_count": len(source_nodes),
                 "unmapped_fields": [name for name in field_names if name not in used],
             },

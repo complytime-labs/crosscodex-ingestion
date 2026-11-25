@@ -85,19 +85,24 @@ async def test_release_converts_to_the_golden_output_and_is_attested(
 
 async def test_source_problems_reach_the_client(grpc_server_and_channel):
     _, channel = grpc_server_and_channel
-    source = b'{"Requirements": [{"Shortcode": "V1", "Name": "C", "Items": [{"Description": "x"}]}]}'
+    # V1 and V1.1 are groups (group_levels: 2), so each needs a child besides the ID-less node under test.
+    source = (
+        b'{"Requirements": [{"Shortcode": "V1", "Name": "C", "Items": ['
+        b'{"Shortcode": "V1.1", "Name": "S", "Items": [{"Shortcode": "V1.1.1", "Description": "r"}]},'
+        b'{"Description": "x"}]}]}'
+    )
 
     document = await _convert(channel, source, "owasp-asvs-5.0.0-json")
 
     assert document.conversion_status == common_pb2.JOB_STATUS_FAILED
     assert document.error.code == common_pb2.ERROR_CODE_INVALID_ARGUMENT
-    problem = "Node at Requirements[0].Items[0] has no ID: field 'Shortcode' is missing or blank."
+    problem = "Node at Requirements[0].Items[1] has no ID: field 'Shortcode' is missing or blank."
     assert document.error.message == f"Problem in source (mapping owasp-asvs-5.0.0-json): {problem}"
     assert dict(document.error.details) == {
         "mapping": "owasp-asvs-5.0.0-json",
         "count": "1",
         "problem.1": problem,
-        "location.1": "Requirements[0].Items[0]",
+        "location.1": "Requirements[0].Items[1]",
     }
 
 

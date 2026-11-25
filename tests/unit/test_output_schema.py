@@ -253,8 +253,8 @@ class TestReferenceViolations:
 class TestStructuredSourceFields:
     """Schema 1.1 adds source ids, titles, properties and metadata.source, all optional."""
 
-    def test_this_service_emits_1_2(self):
-        assert SCHEMA_VERSION == "1.2"
+    def test_this_service_emits_1_3(self):
+        assert SCHEMA_VERSION == "1.3"
 
     def test_structured_output_passes(self):
         validate_output(structured_output())
@@ -265,8 +265,9 @@ class TestStructuredSourceFields:
 
         validate_output(output)
 
-    def test_heading_cannot_carry_a_title(self):
+    def test_heading_without_an_id_cannot_carry_a_title(self):
         output = structured_output()
+        output["elements"][0]["id"] = None
         output["elements"][0]["title"] = "Password Security"
 
         assert _violation(output).violations[0].element_index == 0
@@ -316,8 +317,89 @@ class TestStructuredSourceFields:
     def test_null_source_ids_may_repeat(self):
         output = structured_output()
         output["elements"][2]["id"] = None
+        for field in ("role", "text"):
+            del output["elements"][2][field]
 
         validate_output(output)
+
+
+class TestElementRoles:
+    """Schema 1.3 adds role, text and a nullable title on elements that have a source id."""
+
+    def test_1_3_structured_output_validates(self):
+        output = structured_output()
+        assert output["schema_version"] == "1.3"
+        assert {e.get("role") for e in output["elements"] if e.get("id")} == {"control"}
+
+        validate_output(output)
+
+    def test_role_outside_enum_is_rejected(self):
+        output = structured_output()
+        output["elements"][2]["role"] = "part"
+
+        assert _violation(output).violations[0].element_index == 2
+
+    @pytest.mark.parametrize(("field", "value"), [("role", "group"), ("text", "Some text.")])
+    @pytest.mark.parametrize("id_state", ["absent", "null"])
+    def test_role_and_text_need_a_string_id(self, field, value, id_state):
+        output = structured_output()
+        leaf = output["elements"][1]  # the sample's paragraph with id None
+        if id_state == "absent":
+            del leaf["id"]
+        leaf[field] = value
+
+        assert _violation(output).violations[0].element_index == 1
+
+    def test_heading_with_id_may_have_a_title(self):
+        output = structured_output()
+        output["elements"][0]["title"] = "Password Security"
+
+        validate_output(output)
+
+    def test_heading_without_id_and_with_title_is_rejected(self):
+        output = structured_output()
+        del output["elements"][0]["id"]
+        output["elements"][0]["title"] = "Password Security"
+
+        assert _violation(output).violations[0].element_index == 0
+
+    @pytest.mark.parametrize("field", ["title", "text"])
+    def test_title_and_text_may_be_null(self, field):
+        output = structured_output()
+        output["elements"][2][field] = None
+
+        validate_output(output)
+
+    @pytest.mark.parametrize("field", ["title", "text"])
+    @pytest.mark.parametrize("blank", ["", "  "])
+    def test_title_and_text_may_not_be_blank(self, field, blank):
+        output = structured_output()
+        output["elements"][2][field] = blank
+
+        assert _violation(output).violations[0].element_index == 2
+
+    def test_1_2_output_with_ids_and_no_role_validates(self):
+        output = structured_output()
+        output["schema_version"] = "1.2"
+        for element in output["elements"]:
+            for field in ("role", "text", "title"):
+                element.pop(field, None)
+
+        validate_output(output)
+
+    @pytest.mark.parametrize("version", ["5.0.0", None])
+    def test_catalog_version_is_nullable(self, version):
+        output = structured_output()
+        output["metadata"]["source"]["catalog_version"] = version
+
+        validate_output(output)
+
+    @pytest.mark.parametrize("blank", ["", "  "])
+    def test_blank_catalog_version_is_rejected(self, blank):
+        output = structured_output()
+        output["metadata"]["source"]["catalog_version"] = blank
+
+        assert _violation(output).violations[0].location.startswith("metadata.source")
 
 
 class TestStructureFields:
@@ -330,9 +412,9 @@ class TestStructureFields:
 
         validate_output(output)
 
-        assert output["schema_version"] == "1.2"
+        assert output["schema_version"] == "1.3"
 
-    @pytest.mark.parametrize("version", ["1.0", "1.1"])
+    @pytest.mark.parametrize("version", ["1.0", "1.1", "1.2"])
     def test_older_versions_still_validate(self, version):
         output = conforming_output()
         output["schema_version"] = version

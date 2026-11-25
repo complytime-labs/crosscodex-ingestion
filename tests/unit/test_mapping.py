@@ -70,6 +70,28 @@ class TestLoadMappingFile:
         assert "line 3" in message or "line 2" in message
         assert "column" in message
 
+    def test_group_levels_and_version_load(self, tmp_path):
+        text = TREE + 'group_levels: 2\nversion: "5.0.0"\n'
+
+        mapping = load_mapping_file(_write(tmp_path, "example-1.0-json.yaml", text))
+
+        assert mapping.document["group_levels"] == 2
+        assert mapping.document["version"] == "5.0.0"
+
+    @pytest.mark.parametrize("value", ["0", "-1", '"2"', "1.5", "101"])
+    def test_group_levels_outside_one_to_one_hundred_or_not_an_integer_is_rejected(self, tmp_path, value):
+        path = _write(tmp_path, "example-1.0-json.yaml", TREE + f"group_levels: {value}\n")
+
+        with pytest.raises(MappingError, match="group_levels"):
+            load_mapping_file(path)
+
+    @pytest.mark.parametrize("value", ['""', '"  "'])
+    def test_blank_version_is_rejected(self, tmp_path, value):
+        path = _write(tmp_path, "example-1.0-json.yaml", TREE + f"version: {value}\n")
+
+        with pytest.raises(MappingError, match="version"):
+            load_mapping_file(path)
+
     def test_duplicate_yaml_key_is_rejected_with_its_line(self, tmp_path):
         path = _write(tmp_path, "example-1.0-json.yaml", TREE + "title: Again\n")
 
@@ -170,6 +192,25 @@ class TestRegistry:
 
         assert registry.ids() == PACKAGED_IDS
         assert registry.get("owasp-asvs-5.0.0-json").format == "json"
+
+    def test_packaged_mappings_declare_versions(self):
+        registry = load_registry("")
+        documents = {i: registry.get(i).document for i in registry.ids()}
+
+        assert {i: d.get("version") for i, d in documents.items()} == {
+            "owasp-asvs-5.0.0-json": "5.0.0",
+            "owasp-asvs-5.0.0-csv": "5.0.0",
+            "nist-csf-2.0-core-xlsx": "2.0",
+            "nist-sp800-53r5-catalog-xlsx": "Revision 5",
+            "mitre-attack-enterprise-17.1-techniques-xlsx": "17.1",
+        }
+        assert {i: d.get("group_levels") for i, d in documents.items()} == {
+            "owasp-asvs-5.0.0-json": 2,
+            "owasp-asvs-5.0.0-csv": 2,
+            "nist-csf-2.0-core-xlsx": 2,
+            "nist-sp800-53r5-catalog-xlsx": None,
+            "mitre-attack-enterprise-17.1-techniques-xlsx": None,
+        }
 
     def test_unknown_id_is_none(self):
         assert load_registry("").get("nope") is None

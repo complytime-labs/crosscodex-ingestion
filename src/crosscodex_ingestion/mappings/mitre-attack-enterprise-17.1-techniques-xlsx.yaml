@@ -3,6 +3,7 @@
 mapping_version: 1
 id: mitre-attack-enterprise-17.1-techniques-xlsx
 title: MITRE ATT&CK Enterprise v17.1 techniques
+version: "17.1"
 source:
   format: xlsx
   release: https://attack.mitre.org/docs/attack-excel-files/v17.1/enterprise-attack/enterprise-attack-v17.1-techniques.xlsx

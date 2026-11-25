@@ -3,6 +3,7 @@
 mapping_version: 1
 id: nist-sp800-53r5-catalog-xlsx
 title: NIST SP 800-53 Revision 5 control catalog
+version: "Revision 5"
 source:
   format: xlsx
   release: https://csrc.nist.gov/files/pubs/sp/800/53/r5/upd1/final/docs/sp800-53r5-control-catalog.xlsx
