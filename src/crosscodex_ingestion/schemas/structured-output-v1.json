@@ -9,7 +9,7 @@
   "properties": {
     "schema_version": {
       "description": "MAJOR.MINOR version the output conforms to. This file validates every released 1.x: minors only add optional fields.",
-      "enum": ["1.0", "1.1", "1.2"]
+      "enum": ["1.0", "1.1", "1.2", "1.3"]
     },
     "elements": {
       "description": "Document content in reading order.",
@@ -62,8 +62,16 @@
           "oneOf": [{ "$ref": "#/$defs/nonBlankString" }, { "type": "null" }]
         },
         "title": {
-          "description": "Since 1.1. The source node's title, on a non-heading element whose content is not the title. A heading's title is its content.",
-          "$ref": "#/$defs/nonBlankString"
+          "description": "Since 1.1; null is allowed since 1.3. The source node's title. A heading may carry one only when its id is a string.",
+          "oneOf": [{ "$ref": "#/$defs/nonBlankString" }, { "type": "null" }]
+        },
+        "role": {
+          "description": "Since 1.3. Whether the source node is a catalog group or a control, as the mapping's group_levels declares; a control may have children. Allowed only on an element whose id is a string.",
+          "enum": ["group", "control"]
+        },
+        "text": {
+          "description": "Since 1.3. The source node's own body text, or null when it has none. Allowed only on an element whose id is a string.",
+          "oneOf": [{ "$ref": "#/$defs/nonBlankString" }, { "type": "null" }]
         },
         "properties": {
           "description": "Since 1.1. Extra source fields the mapping names: lowercase identifier -> non-blank string.",
@@ -72,6 +80,23 @@
           "additionalProperties": { "$ref": "#/$defs/nonBlankString" }
         }
       },
+      "allOf": [
+        {
+          "description": "Since 1.3. role and text describe a source node, so they need the node's string id.",
+          "if": { "required": ["id"], "properties": { "id": { "type": "string" } } },
+          "then": {},
+          "else": { "properties": { "role": false, "text": false } }
+        },
+        {
+          "description": "A heading without a source id has no title: its title is its content.",
+          "if": { "properties": { "type": { "const": "heading" } } },
+          "then": {
+            "if": { "required": ["id"], "properties": { "id": { "type": "string" } } },
+            "then": {},
+            "else": { "properties": { "title": false } }
+          }
+        }
+      ],
       "if": { "properties": { "type": { "const": "heading" } } },
       "then": {
         "properties": {
@@ -80,8 +105,7 @@
             "type": "integer",
             "minimum": 1,
             "maximum": 100
-          },
-          "title": false
+          }
         }
       },
       "else": {
@@ -149,6 +173,10 @@
             },
             "mapping_version": { "type": "integer", "minimum": 1 }
           }
+        },
+        "catalog_version": {
+          "description": "Since 1.3. The version of the catalog the source describes, from the mapping's version key; null when the mapping has none.",
+          "oneOf": [{ "$ref": "#/$defs/nonBlankString" }, { "type": "null" }]
         },
         "node_count": { "description": "Source nodes (or rows) converted.", "type": "integer", "minimum": 0 },
         "unmapped_fields": {

@@ -55,8 +55,10 @@ Registered with the package (`src/crosscodex_ingestion/mappings/`):
   (top level = 1, at most 100). If it also has text, a `paragraph` with that text and `id: null` follows it.
   Its children follow, in source order, with `parent_id` set to the heading.
 - A node without children becomes a `paragraph`. Its `content` is its text, or its title when it has no
-  text; `title` is set when it has both.
+  text.
 - Every node's element carries `id` (the source ID) and `properties` (possibly `{}`).
+- Every node's element also carries `role` (`group` or `control`, from the mapping's `group_levels`), `title` and
+  `text` (each `null` when the node has none), so you never need to infer them from the heading and paragraph.
 - Elements are in source order, depth first, so a parent always comes before its children, even when a
   table lists a child row above its parent.
 - `metadata.title` is the mapping's `title`; `metadata.source.unmapped_fields` lists source fields
@@ -176,6 +178,8 @@ mapping does not match patterns: it uses only the fixed separator and bracket te
 | `id`, `title`, `text` | Source field (JSON key or column header, matched exactly) for each. `id` is required, and `title` or `text`. Each is one whole value or cell: nothing is extracted from part of a cell. |
 | `levels` | Tables only, not with `parent`: 1 to 16 `{id, title}` column pairs, outermost first (see above). |
 | `level_cells` | Tables only, instead of `id`, `title`, `text`, `levels` and `parent`: `columns` (1 to 16), `separator`, optional `id_brackets` `{open, close}` (see above). |
+| `group_levels` | Optional integer of at least 1: nodes in the top `group_levels` levels (roots are level 1) are emitted with `role: group`, the rest with `role: control`. **Absent means no groups**: every node is a control, and a node's children are its enhancements or sub-items. A level that is a group needs children; a childless one fails the conversion, so lower `group_levels` or check the source. |
+| `version` | Optional non-blank string: the catalog's release (`5.0.0`), written to `metadata.source.catalog_version`. |
 | `properties` | Up to 64 `name: field` pairs; names match `^[a-z][a-z0-9_]{0,63}$`. |
 
 Values must be strings or numbers. They are trimmed; an integral number loses its fraction (`5.0` -> `"5"`)

@@ -40,6 +40,17 @@ NIST = REGISTRY.get("nist-sp800-53r5-catalog-xlsx")
 NIST_CSF = REGISTRY.get("nist-csf-2.0-core-xlsx")
 LIMITS = StructuredLimits.from_settings(IngestionSettings())
 
+
+def _with_document(mapping: Mapping, **overrides: Any) -> Mapping:
+    """*mapping* with top-level keys replaced (a None value removes the key)."""
+    document = {**copy.deepcopy(mapping.document), **overrides}
+    document = {key: value for key, value in document.items() if value is not None}
+    return Mapping.from_document(document, "e" * 64, "test")
+
+
+# The ASVS mapping without group_levels: tree and error tests use shallow trees where no node is a group.
+ASVS_FLAT = _with_document(ASVS, group_levels=None)
+
 GOLDEN = [
     ("owasp-asvs-5.0.0", "input.json", ASVS),
     ("owasp-asvs-5.0.0-csv", "input.csv", ASVS_CSV),
@@ -160,6 +171,15 @@ class TestGoldenOutputs:
         assert output == expected
 
     @pytest.mark.parametrize(("directory", "name", "mapping"), GOLDEN)
+    def test_role_title_and_text_are_on_exactly_the_elements_with_an_id(self, directory, name, mapping):
+        output = convert_source((FIXTURES / directory / name).read_bytes(), mapping, LIMITS)
+
+        for element in output["elements"]:
+            present = {"role", "title", "text"} & element.keys()
+            expected = {"role", "title", "text"} if isinstance(element.get("id"), str) else set()
+            assert present == expected, element["element_id"]
+
+    @pytest.mark.parametrize(("directory", "name", "mapping"), GOLDEN)
     def test_output_conforms_to_the_schema(self, directory, name, mapping):
         output = convert_source((FIXTURES / directory / name).read_bytes(), mapping, LIMITS)
 
@@ -198,7 +218,7 @@ class TestAsvs:
 
         assert requirement["type"] == "paragraph"
         assert requirement["content"].endswith("numbers, or special characters.")
-        assert "title" not in requirement
+        assert (requirement["title"], requirement["role"]) == (None, "control")
 
     def test_properties_come_from_the_mapping(self, output):
         elements = _by_id(output)
@@ -231,7 +251,7 @@ class TestTreeSemantics:
     def test_node_with_children_and_text_gets_a_text_paragraph_without_id(self):
         chapter = {"Shortcode": "V1", "Name": "Chapter", "Description": "Intro.", "Items": [_requirement("V1.1")]}
 
-        elements = convert_source(_asvs(chapter), ASVS, LIMITS)["elements"]
+        elements = convert_source(_asvs(chapter), ASVS_FLAT, LIMITS)["elements"]
 
         assert [(e["type"], e["id"], e["parent_id"]) for e in elements] == [
             ("heading", "V1", None),
@@ -242,53 +262,53 @@ class TestTreeSemantics:
         assert "properties" not in elements[1]
 
     def test_leaf_without_text_uses_its_title_as_content(self):
-        elements = convert_source(_asvs({"Shortcode": "V1", "Name": "Only a title"}), ASVS, LIMITS)["elements"]
+        elements = convert_source(_asvs({"Shortcode": "V1", "Name": "Only a title"}), ASVS_FLAT, LIMITS)["elements"]
 
         assert elements[0]["content"] == "Only a title"
-        assert "title" not in elements[0]
+        assert (elements[0]["title"], elements[0]["text"]) == ("Only a title", None)
 
     def test_leaf_with_title_and_text_keeps_both(self):
         leaf = {"Shortcode": "V1", "Name": "Title", "Description": "Text"}
 
-        element = convert_source(_asvs(leaf), ASVS, LIMITS)["elements"][0]
+        element = convert_source(_asvs(leaf), ASVS_FLAT, LIMITS)["elements"][0]
 
         assert (element["content"], element["title"]) == ("Text", "Title")
 
     def test_values_are_trimmed_and_integral_numbers_lose_the_fraction(self):
         leaf = {"Shortcode": 5.0, "Description": "  Text \n", "L": 2}
 
-        element = convert_source(_asvs(leaf), ASVS, LIMITS)["elements"][0]
+        element = convert_source(_asvs(leaf), ASVS_FLAT, LIMITS)["elements"][0]
 
         assert (element["id"], element["content"], element["properties"]) == ("5", "Text", {"level": "2"})
 
     def test_non_integral_number_is_kept(self):
-        element = convert_source(_asvs(_requirement("V1", L=1.5)), ASVS, LIMITS)["elements"][0]
+        element = convert_source(_asvs(_requirement("V1", L=1.5)), ASVS_FLAT, LIMITS)["elements"][0]
 
         assert element["properties"] == {"level": "1.5"}
 
     def test_missing_or_null_property_is_omitted(self):
         leaf = {"Shortcode": "V1", "Description": "Text", "L": None}
 
-        assert convert_source(_asvs(leaf), ASVS, LIMITS)["elements"][0]["properties"] == {}
+        assert convert_source(_asvs(leaf), ASVS_FLAT, LIMITS)["elements"][0]["properties"] == {}
 
     def test_select_empty_string_reads_a_root_array(self):
-        document = dict(ASVS.document, nodes={**ASVS.document["nodes"], "select": ""})
-        mapping = Mapping.from_document(document, ASVS.sha256, "test")
+        document = dict(ASVS_FLAT.document, nodes={**ASVS_FLAT.document["nodes"], "select": ""})
+        mapping = Mapping.from_document(document, ASVS_FLAT.sha256, "test")
 
         elements = convert_source(_json([_requirement("V1")]), mapping, LIMITS)["elements"]
 
         assert elements[0]["id"] == "V1"
 
     def test_nested_select_path(self):
-        document = dict(ASVS.document, nodes={**ASVS.document["nodes"], "select": "a.b"})
-        mapping = Mapping.from_document(document, ASVS.sha256, "test")
+        document = dict(ASVS_FLAT.document, nodes={**ASVS_FLAT.document["nodes"], "select": "a.b"})
+        mapping = Mapping.from_document(document, ASVS_FLAT.sha256, "test")
 
         elements = convert_source(_json({"a": {"b": [_requirement("V1")]}}), mapping, LIMITS)["elements"]
 
         assert elements[0]["id"] == "V1"
 
     def test_byte_order_mark_is_accepted(self):
-        elements = convert_source(b"\xef\xbb\xbf" + _asvs(_requirement("V1")), ASVS, LIMITS)["elements"]
+        elements = convert_source(b"\xef\xbb\xbf" + _asvs(_requirement("V1")), ASVS_FLAT, LIMITS)["elements"]
 
         assert elements[0]["id"] == "V1"
 
@@ -297,39 +317,43 @@ class TestTreeErrors:
     def test_node_without_id(self):
         chapter = {"Shortcode": "V1", "Name": "C", "Items": [{"Shortcode": "V1.1", "Name": "S", "Items": [{}]}]}
 
-        assert _problems(_asvs(chapter), ASVS) == [
+        assert _problems(_asvs(chapter), ASVS_FLAT) == [
             "Node at Requirements[0].Items[0].Items[0] has no ID: field 'Shortcode' is missing or blank."
         ]
 
     def test_node_with_children_but_no_title(self):
         chapter = {"Shortcode": "V6.2", "Name": " ", "Items": [_requirement("V6.2.1"), _requirement("V6.2.2")]}
 
-        assert _problems(_asvs(chapter), ASVS) == [
+        assert _problems(_asvs(chapter), ASVS_FLAT) == [
             "Node 'V6.2' (at Requirements[0]) has 2 children but no title: field 'Name' is missing or blank. "
             "A node with children becomes a heading, and headings need a title."
         ]
 
     def test_empty_leaf(self):
-        assert _problems(_asvs({"Shortcode": "V1.1.1", "Description": ""}), ASVS) == [
+        assert _problems(_asvs({"Shortcode": "V1.1.1", "Description": ""}), ASVS_FLAT) == [
             "Node 'V1.1.1' (at Requirements[0]) has neither a title ('Name') nor text ('Description')."
         ]
 
     def test_duplicate_id(self):
         chapter = {"Shortcode": "V6", "Name": "C", "Items": [_requirement("V6.2.5"), _requirement("V6.2.5")]}
 
-        assert _problems(_asvs(chapter), ASVS) == [
+        assert _problems(_asvs(chapter), ASVS_FLAT) == [
             "Duplicate ID 'V6.2.5' at Requirements[0].Items[0] and Requirements[0].Items[1]. "
             "IDs must be unique across the source."
         ]
 
     def test_problems_are_reported_together(self):
-        error = _source_error(_asvs({}, {"Shortcode": "V2"}, {"Shortcode": "V3", "Description": "ok", "L": True}), ASVS)
+        error = _source_error(
+            _asvs({}, {"Shortcode": "V2"}, {"Shortcode": "V3", "Description": "ok", "L": True}), ASVS_FLAT
+        )
 
         assert error.count == 3
-        assert str(error).startswith(f"3 problems in source (mapping {ASVS.id}): 1) Node at Requirements[0] has no ID")
+        assert str(error).startswith(
+            f"3 problems in source (mapping {ASVS_FLAT.id}): 1) Node at Requirements[0] has no ID"
+        )
         assert " 2) Node 'V2' (at Requirements[1]) has neither" in str(error)
         assert " 3) Field 'L' at Requirements[2] is a boolean" in str(error)
-        assert error.details["mapping"] == ASVS.id
+        assert error.details["mapping"] == ASVS_FLAT.id
         assert error.details["count"] == "3"
         assert set(error.details) == {
             "mapping",
@@ -344,7 +368,7 @@ class TestTreeErrors:
 
     def test_redacted_form_names_locations_but_quotes_no_source_values(self):
         chapter = {"Shortcode": "C", "Name": "C", "Items": [_requirement("secret-id"), _requirement("secret-id")]}
-        error = _source_error(_asvs(chapter), ASVS)
+        error = _source_error(_asvs(chapter), ASVS_FLAT)
 
         message, details = error.redacted()
 
@@ -352,61 +376,61 @@ class TestTreeErrors:
         assert "secret-id" not in message
         assert "secret-id" not in str(details)
         assert message == (
-            f"Problem in source (mapping {ASVS.id}) at Requirements[0].Items[1]; source values are withheld here, "
+            f"Problem in source (mapping {ASVS_FLAT.id}) at Requirements[0].Items[1]; source values are withheld here, "
             "the document's error has the full message."
         )
-        assert details == {"mapping": ASVS.id, "count": "1", "location.1": "Requirements[0].Items[1]"}
+        assert details == {"mapping": ASVS_FLAT.id, "count": "1", "location.1": "Requirements[0].Items[1]"}
 
     def test_single_problem_message(self):
-        error = _source_error(_asvs({}), ASVS)
+        error = _source_error(_asvs({}), ASVS_FLAT)
 
-        assert str(error) == f"Problem in source (mapping {ASVS.id}): Node at Requirements[0] has no ID: " + (
+        assert str(error) == f"Problem in source (mapping {ASVS_FLAT.id}): Node at Requirements[0] has no ID: " + (
             "field 'Shortcode' is missing or blank."
         )
 
     def test_listed_problems_are_the_first_in_source_order_whatever_phase_found_them(self):
         # 25 nodes without ID (found while reading fields), then one with a wrong-typed field at index 0.
-        error = _source_error(_asvs({"Shortcode": "V0", "Description": True}, *([{}] * 25)), ASVS)
+        error = _source_error(_asvs({"Shortcode": "V0", "Description": True}, *([{}] * 25)), ASVS_FLAT)
 
         assert error.count == 26
         assert error.problems[0].startswith("Field 'Description' at Requirements[0]")
         assert error.problems[19].startswith("Node at Requirements[19] has no ID")
 
     def test_at_most_20_problems_are_listed_but_all_are_counted(self):
-        error = _source_error(_asvs(*([{}] * 25)), ASVS)
+        error = _source_error(_asvs(*([{}] * 25)), ASVS_FLAT)
 
         assert error.count == 25
-        assert str(error).startswith(f"25 problems in source (mapping {ASVS.id}); the first 20: 1) ")
+        assert str(error).startswith(f"25 problems in source (mapping {ASVS_FLAT.id}); the first 20: 1) ")
         assert "problem.20" in error.details
         assert "problem.21" not in error.details
 
     def test_select_path_not_found_lists_the_available_keys(self):
-        assert _problems(_json({"Name": "x", "Chapters": []}), ASVS) == [
+        assert _problems(_json({"Name": "x", "Chapters": []}), ASVS_FLAT) == [
             "Path 'Requirements' not found: the root object has no key 'Requirements'. Its keys: 'Name', 'Chapters'."
         ]
 
     def test_select_path_through_a_non_object(self):
-        document = dict(ASVS.document, nodes={**ASVS.document["nodes"], "select": "a.b"})
-        mapping = Mapping.from_document(document, ASVS.sha256, "test")
+        document = dict(ASVS_FLAT.document, nodes={**ASVS_FLAT.document["nodes"], "select": "a.b"})
+        mapping = Mapping.from_document(document, ASVS_FLAT.sha256, "test")
 
         assert _problems(_json({"a": [1]}), mapping) == ["Path 'a.b' not found: 'a' is an array, not an object."]
 
     def test_select_path_must_end_at_an_array(self):
-        assert _problems(_json({"Requirements": {"a": 1}}), ASVS) == [
+        assert _problems(_json({"Requirements": {"a": 1}}), ASVS_FLAT) == [
             "Path 'Requirements' selects an object, not an array of nodes."
         ]
 
     def test_node_that_is_not_an_object(self):
-        assert _problems(_asvs("V1"), ASVS) == ["Node at Requirements[0] is a string, not an object."]
+        assert _problems(_asvs("V1"), ASVS_FLAT) == ["Node at Requirements[0] is a string, not an object."]
 
     def test_children_that_are_not_an_array(self):
-        assert _problems(_asvs({"Shortcode": "V1", "Name": "C", "Items": "none"}), ASVS) == [
+        assert _problems(_asvs({"Shortcode": "V1", "Name": "C", "Items": "none"}), ASVS_FLAT) == [
             "Field 'Items' at Requirements[0] is a string; a node's children must be an array."
         ]
 
     @pytest.mark.parametrize(("value", "kind"), [(True, "a boolean"), ({"a": 1}, "an object"), ([1], "an array")])
     def test_value_of_the_wrong_type(self, value, kind):
-        assert _problems(_asvs(_requirement("V1", description=value)), ASVS) == [
+        assert _problems(_asvs(_requirement("V1", description=value)), ASVS_FLAT) == [
             f"Field 'Description' at Requirements[0] is {kind}; IDs, titles, text and properties must be "
             "strings or numbers."
         ]
@@ -415,7 +439,7 @@ class TestTreeErrors:
         long_id = "V" + "1" * 100
         chapter = {"Shortcode": "C", "Name": "C", "Items": [_requirement(long_id), _requirement(long_id)]}
 
-        problem = _problems(_asvs(chapter), ASVS)[0]
+        problem = _problems(_asvs(chapter), ASVS_FLAT)[0]
 
         assert f"'V{'1' * 63}…'" in problem
         assert long_id not in problem
@@ -423,27 +447,29 @@ class TestTreeErrors:
     def test_control_characters_are_escaped_in_messages(self):
         chapter = {"Shortcode": "C", "Name": "C", "Items": [_requirement("a\nb"), _requirement("a\nb")]}
 
-        assert _problems(_asvs(chapter), ASVS)[0].startswith("Duplicate ID 'a\\nb' at")
+        assert _problems(_asvs(chapter), ASVS_FLAT)[0].startswith("Duplicate ID 'a\\nb' at")
 
 
 class TestJsonHardening:
     def test_too_deep_input_is_refused_before_parsing(self):
         with pytest.raises(StructuredLimitError, match=r"MAX_JSON_DEPTH \(64\)"):
-            convert_source(b"[" * 65 + b"]" * 65, ASVS, LIMITS)
+            convert_source(b"[" * 65 + b"]" * 65, ASVS_FLAT, LIMITS)
 
     def test_recursion_in_the_parser_is_a_depth_limit_error(self, monkeypatch):
         """Backstop if the pre-parse scan ever misses nesting: json's RecursionError is not a crash."""
         monkeypatch.setattr(structured, "_check_json_depth", lambda *_: None)
 
         with pytest.raises(StructuredLimitError, match="MAX_JSON_DEPTH"):
-            convert_source(b"[" * 200_000 + b"]" * 200_000, ASVS, LIMITS)
+            convert_source(b"[" * 200_000 + b"]" * 200_000, ASVS_FLAT, LIMITS)
 
     def test_input_at_the_depth_limit_is_parsed(self):
         nested: Any = [_requirement("V1")]
         for _ in range(3):
             nested = {"Requirements": nested}
-        document = dict(ASVS.document, nodes={**ASVS.document["nodes"], "select": "Requirements.Requirements"})
-        mapping = Mapping.from_document(document, ASVS.sha256, "test")
+        document = dict(
+            ASVS_FLAT.document, nodes={**ASVS_FLAT.document["nodes"], "select": "Requirements.Requirements"}
+        )
+        mapping = Mapping.from_document(document, ASVS_FLAT.sha256, "test")
 
         convert_source(_json(nested["Requirements"]), mapping, _limits(max_json_depth=5))
 
@@ -451,14 +477,14 @@ class TestJsonHardening:
         data = b'{"Requirements": "' + b'\\"' * 200_000
 
         started = time.monotonic()
-        problems = _problems(data, ASVS)
+        problems = _problems(data, ASVS_FLAT)
 
         assert time.monotonic() - started < 5
         assert problems[0].startswith("The input is not valid JSON: Unterminated string")
 
     def test_brackets_inside_strings_do_not_count_toward_depth(self):
         output = convert_source(
-            _asvs(_requirement("V1", description='[[[[{{{{ "\\" [[[[')), ASVS, _limits(max_json_depth=3)
+            _asvs(_requirement("V1", description='[[[[{{{{ "\\" [[[[')), ASVS_FLAT, _limits(max_json_depth=3)
         )
 
         assert output["elements"][0]["content"] == '[[[[{{{{ "\\" [[[['
@@ -466,7 +492,7 @@ class TestJsonHardening:
     def test_duplicate_keys_are_rejected(self):
         data = b'{"Requirements": [{"Shortcode": "V1", "Shortcode": "V2", "Description": "x"}]}'
 
-        assert _problems(data, ASVS) == [
+        assert _problems(data, ASVS_FLAT) == [
             "The input has a JSON object with the key 'Shortcode' twice; duplicate keys are ambiguous, so they are "
             "rejected."
         ]
@@ -475,29 +501,29 @@ class TestJsonHardening:
     def test_non_finite_numbers_are_rejected(self, constant):
         data = b'{"Requirements": [{"Shortcode": ' + constant.encode() + b', "Description": "x"}]}'
 
-        assert _problems(data, ASVS) == [f"The input contains {constant}, which is not valid JSON."]
+        assert _problems(data, ASVS_FLAT) == [f"The input contains {constant}, which is not valid JSON."]
 
     def test_invalid_json_names_line_and_column(self):
-        assert _problems(b'{"Requirements": [\n  {"Shortcode": }]}', ASVS) == [
+        assert _problems(b'{"Requirements": [\n  {"Shortcode": }]}', ASVS_FLAT) == [
             "The input is not valid JSON: Expecting value at line 2, column 17."
         ]
 
     def test_invalid_utf8_names_the_byte(self):
-        assert _problems(b'{"Requirements": "\xff"}', ASVS) == ["The input is not valid UTF-8 (at byte 18)."]
+        assert _problems(b'{"Requirements": "\xff"}', ASVS_FLAT) == ["The input is not valid UTF-8 (at byte 18)."]
 
     def test_huge_integer_is_rejected(self):
-        problems = _problems(b'{"Requirements": [{"Shortcode": ' + b"9" * 5000 + b"}]}", ASVS)
+        problems = _problems(b'{"Requirements": [{"Shortcode": ' + b"9" * 5000 + b"}]}", ASVS_FLAT)
 
         assert problems[0].startswith("The input is not valid JSON:")
 
     def test_non_objects_count_toward_the_node_limit(self):
         with pytest.raises(StructuredLimitError, match=r"MAX_STRUCTURED_NODES \(5\)"):
-            convert_source(_json({"Requirements": [1] * 100}), ASVS, _limits(max_structured_nodes=5))
+            convert_source(_json({"Requirements": [1] * 100}), ASVS_FLAT, _limits(max_structured_nodes=5))
 
     def test_non_finite_number_is_named_as_such(self):
         data = b'{"Requirements": [{"Shortcode": 1e999, "Description": "x"}]}'
 
-        assert _problems(data, ASVS) == [
+        assert _problems(data, ASVS_FLAT) == [
             "Field 'Shortcode' at Requirements[0] is a non-finite number; IDs, titles, text and properties must be "
             "strings or numbers."
         ]
@@ -505,7 +531,9 @@ class TestJsonHardening:
     def test_node_count_limit(self):
         with pytest.raises(StructuredLimitError, match=r"MAX_STRUCTURED_NODES \(2\)"):
             convert_source(
-                _asvs(_requirement("V1"), _requirement("V2"), _requirement("V3")), ASVS, _limits(max_structured_nodes=2)
+                _asvs(_requirement("V1"), _requirement("V2"), _requirement("V3")),
+                ASVS_FLAT,
+                _limits(max_structured_nodes=2),
             )
 
     def test_value_length_limit(self):
@@ -513,11 +541,11 @@ class TestJsonHardening:
             StructuredLimitError,
             match=r"Field 'Description' at Requirements\[0\] has 11 characters.*MAX_CELL_LENGTH \(10\)",
         ):
-            convert_source(_asvs(_requirement("V1", description="x" * 11)), ASVS, _limits(max_cell_length=10))
+            convert_source(_asvs(_requirement("V1", description="x" * 11)), ASVS_FLAT, _limits(max_cell_length=10))
 
     def test_id_length_limit(self):
         with pytest.raises(StructuredLimitError, match=r"MAX_ID_LENGTH \(4\)"):
-            convert_source(_asvs(_requirement("V1.2.3")), ASVS, _limits(max_id_length=4))
+            convert_source(_asvs(_requirement("V1.2.3")), ASVS_FLAT, _limits(max_id_length=4))
 
 
 class TestAttackParentColumn:
@@ -934,14 +962,14 @@ class TestRunJob:
 
     def test_writes_the_output(self, tmp_path):
         data = _asvs(_requirement("V1"))
-        input_path, output_path, job = self._job(tmp_path, ASVS, data)
+        input_path, output_path, job = self._job(tmp_path, ASVS_FLAT, data)
 
         assert run_job(input_path, output_path, job) == 0
 
-        assert json.loads(Path(output_path).read_text()) == convert_source(data, ASVS, LIMITS)
+        assert json.loads(Path(output_path).read_text()) == convert_source(data, ASVS_FLAT, LIMITS)
 
     def test_source_problems_go_to_the_error_file(self, tmp_path):
-        input_path, output_path, job = self._job(tmp_path, ASVS, _asvs({}))
+        input_path, output_path, job = self._job(tmp_path, ASVS_FLAT, _asvs({}))
 
         assert run_job(input_path, output_path, job) == INPUT_ERROR_EXIT_CODE
 
@@ -952,7 +980,7 @@ class TestRunJob:
         assert not Path(output_path).exists()
 
     def test_limit_errors_go_to_the_error_file(self, tmp_path):
-        input_path, output_path, job = self._job(tmp_path, ASVS, b"[" * 100)
+        input_path, output_path, job = self._job(tmp_path, ASVS_FLAT, b"[" * 100)
 
         assert run_job(input_path, output_path, job) == INPUT_ERROR_EXIT_CODE
 
@@ -1281,3 +1309,126 @@ class TestNistCsf:
         by_id = _by_id({"elements": elements})
         assert by_id["GV.OC-01"]["parent_id"] == by_id["GV.OC"]["element_id"]
         assert by_id["GV.OC-01"]["content"].startswith("The organizational mission is understood")
+
+
+def _roles(output: dict) -> dict[str, str]:
+    return {e["id"]: e["role"] for e in output["elements"] if e.get("id") is not None}
+
+
+def _validate(output: dict) -> None:
+    validate_output(
+        {"schema_version": SCHEMA_VERSION, **output, "metadata": {**output["metadata"], "processing_time_ms": 1}}
+    )
+
+
+class TestRoles:
+    """Every element with an ID carries its role, title and text; group_levels says which levels are groups."""
+
+    def _asvs_data(self) -> bytes:
+        section = {
+            "Shortcode": "V1.1",
+            "Name": "Section",
+            "Items": [_requirement("V1.1.1", "First."), _requirement("V1.1.2", "Second.")],
+        }
+        return _asvs({"Shortcode": "V1", "Name": "Chapter", "Items": [section]})
+
+    def test_without_group_levels_every_id_is_a_control(self):
+        mapping = _with_document(ATTACK, group_levels=None)
+        data = _xlsx([ATTACK_HEADER, _technique("T1055", name="Process Injection"), _technique("T1055.001", "T1055")])
+
+        output = convert_source(data, mapping, LIMITS)
+
+        _validate(output)
+        assert set(_roles(output).values()) == {"control"}
+        heading = _by_id(output)["T1055"]
+        assert (heading["title"], heading["text"]) == ("Process Injection", "Adversaries may.")
+
+    def test_asvs_group_levels_two(self):
+        output = convert_source(self._asvs_data(), _with_document(ASVS, group_levels=2), LIMITS)
+
+        _validate(output)
+        assert _roles(output) == {"V1": "group", "V1.1": "group", "V1.1.1": "control", "V1.1.2": "control"}
+        requirement = _by_id(output)["V1.1.1"]
+        assert (requirement["title"], requirement["text"]) == (None, "First.")
+
+    def test_csv_levels_with_group_levels_two(self):
+        data = _csv(
+            "chapter_id,chapter_name,section_id,section_name,req_id,req_description,L\n"
+            "V1,Chapter,V1.1,Section,V1.1.1,First.,1\n"
+            "V1,Chapter,V1.1,Section,V1.1.2,Second.,2\n"
+        )
+
+        output = convert_source(data, _with_document(ASVS_CSV, group_levels=2), LIMITS)
+
+        _validate(output)
+        assert _roles(output) == {"V1": "group", "V1.1": "group", "V1.1.1": "control", "V1.1.2": "control"}
+        assert _by_id(output)["V1.1.2"]["text"] == "Second."
+
+    def test_csf_level_cells_with_group_levels_two(self):
+        mapping = _with_document(CELLS_MAPPING, group_levels=2)
+
+        output = convert_source(
+            _csv(
+                CELLS_HEADER
+                + "GOVERN (GV): Strategy.,,,\n,Context (GV.OC): Circumstances.,,\n,,GV.OC-01: Mission.,Ex1\n"
+            ),
+            mapping,
+            LIMITS,
+        )
+
+        _validate(output)
+        assert _roles(output) == {"GV": "group", "GV.OC": "group", "GV.OC-01": "control"}
+        assert _by_id(output)["GV"]["text"] == "Strategy."
+
+    def test_rows_parent_shape_with_group_levels_one(self):
+        mapping = _with_document(ATTACK, group_levels=1)
+        data = _xlsx([ATTACK_HEADER, _technique("T1055"), _technique("T1055.001", "T1055")])
+
+        output = convert_source(data, mapping, LIMITS)
+
+        _validate(output)
+        assert _roles(output) == {"T1055": "group", "T1055.001": "control"}
+
+    def test_title_and_text_are_null_not_blank(self):
+        mapping = _with_document(ASVS, group_levels=1)
+        chapter = {"Shortcode": "V1", "Name": "Chapter", "Items": [{"Shortcode": "V1.1", "Name": "Title only"}]}
+
+        output = convert_source(_asvs(chapter), mapping, LIMITS)
+
+        _validate(output)
+        by_id = _by_id(output)
+        assert (by_id["V1"]["title"], by_id["V1"]["text"]) == ("Chapter", None)
+        assert (by_id["V1.1"]["title"], by_id["V1.1"]["text"]) == ("Title only", None)
+
+    def test_group_levels_deeper_than_a_branch_fails_naming_the_leaf(self):
+        problems = _problems(self._asvs_data(), _with_document(ASVS, group_levels=3))
+
+        assert len(problems) == 2
+        assert all("'V1.1.1'" in p or "'V1.1.2'" in p for p in problems)
+        assert "group_levels (3)" in problems[0]
+        assert "level 3" in problems[0]
+        assert "owasp-asvs-5.0.0-json" in str(_source_error(self._asvs_data(), _with_document(ASVS, group_levels=3)))
+
+    def test_float_group_levels_reads_as_an_integer(self):
+        output = convert_source(self._asvs_data(), _with_document(ASVS, group_levels=2.0), LIMITS)
+
+        assert _roles(output)["V1.1"] == "group"
+        assert "group_levels (3)" in _problems(self._asvs_data(), _with_document(ASVS, group_levels=3.0))[0]
+
+    def test_catalog_version_from_mapping(self):
+        with_version = convert_source(self._asvs_data(), _with_document(ASVS, version="5.0.0"), LIMITS)
+        without = convert_source(self._asvs_data(), _with_document(ASVS, version=None), LIMITS)
+
+        _validate(with_version)
+        _validate(without)
+        assert with_version["metadata"]["source"]["catalog_version"] == "5.0.0"
+        assert without["metadata"]["source"]["catalog_version"] is None
+
+    def test_elements_without_id_have_no_role(self):
+        chapter = {"Shortcode": "V1", "Name": "Chapter", "Description": "Intro.", "Items": [_requirement("V1.1")]}
+
+        output = convert_source(_asvs(chapter), _with_document(ASVS, group_levels=None), LIMITS)
+
+        paragraph = output["elements"][1]
+        assert paragraph["id"] is None
+        assert not {"role", "title", "text"} & paragraph.keys()
