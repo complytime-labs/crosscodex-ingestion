@@ -1,0 +1,25 @@
+src/crosscodex_ingestion/output_schema.py
+  s_716be8e6f6d133::t_63734f66695e8b 25
+src/crosscodex_ingestion/schemas/structured-output-v1.json
+  s_716be8e6f6d133::t_9ad259b1427ed7 12,65-74,83-99,108,177-180
+tests/unit/output_samples.py
+  s_716be8e6f6d133::t_43c0b5fea1acdd 57-59,81,83
+tests/unit/test_output_schema.py
+  s_716be8e6f6d133::t_9d660f215bd173 256-257,268,270,320-321,326-404,415,417
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "ac1b370be161274fc16c1b880eb7fccb21135ea2",
+  "prompts": {},
+  "sessions": {
+    "s_716be8e6f6d133": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "422310a8-cbba-4c80-ad5a-6a1823316b83",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "LLM (riotbox) <llm@riotbox>"
+    }
+  }
+}
