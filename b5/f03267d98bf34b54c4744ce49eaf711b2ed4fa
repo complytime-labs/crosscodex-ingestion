@@ -1,0 +1,21 @@
+docs/output-schema.md
+  s_716be8e6f6d133::t_23c260e6368f82 172-174
+src/crosscodex_ingestion/schemas/structured-output-v1.json
+  s_716be8e6f6d133::t_f0ea86c4f0574a 69,178
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "b5f03267d98bf34b54c4744ce49eaf711b2ed4fa",
+  "prompts": {},
+  "sessions": {
+    "s_716be8e6f6d133": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "422310a8-cbba-4c80-ad5a-6a1823316b83",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "LLM (riotbox) <llm@riotbox>"
+    }
+  }
+}
