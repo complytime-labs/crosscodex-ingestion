@@ -8,12 +8,13 @@ from fpdf import FPDF
 
 
 def generate_pdf() -> None:
-    """Generate sample PDF with headings and paragraphs."""
+    """Generate sample PDF of body-text paragraphs only.
+
+    No headings, tables or numbered lines: the fallback structurer must find nothing. A bold heading
+    line would leave the result to Docling's layout model, which labels it a heading on some CPUs only.
+    """
     pdf = FPDF()
     pdf.add_page()
-    pdf.set_font("Helvetica", "B", 16)
-    pdf.cell(text="Section One: Access Control")
-    pdf.ln()
     pdf.set_font("Helvetica", size=12)
     pdf.multi_cell(
         w=0,
@@ -26,9 +27,6 @@ def generate_pdf() -> None:
     pdf.ln(5)
 
     pdf.add_page()
-    pdf.set_font("Helvetica", "B", 16)
-    pdf.cell(text="Section Two: Audit Logging")
-    pdf.ln()
     pdf.set_font("Helvetica", size=12)
     pdf.multi_cell(
         w=0,

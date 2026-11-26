@@ -1,1 +1,1 @@
-tests/fixtures/documents/nist-*.pdf filter=lfs diff=lfs merge=lfs -text
+tests/fixtures/documents/*.pdf filter=lfs diff=lfs merge=lfs -text

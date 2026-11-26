@@ -10,3 +10,9 @@ PYTHON_RUFF_ARGUMENTS: []
 # links belong to the original site. Root-relative hrefs there cannot resolve from a local
 # file, and the absolute ones are not this repo's links to maintain.
 SPELL_LYCHEE_FILTER_REGEX_EXCLUDE: "^tests/fixtures/"
+
+# tests/fixtures/fallback/capture/main.go is crosscodex code, not a module of this repo: it imports
+# crosscodex's internal packages and only builds once `task fixtures:fallback-goldens` copies it into a
+# crosscodex worktree. Run here, golangci-lint finds no go.mod and fails; with nothing left to lint,
+# MegaLinter skips it.
+GO_GOLANGCI_LINT_FILTER_REGEX_EXCLUDE: "^tests/fixtures/"
