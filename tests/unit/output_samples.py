@@ -6,7 +6,10 @@ from crosscodex_ingestion.output_schema import SCHEMA_VERSION
 
 
 def conforming_output() -> dict[str, Any]:
-    """Return a fresh output that conforms to the current schema: a heading with a paragraph under it."""
+    """Return a fresh document output that conforms to the current schema: a control with one control under it.
+
+    metadata.structure is what the conversion worker measured on the layout it structured.
+    """
     return {
         "schema_version": SCHEMA_VERSION,
         "elements": [
@@ -18,6 +21,11 @@ def conforming_output() -> dict[str, Any]:
                 "level": 1,
                 "parent_id": None,
                 "style": {},
+                "id": "sec-1",
+                "role": "control",
+                "title": "Scope",
+                "text": None,
+                "properties": {},
             },
             {
                 "element_id": "e-002",
@@ -27,6 +35,11 @@ def conforming_output() -> dict[str, Any]:
                 "level": None,
                 "parent_id": "e-001",
                 "style": {},
+                "id": "sec-1.a",
+                "role": "control",
+                "title": None,
+                "text": "Applies to all systems.",
+                "properties": {"label": "a"},
             },
         ],
         "metadata": {
@@ -36,6 +49,15 @@ def conforming_output() -> dict[str, Any]:
             "title": None,
             "processing_time_ms": 12.5,
             "dropped": [],
+            "structure_method": "heading",
+            "structure": {
+                "heading_count": 1,
+                "table_count": 0,
+                "max_heading_depth": 1,
+                "unparented_count": 0,
+                "fragment_count": 0,
+                "warnings": [],
+            },
         },
     }
 
@@ -98,5 +120,6 @@ def structured_output() -> dict[str, Any]:
                 "node_count": 2,
                 "unmapped_fields": ["Ordinal"],
             },
+            "structure_method": "mapping",
         },
     }

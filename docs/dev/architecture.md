@@ -67,6 +67,7 @@ gRPC Request → Dispatch → Worker → [Converter → Extractor | Structured] 
 - `output_schema.py`: Validates every output against the versioned output schema before it is stored (design: [docs/output-schema.md](../output-schema.md))
 - `quality.py`: Measures structure signals (`metadata.structure`) from the extracted elements
 - `html_profile.py`, `html_profiles/`: Load, validate and register HTML profiles at startup; the packaged profiles are the `*.yaml` files in `html_profiles/` (maintainer notes: [docs/html-profiles.md](../html-profiles.md))
+- `fallback.py`: The fallback structurer for documents: a Python port of crosscodex's Go cascade (heading, table and pattern tiers, then clause decomposition) over the extractor's layout, producing `structured.TreeNode`s that `structured.emit_elements` writes out. Design: [docs/output-schema.md](../output-schema.md#14-document-structure)
 - `mapping.py`: Loads, validates and registers structured-source mappings at startup
 - `structured.py`: Reads JSON, CSV and XLSX through a mapping into elements, in the structured worker subprocess (design: [docs/structured-sources.md](../structured-sources.md))
 
@@ -77,3 +78,30 @@ gRPC Request → Dispatch → Worker → [Converter → Extractor | Structured] 
 - `audit.py`: Publisher of audit events to `tenant.<tenant_id>.audit.ingestion`. This is a core NATS publish, with no JetStream acknowledgement: events are captured durably only if the operator defines a JetStream stream on `tenant.*.audit.ingestion`. Without `NATS_URL`, events go to the log instead. With `NATS_URL` set but NATS disconnected, `publish` raises `AuditUnavailableError` and does not drop the event silently.
 - `nats_connection.py`: The single NATS connection that audit and distributed dispatch share. `build_nats_tls_context` turns the `NATS_TLS_*` variables into a TLS context, or rejects a cert without its key (or the reverse) at startup. `NatsConnection.start()` returns at once. A background loop then connects with exponential backoff (1 s, doubling to 60 s), and each failure is logged as one WARNING line without a traceback. nats-py retries the first connect once on its own, so each loop attempt makes two tries. After the first connect, the client's reconnect limit is lifted (`options["max_reconnect_attempts"] = -1`), and nats-py reconnects without end. `available` is True only while the client is connected. `ConvertDocument` checks it and returns `UNAVAILABLE` while it is False, so the service never accepts a job whose audit event it cannot publish. The client message leaves out the NATS URL (CWE-209), which is logged instead. `NatsUnavailableError` (and its subclass `AuditUnavailableError`) is raised when a publish finds NATS down. If the job publish in `NatsDispatch` raises it after the check passed, `ConvertDocument` marks the new record `FAILED` (UNAVAILABLE) and aborts `UNAVAILABLE`. `worker.record_failure` logs a lost audit event at WARNING after it writes the `FAILED` state. `EmbeddedDispatch`'s done callback retrieves and logs any exception that escapes `run_conversion`.
 - `config.py`: Pydantic settings with environment variable overrides
+
+## Document structure
+
+Every document conversion ends in `fallback.structure_layout`, inside the conversion subprocess in
+`converter.py`, after `extract_elements` and after `quality.measure_structure` has measured the layout.
+Its result goes through the same `emit_elements` as structured sources, so one output schema serves both.
+
+- **It runs in the sandbox.** The patterns and the decomposition run over untrusted document text. In the
+  rlimit-sandboxed subprocess a runaway regex meets the CPU and wall-clock kill instead of stalling the
+  service. Every regex is ASCII-only and listed in `fallback.REGEXES`; `test_fallback_adapter.py` checks the
+  flags and `test_fallback_redos.py` checks that match time stays linear.
+- **No outcome leaves the sandbox as text.** The worker signals "no structure" and "repeated IDs" by exit
+  code (the parent reads the winning tier's name from a file and accepts only the three known names), and the parent builds the
+  client message from the format and registry mapping IDs, never from the document.
+- **It has no tuning.** The cascade is frozen at crosscodex's default structuring settings (heading repeats
+  over 3 dropped, decomposition at 40 words, no keyword filter or print-artefact patterns). The service
+  version plus `structure_method` reproduces a result, which an environment variable would break because
+  settings are not recorded per output. crosscodex's non-default knobs are for mapping rules.
+- **Parity is pinned by goldens.** `tests/fixtures/fallback/*/golden.json` is crosscodex's own output for
+  each `input.json`, and the unit tests require the port to match it. After a deliberate change, regenerate
+  them with `task fixtures:fallback-goldens CROSSCODEX_DIR=<crosscodex checkout>`: it runs the capture
+  program in `tests/fixtures/fallback/capture/` at the pinned crosscodex commit in a temporary worktree.
+  `tests/fixtures/fallback/PROVENANCE.md` records the inputs.
+- **Departures from the Go cascade.** (1) Clauses nest under their nearest enclosing section. Go's
+  `DecomposeText` overwrites the inner call's parent, which leaves a middle section childless, and schema
+  1.4 rejects a childless section. The goldens are corrected the same way. (2) Items carry a `page`, which
+  Go has no field for. (3) An empty layout is "no structure" here, as for any layout no tier can use.

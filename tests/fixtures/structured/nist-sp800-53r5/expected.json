@@ -119,6 +119,7 @@
     "page_count": null,
     "title": "NIST SP 800-53 Revision 5 control catalog",
     "dropped": [],
+    "structure_method": "mapping",
     "source": {
       "kind": "structured",
       "format": "xlsx",

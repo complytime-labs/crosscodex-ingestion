@@ -26,7 +26,9 @@ from crosscodex_ingestion.structured import (
     StructuredLimitError,
     StructuredLimits,
     StructuredSourceError,
+    TreeNode,
     convert_source,
+    emit_elements,
     run_job,
 )
 from crosscodex_ingestion.zipdir import ZipDirectory
@@ -1432,3 +1434,20 @@ class TestRoles:
         paragraph = output["elements"][1]
         assert paragraph["id"] is None
         assert not {"role", "title", "text"} & paragraph.keys()
+
+
+class TestEmitPages:
+    """emit_elements writes a node's page on its elements; structured sources leave it None."""
+
+    def test_document_node_page_is_emitted_on_its_elements(self):
+        child = TreeNode("items[1]", 1, "sec-1.a", None, "Child text.", {}, page=4)
+        parent = TreeNode("items[0]", 0, "sec-1", "Scope", "Lead-in.", {}, [child], page=3)
+
+        elements = emit_elements([parent])
+
+        assert [(e["id"], e["page"]) for e in elements] == [("sec-1", 3), (None, 3), ("sec-1.a", 4)]
+
+    def test_structured_node_page_stays_null(self):
+        elements = emit_elements([TreeNode("nodes[0]", 0, "V1", "Title", "Text.", {})])
+
+        assert elements[0]["page"] is None

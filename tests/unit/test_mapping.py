@@ -249,6 +249,13 @@ class TestRegistry:
         assert registry.ids() == []
         assert registry.get("owasp-asvs-5.0.0-json") is None
 
+    def test_ids_of_one_format(self):
+        registry = load_registry("")
+
+        assert registry.ids("json") == ["owasp-asvs-5.0.0-json"]
+        assert registry.ids("csv") == ["owasp-asvs-5.0.0-csv"]
+        assert registry.ids("pdf") == []
+
 
 LEVELS = TABLE.replace(
     'rows: {id: ID, text: Text, parent: {id_prefix: {separator: "("}}}',

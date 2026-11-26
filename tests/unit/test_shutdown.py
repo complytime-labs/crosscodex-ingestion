@@ -29,7 +29,9 @@ _SLOW_SUCCESS_SCRIPT = """
 import sys, time
 time.sleep(0.5)
 open(sys.argv[2], "w").write(
-    '{"elements":[],"metadata":{"element_count":0,"detected_format":"pdf","page_count":null,"title":null,"dropped":[]}}'
+    '{"elements":[],"metadata":{"element_count":0,"detected_format":"pdf","page_count":null,"title":null,"dropped":[],'
+    '"structure_method":"heading","structure":{"heading_count":0,"table_count":0,"max_heading_depth":0,'
+    '"unparented_count":0,"fragment_count":0,"warnings":[]}}}'
 )
 """
 

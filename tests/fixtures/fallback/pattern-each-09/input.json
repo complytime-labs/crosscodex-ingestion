@@ -1,0 +1,39 @@
+{
+  "schema_version": "1.3",
+  "elements": [
+    {
+      "element_id": "e-001",
+      "type": "paragraph",
+      "content": "i. First roman item",
+      "page": null,
+      "level": null,
+      "parent_id": null,
+      "style": {}
+    },
+    {
+      "element_id": "e-002",
+      "type": "paragraph",
+      "content": "ii. Second roman item",
+      "page": null,
+      "level": null,
+      "parent_id": null,
+      "style": {}
+    },
+    {
+      "element_id": "e-003",
+      "type": "paragraph",
+      "content": "iii. Third roman item",
+      "page": null,
+      "level": null,
+      "parent_id": null,
+      "style": {}
+    }
+  ],
+  "metadata": {
+    "element_count": 3,
+    "detected_format": "txt",
+    "page_count": null,
+    "title": "Synthetic pattern-each-09",
+    "dropped": []
+  }
+}

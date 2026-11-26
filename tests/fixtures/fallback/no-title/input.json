@@ -1,0 +1,75 @@
+{
+  "schema_version": "1.3",
+  "elements": [
+    {
+      "element_id": "e-001",
+      "type": "paragraph",
+      "content": "Preface paragraph before any heading",
+      "page": null,
+      "level": null,
+      "parent_id": null,
+      "style": {}
+    },
+    {
+      "element_id": "e-002",
+      "type": "heading",
+      "content": "First topic",
+      "page": null,
+      "level": 1,
+      "parent_id": null,
+      "style": {}
+    },
+    {
+      "element_id": "e-003",
+      "type": "paragraph",
+      "content": "Text under the first topic",
+      "page": null,
+      "level": null,
+      "parent_id": "e-002",
+      "style": {}
+    },
+    {
+      "element_id": "e-004",
+      "type": "paragraph",
+      "content": "Paragraph with no parent between topics",
+      "page": null,
+      "level": null,
+      "parent_id": null,
+      "style": {}
+    },
+    {
+      "element_id": "e-005",
+      "type": "heading",
+      "content": "Empty topic",
+      "page": null,
+      "level": 1,
+      "parent_id": null,
+      "style": {}
+    },
+    {
+      "element_id": "e-006",
+      "type": "heading",
+      "content": "Last topic",
+      "page": null,
+      "level": 1,
+      "parent_id": null,
+      "style": {}
+    },
+    {
+      "element_id": "e-007",
+      "type": "list_item",
+      "content": "List item under the last topic",
+      "page": null,
+      "level": null,
+      "parent_id": "e-006",
+      "style": {}
+    }
+  ],
+  "metadata": {
+    "element_count": 7,
+    "detected_format": "pdf",
+    "page_count": null,
+    "title": null,
+    "dropped": []
+  }
+}

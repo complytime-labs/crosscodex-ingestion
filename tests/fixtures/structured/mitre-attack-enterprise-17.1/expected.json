@@ -208,6 +208,7 @@
     "page_count": null,
     "title": "MITRE ATT&CK Enterprise v17.1 techniques",
     "dropped": [],
+    "structure_method": "mapping",
     "source": {
       "kind": "structured",
       "format": "xlsx",

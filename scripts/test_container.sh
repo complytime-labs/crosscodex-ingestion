@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Build one container image and prove it works: the Dockerfile HEALTHCHECK passes against a
-# service started with mutual TLS and attestation, and a PDF converts with no network.
+# service started with mutual TLS and attestation, and a PDF with headings converts with no network.
 #
 # Usage: scripts/test_container.sh <standard|fips>
 # Environment: CERTS_DIR (PKI from `task certs`, default .test-output/certs)
@@ -77,13 +77,13 @@ until podman healthcheck run "$container" >/dev/null 2>&1; do
 done
 echo "healthy"
 
-echo "==> [$variant] convert sample.pdf with --network=none"
+echo "==> [$variant] convert nist-sp800-171r3-excerpt.pdf with --network=none"
 # MAX_PROCESSING_TIME bounds the conversion, so a hung worker fails the check instead of the CI job.
 podman run --rm --network none \
 	--env MAX_PROCESSING_TIME=600 \
 	--volume "$fixtures_dir:/fixtures:ro" \
 	--volume "$check_script:/check/offline_convert.py:ro" \
 	--entrypoint "$python" \
-	"$image" /check/offline_convert.py /fixtures/sample.pdf
+	"$image" /check/offline_convert.py /fixtures/nist-sp800-171r3-excerpt.pdf
 
 echo "==> [$variant] OK"

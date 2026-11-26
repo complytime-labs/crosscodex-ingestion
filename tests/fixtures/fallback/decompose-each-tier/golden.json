@@ -1,0 +1,293 @@
+{
+  "items": [
+    {
+      "ID": "sec-1.a",
+      "Title": "Parenthesized",
+      "Text": "a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12",
+      "Class": "compliance-requirement",
+      "ParentID": "",
+      "GroupID": "",
+      "ContainerKey": "",
+      "Props": {
+        "label": "a"
+      }
+    },
+    {
+      "ID": "sec-1.b",
+      "Title": "Parenthesized",
+      "Text": "b1 b2 b3 b4 b5 b6 b7 b8 b9 b10 b11 b12",
+      "Class": "compliance-requirement",
+      "ParentID": "",
+      "GroupID": "",
+      "ContainerKey": "",
+      "Props": {
+        "label": "b"
+      }
+    },
+    {
+      "ID": "sec-1.1",
+      "Title": "Parenthesized",
+      "Text": "11 12 13 14 15 16 17 18 19 110 111 112",
+      "Class": "compliance-requirement",
+      "ParentID": "",
+      "GroupID": "",
+      "ContainerKey": "",
+      "Props": {
+        "label": "1"
+      }
+    },
+    {
+      "ID": "sec-1.iv",
+      "Title": "Parenthesized",
+      "Text": "i1 i2 i3 i4 i5 i6 i7 i8 i9 i10 i11 i12",
+      "Class": "compliance-requirement",
+      "ParentID": "",
+      "GroupID": "",
+      "ContainerKey": "",
+      "Props": {
+        "label": "iv"
+      }
+    },
+    {
+      "ID": "sec-2.1",
+      "Title": "Numbered",
+      "Text": "11 12 13 14 15 16 17 18 19",
+      "Class": "compliance-requirement",
+      "ParentID": "",
+      "GroupID": "",
+      "ContainerKey": "",
+      "Props": {
+        "label": "1"
+      }
+    },
+    {
+      "ID": "sec-2.2",
+      "Title": "Numbered",
+      "Text": "21 22 23 24 25 26 27 28 29",
+      "Class": "compliance-requirement",
+      "ParentID": "",
+      "GroupID": "",
+      "ContainerKey": "",
+      "Props": {
+        "label": "2"
+      }
+    },
+    {
+      "ID": "sec-2.3",
+      "Title": "Numbered",
+      "Text": "31 32 33 34 35 36 37 38 39",
+      "Class": "compliance-requirement",
+      "ParentID": "",
+      "GroupID": "",
+      "ContainerKey": "",
+      "Props": {
+        "label": "3"
+      }
+    },
+    {
+      "ID": "sec-2.4",
+      "Title": "Numbered",
+      "Text": "41 42 43 44 45 46 47 48 49",
+      "Class": "compliance-requirement",
+      "ParentID": "",
+      "GroupID": "",
+      "ContainerKey": "",
+      "Props": {
+        "label": "4"
+      }
+    },
+    {
+      "ID": "sec-2.5",
+      "Title": "Numbered",
+      "Text": "51 52 53 54 55 56 57 58 59",
+      "Class": "compliance-requirement",
+      "ParentID": "",
+      "GroupID": "",
+      "ContainerKey": "",
+      "Props": {
+        "label": "5"
+      }
+    },
+    {
+      "ID": "sec-3.i",
+      "Title": "Roman",
+      "Text": "i1 i2 i3 i4 i5 i6 i7 i8 i9",
+      "Class": "compliance-requirement",
+      "ParentID": "",
+      "GroupID": "",
+      "ContainerKey": "",
+      "Props": {
+        "label": "i"
+      }
+    },
+    {
+      "ID": "sec-3.ii",
+      "Title": "Roman",
+      "Text": "i1 i2 i3 i4 i5 i6 i7 i8 i9",
+      "Class": "compliance-requirement",
+      "ParentID": "",
+      "GroupID": "",
+      "ContainerKey": "",
+      "Props": {
+        "label": "ii"
+      }
+    },
+    {
+      "ID": "sec-3.iii",
+      "Title": "Roman",
+      "Text": "i1 i2 i3 i4 i5 i6 i7 i8 i9",
+      "Class": "compliance-requirement",
+      "ParentID": "",
+      "GroupID": "",
+      "ContainerKey": "",
+      "Props": {
+        "label": "iii"
+      }
+    },
+    {
+      "ID": "sec-3.iv",
+      "Title": "Roman",
+      "Text": "i1 i2 i3 i4 i5 i6 i7 i8 i9",
+      "Class": "compliance-requirement",
+      "ParentID": "",
+      "GroupID": "",
+      "ContainerKey": "",
+      "Props": {
+        "label": "iv"
+      }
+    },
+    {
+      "ID": "sec-3.v",
+      "Title": "Roman",
+      "Text": "v1 v2 v3 v4 v5 v6 v7 v8 v9",
+      "Class": "compliance-requirement",
+      "ParentID": "",
+      "GroupID": "",
+      "ContainerKey": "",
+      "Props": {
+        "label": "v"
+      }
+    },
+    {
+      "ID": "sec-4.a",
+      "Title": "Lowercase",
+      "Text": "a1 a2 a3 a4 a5 a6 a7 a8 a9",
+      "Class": "compliance-requirement",
+      "ParentID": "",
+      "GroupID": "",
+      "ContainerKey": "",
+      "Props": {
+        "label": "a"
+      }
+    },
+    {
+      "ID": "sec-4.b",
+      "Title": "Lowercase",
+      "Text": "b1 b2 b3 b4 b5 b6 b7 b8 b9",
+      "Class": "compliance-requirement",
+      "ParentID": "",
+      "GroupID": "",
+      "ContainerKey": "",
+      "Props": {
+        "label": "b"
+      }
+    },
+    {
+      "ID": "sec-4.c",
+      "Title": "Lowercase",
+      "Text": "c1 c2 c3 c4 c5 c6 c7 c8 c9",
+      "Class": "compliance-requirement",
+      "ParentID": "",
+      "GroupID": "",
+      "ContainerKey": "",
+      "Props": {
+        "label": "c"
+      }
+    },
+    {
+      "ID": "sec-4.d",
+      "Title": "Lowercase",
+      "Text": "d1 d2 d3 d4 d5 d6 d7 d8 d9",
+      "Class": "compliance-requirement",
+      "ParentID": "",
+      "GroupID": "",
+      "ContainerKey": "",
+      "Props": {
+        "label": "d"
+      }
+    },
+    {
+      "ID": "sec-4.e",
+      "Title": "Lowercase",
+      "Text": "e1 e2 e3 e4 e5 e6 e7 e8 e9",
+      "Class": "compliance-requirement",
+      "ParentID": "",
+      "GroupID": "",
+      "ContainerKey": "",
+      "Props": {
+        "label": "e"
+      }
+    },
+    {
+      "ID": "sec-5.A",
+      "Title": "Uppercase",
+      "Text": "A1 A2 A3 A4 A5 A6 A7 A8 A9",
+      "Class": "compliance-requirement",
+      "ParentID": "",
+      "GroupID": "",
+      "ContainerKey": "",
+      "Props": {
+        "label": "A"
+      }
+    },
+    {
+      "ID": "sec-5.B",
+      "Title": "Uppercase",
+      "Text": "B1 B2 B3 B4 B5 B6 B7 B8 B9",
+      "Class": "compliance-requirement",
+      "ParentID": "",
+      "GroupID": "",
+      "ContainerKey": "",
+      "Props": {
+        "label": "B"
+      }
+    },
+    {
+      "ID": "sec-5.C",
+      "Title": "Uppercase",
+      "Text": "C1 C2 C3 C4 C5 C6 C7 C8 C9",
+      "Class": "compliance-requirement",
+      "ParentID": "",
+      "GroupID": "",
+      "ContainerKey": "",
+      "Props": {
+        "label": "C"
+      }
+    },
+    {
+      "ID": "sec-5.D",
+      "Title": "Uppercase",
+      "Text": "D1 D2 D3 D4 D5 D6 D7 D8 D9",
+      "Class": "compliance-requirement",
+      "ParentID": "",
+      "GroupID": "",
+      "ContainerKey": "",
+      "Props": {
+        "label": "D"
+      }
+    },
+    {
+      "ID": "sec-5.E",
+      "Title": "Uppercase",
+      "Text": "E1 E2 E3 E4 E5 E6 E7 E8 E9",
+      "Class": "compliance-requirement",
+      "ParentID": "",
+      "GroupID": "",
+      "ContainerKey": "",
+      "Props": {
+        "label": "E"
+      }
+    }
+  ],
+  "tier": "heading"
+}

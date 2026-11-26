@@ -386,7 +386,7 @@ async def run_conversion(
                 conversion_result = await convert_structured(str(temp_file_path), mapping, settings)
             else:
                 conversion_result = await convert_document(
-                    str(temp_file_path), validated_format, settings, html_profiles
+                    str(temp_file_path), validated_format, settings, html_profiles, mappings
                 )
 
         # conversion_warnings is not part of the output schema; it is checked here and folded into metadata.structure.
@@ -395,9 +395,15 @@ async def run_conversion(
         # The result is untrusted, so it is validated before anything walks it.
         validate_output(conversion_result)
         _check_conversion_warnings(conversion_warnings)
-        structure = measure_structure(conversion_result["elements"])
+        if mapping:
+            structure = measure_structure(conversion_result["elements"])
+            conversion_result["metadata"]["structure"] = structure
+        else:
+            # A document's signals were measured in the worker on the layout, which its output no longer holds.
+            if "structure" not in conversion_result["metadata"]:
+                raise OutputSchemaError([Violation("metadata.structure", "is required on a document conversion")])
+            structure = conversion_result["metadata"]["structure"]
         structure["warnings"].extend(conversion_warnings)
-        conversion_result["metadata"]["structure"] = structure
         for dropped in conversion_result["metadata"]["dropped"]:
             logger.warning(
                 "Document %s: dropped a %s on page %s: %s",

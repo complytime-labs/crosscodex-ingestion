@@ -1,0 +1,45 @@
+{
+  "items": [
+    {
+      "ID": "Section 1",
+      "Title": "",
+      "Text": "Section 1 prose line under the header",
+      "Class": "compliance-requirement",
+      "ParentID": "",
+      "GroupID": "",
+      "ContainerKey": "",
+      "Props": null
+    },
+    {
+      "ID": "Section 2",
+      "Title": "",
+      "Text": "Section 2 prose line under the header",
+      "Class": "compliance-requirement",
+      "ParentID": "",
+      "GroupID": "",
+      "ContainerKey": "",
+      "Props": null
+    },
+    {
+      "ID": "Section 3",
+      "Title": "",
+      "Text": "Section 3 prose line under the header",
+      "Class": "compliance-requirement",
+      "ParentID": "",
+      "GroupID": "",
+      "ContainerKey": "",
+      "Props": null
+    },
+    {
+      "ID": "Section 4",
+      "Title": "",
+      "Text": "Section 4 prose line under the header",
+      "Class": "compliance-requirement",
+      "ParentID": "",
+      "GroupID": "",
+      "ContainerKey": "",
+      "Props": null
+    }
+  ],
+  "tier": "pattern"
+}

@@ -124,8 +124,9 @@ class MappingRegistry:
     def get(self, mapping_id: str) -> Mapping | None:
         return self._mappings.get(mapping_id)
 
-    def ids(self) -> list[str]:
-        return sorted(self._mappings)
+    def ids(self, fmt: str | None = None) -> list[str]:
+        """The registered IDs, sorted; only those of mappings for *fmt* when it is given."""
+        return sorted(i for i, m in self._mappings.items() if fmt is None or m.format == fmt)
 
 
 def load_registry(mappings_path: str) -> MappingRegistry:

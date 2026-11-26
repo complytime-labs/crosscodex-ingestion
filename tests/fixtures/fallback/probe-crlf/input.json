@@ -1,0 +1,66 @@
+{
+  "schema_version": "1.3",
+  "elements": [
+    {
+      "element_id": "e-001",
+      "type": "heading",
+      "content": "One element with CRLF lines",
+      "page": null,
+      "level": 1,
+      "parent_id": null,
+      "style": {}
+    },
+    {
+      "element_id": "e-002",
+      "type": "paragraph",
+      "content": "(a) a1 a2 a3 a4 a5 a6 a7 a8 a9 a10\r\ncontinued a21 a22 a23 a24\r\n(b) b1 b2 b3 b4 b5 b6 b7 b8 b9 b10 b11 b12 b13 b14\r\n(c) c1 c2 c3 c4 c5 c6 c7 c8 c9 c10 c11 c12 c13 c14",
+      "page": null,
+      "level": null,
+      "parent_id": "e-001",
+      "style": {}
+    },
+    {
+      "element_id": "e-003",
+      "type": "heading",
+      "content": "Short text with CRLF",
+      "page": null,
+      "level": 1,
+      "parent_id": null,
+      "style": {}
+    },
+    {
+      "element_id": "e-004",
+      "type": "paragraph",
+      "content": "Line one\r\nLine two",
+      "page": null,
+      "level": null,
+      "parent_id": "e-003",
+      "style": {}
+    },
+    {
+      "element_id": "e-005",
+      "type": "heading",
+      "content": "CRLF title\r",
+      "page": null,
+      "level": 1,
+      "parent_id": null,
+      "style": {}
+    },
+    {
+      "element_id": "e-006",
+      "type": "paragraph",
+      "content": "1. n1 n2 n3 n4 n5 n6 n7 n8 n9 n10\r\n2. m1 m2 m3 m4 m5 m6 m7 m8 m9 m10\r\n3. o1 o2 o3 o4 o5 o6 o7 o8 o9 o10\r\n",
+      "page": null,
+      "level": null,
+      "parent_id": "e-005",
+      "style": {}
+    }
+  ],
+  "metadata": {
+    "element_count": 6,
+    "detected_format": "txt",
+    "page_count": null,
+    "title": "Synthetic probe-crlf",
+    "dropped": []
+  }
+}

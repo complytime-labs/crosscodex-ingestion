@@ -1,0 +1,48 @@
+{
+  "schema_version": "1.3",
+  "elements": [
+    {
+      "element_id": "e-001",
+      "type": "paragraph",
+      "content": "Preamble without numbering",
+      "page": null,
+      "level": null,
+      "parent_id": null,
+      "style": {}
+    },
+    {
+      "element_id": "e-002",
+      "type": "paragraph",
+      "content": "1.1 First numbered line",
+      "page": null,
+      "level": null,
+      "parent_id": null,
+      "style": {}
+    },
+    {
+      "element_id": "e-003",
+      "type": "paragraph",
+      "content": "Prose between the lines",
+      "page": null,
+      "level": null,
+      "parent_id": null,
+      "style": {}
+    },
+    {
+      "element_id": "e-004",
+      "type": "paragraph",
+      "content": "1.2 Second numbered line",
+      "page": null,
+      "level": null,
+      "parent_id": null,
+      "style": {}
+    }
+  ],
+  "metadata": {
+    "element_count": 4,
+    "detected_format": "txt",
+    "page_count": null,
+    "title": "Synthetic pattern-two-lines",
+    "dropped": []
+  }
+}

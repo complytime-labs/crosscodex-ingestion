@@ -12,11 +12,18 @@ from prometheus_client import REGISTRY as PROMETHEUS
 
 from crosscodex_ingestion.audit import AuditUnavailableError
 from crosscodex_ingestion.config import IngestionSettings
-from crosscodex_ingestion.converter import ConversionError, ConversionTimeout, DocumentLimitError
+from crosscodex_ingestion.converter import (
+    ConversionError,
+    ConversionTimeout,
+    DocumentLimitError,
+    NoDocumentStructureError,
+    RepeatedControlIdsError,
+)
 from crosscodex_ingestion.html_profile import load_html_profiles
 from crosscodex_ingestion.mapping import load_registry
 from crosscodex_ingestion.nats_connection import NATS_UNAVAILABLE_MESSAGE
 from crosscodex_ingestion.output_schema import SCHEMA_VERSION
+from crosscodex_ingestion.quality import measure_structure
 from crosscodex_ingestion.state import DocumentRecord, MemoryStateBackend
 from crosscodex_ingestion.storage import FilesystemStorage
 from crosscodex_ingestion.structured import StructuredSourceError
@@ -760,6 +767,23 @@ async def test_user_caused_value_error_keeps_specific_message(
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "exc",
+    [NoDocumentStructureError("pdf", []), RepeatedControlIdsError("pdf", "pattern", [])],
+    ids=["no_structure", "repeated_ids"],
+)
+async def test_structure_failure_is_invalid_argument_with_its_message_and_stores_nothing(
+    exc, settings, state_backend, storage_backend, audit_publisher, tmp_path
+):
+    error, event = await _failed_error_with(exc, settings, state_backend, storage_backend, audit_publisher)
+
+    assert error["code"] == 1  # INVALID_ARGUMENT
+    assert error["message"] == str(exc)
+    assert event["error"] == error
+    assert not list((tmp_path / "storage").rglob("*"))
+
+
+@pytest.mark.asyncio
 async def test_document_limit_error_is_resource_exhausted_with_specific_message(
     settings, state_backend, storage_backend, audit_publisher
 ):
@@ -983,20 +1007,27 @@ async def _stored_output(state_backend, tenant, document):
 
 
 def _flat_output():
-    output = conforming_output()
-    output["elements"] = [
+    """A pattern-tier result: 60 numbered paragraphs, each a control; structure measured on that flat layout."""
+    layout = [
         {
             "element_id": f"e-{i:03d}",
             "type": "paragraph",
-            "content": f"secret paragraph text {i}",
+            "content": f"{i}. secret paragraph text",
             "page": 1,
             "level": None,
             "parent_id": None,
             "style": {},
         }
-        for i in range(60)
+        for i in range(1, 61)
+    ]
+    output = conforming_output()
+    output["elements"] = [
+        {**e, "id": f"{i}.", "role": "control", "title": None, "text": e["content"], "properties": {}}
+        for i, e in enumerate(layout, start=1)
     ]
     output["metadata"]["element_count"] = 60
+    output["metadata"]["structure_method"] = "pattern"
+    output["metadata"]["structure"] = measure_structure(layout)
     return output
 
 
@@ -1082,6 +1113,39 @@ async def test_conversion_warnings_follow_measured_warnings(settings, state_back
 
     stored = await _stored_output(state_backend, "tenant-t", "doc-t")
     assert stored["metadata"]["structure"]["warnings"] == ["no_headings", "html_profile_ambiguous"]
+
+
+@pytest.mark.asyncio
+async def test_document_result_keeps_the_layout_structure_signals(
+    settings, state_backend, storage_backend, audit_publisher
+):
+    output = conforming_output()
+    layout_structure = {**output["metadata"]["structure"], "heading_count": 0, "table_count": 2, "warnings": []}
+    output["metadata"]["structure"] = layout_structure
+
+    with patch("crosscodex_ingestion.worker.convert_document", return_value=output):
+        await _run_pdf_conversion(settings, state_backend, storage_backend, audit_publisher)
+
+    stored = await _stored_output(state_backend, "tenant-t", "doc-t")
+    # The emitted elements hold a heading and no table; the counts are the layout's.
+    assert stored["metadata"]["structure"] == layout_structure
+
+
+@pytest.mark.asyncio
+async def test_document_result_without_structure_fails_as_invalid_output(
+    settings, state_backend, storage_backend, audit_publisher, tmp_path
+):
+    output = conforming_output()
+    del output["metadata"]["structure"]
+
+    with patch("crosscodex_ingestion.worker.convert_document", return_value=output):
+        await _run_pdf_conversion(settings, state_backend, storage_backend, audit_publisher)
+
+    record = await state_backend.get("tenant-t", "doc-t")
+    assert record.status == JOB_STATUS_FAILED
+    assert record.error["code"] == 6
+    assert record.error["details"]["location"] == "metadata.structure"
+    assert not list((tmp_path / "storage").rglob("*"))
 
 
 @pytest.mark.asyncio
@@ -1437,7 +1501,7 @@ async def test_run_conversion_passes_the_html_profiles_to_the_converter(tmp_path
             html_profiles=PROFILES,
         )
 
-    assert document.call_args.args[-1] is PROFILES
+    assert document.call_args.args[-2:] == (PROFILES, REGISTRY)
 
 
 @pytest.mark.asyncio

@@ -1,0 +1,111 @@
+{
+  "items": [
+    {
+      "ID": "sec-1.b",
+      "Title": "Probe separator after label",
+      "Text": "b1 b2 b3 b4 b5 b6 b7 b8 b9 b10 b11 b12 b13 b14",
+      "Class": "compliance-requirement",
+      "ParentID": "",
+      "GroupID": "",
+      "ContainerKey": "",
+      "Props": {
+        "label": "b"
+      }
+    },
+    {
+      "ID": "sec-1.c",
+      "Title": "Probe separator after label",
+      "Text": "c1 c2 c3 c4 c5 c6 c7 c8 c9 c10 c11 c12 c13 c14",
+      "Class": "compliance-requirement",
+      "ParentID": "",
+      "GroupID": "",
+      "ContainerKey": "",
+      "Props": {
+        "label": "c"
+      }
+    },
+    {
+      "ID": "sec-2.a",
+      "Title": "Probe leading character",
+      "Text": "a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14\n\n\u2028(b) b1 b2 b3 b4 b5 b6 b7 b8 b9 b10 b11 b12 b13 b14",
+      "Class": "compliance-requirement",
+      "ParentID": "",
+      "GroupID": "",
+      "ContainerKey": "",
+      "Props": {
+        "label": "a"
+      }
+    },
+    {
+      "ID": "sec-2.c",
+      "Title": "Probe leading character",
+      "Text": "c1 c2 c3 c4 c5 c6 c7 c8 c9 c10 c11 c12 c13 c14",
+      "Class": "compliance-requirement",
+      "ParentID": "",
+      "GroupID": "",
+      "ContainerKey": "",
+      "Props": {
+        "label": "c"
+      }
+    },
+    {
+      "ID": "sec-3.a",
+      "Title": "Probe word count",
+      "Text": "p1 p2 p3 p4 p5 p6 p7 p8 p9 p10 p11 p12 p13 p14 p15",
+      "Class": "compliance-requirement",
+      "ParentID": "",
+      "GroupID": "",
+      "ContainerKey": "",
+      "Props": {
+        "label": "a"
+      }
+    },
+    {
+      "ID": "sec-3.b",
+      "Title": "Probe word count",
+      "Text": "p16 p17 p18 p19 p20 x0\u2028y0 x1\u2028y1 x2\u2028y2 x3\u2028y3 x4\u2028y4 x5\u2028y5 x6\u2028y6 x7\u2028y7 x8\u2028y8",
+      "Class": "compliance-requirement",
+      "ParentID": "",
+      "GroupID": "",
+      "ContainerKey": "",
+      "Props": {
+        "label": "b"
+      }
+    },
+    {
+      "ID": "sec-4.a",
+      "Title": "Probe retained and trimmed",
+      "Text": "r1 r2 r3 r4 r5 r6 r7 r8 r9 r10\u2028s1 s2 s3 s4 s5 s6 s7 s8 s9 s10\u2028t1 t2 t3 t4 t5 t6 t7 t8 t9 t10",
+      "Class": "compliance-requirement",
+      "ParentID": "",
+      "GroupID": "",
+      "ContainerKey": "",
+      "Props": {
+        "label": "a"
+      }
+    },
+    {
+      "ID": "sec-4.b",
+      "Title": "Probe retained and trimmed",
+      "Text": "u1 u2 u3 u4 u5 u6 u7 u8 u9 u10 u11 u12 u13 u14 u15 u16 u17 u18 u19 u20",
+      "Class": "compliance-requirement",
+      "ParentID": "",
+      "GroupID": "",
+      "ContainerKey": "",
+      "Props": {
+        "label": "b"
+      }
+    },
+    {
+      "ID": "sec-5",
+      "Title": "Probe single item trim",
+      "Text": "Padded body text",
+      "Class": "compliance-requirement",
+      "ParentID": "",
+      "GroupID": "",
+      "ContainerKey": "",
+      "Props": null
+    }
+  ],
+  "tier": "heading"
+}

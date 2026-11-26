@@ -1,0 +1,35 @@
+{
+  "items": [
+    {
+      "ID": "1.1",
+      "Title": "",
+      "Text": "1.1 First dotted number",
+      "Class": "compliance-requirement",
+      "ParentID": "",
+      "GroupID": "",
+      "ContainerKey": "",
+      "Props": null
+    },
+    {
+      "ID": "1.2",
+      "Title": "",
+      "Text": "1.2 Second dotted number",
+      "Class": "compliance-requirement",
+      "ParentID": "",
+      "GroupID": "",
+      "ContainerKey": "",
+      "Props": null
+    },
+    {
+      "ID": "2.1",
+      "Title": "",
+      "Text": "2.1 Third dotted number",
+      "Class": "compliance-requirement",
+      "ParentID": "",
+      "GroupID": "",
+      "ContainerKey": "",
+      "Props": null
+    }
+  ],
+  "tier": "pattern"
+}

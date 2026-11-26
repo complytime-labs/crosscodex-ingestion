@@ -17,13 +17,14 @@ import signal
 import sys
 import tempfile
 import time
+from collections.abc import Sequence
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any, cast
 
 from crosscodex_ingestion.config import IngestionSettings
 from crosscodex_ingestion.html_profile import HtmlProfileRegistry
-from crosscodex_ingestion.mapping import Mapping
+from crosscodex_ingestion.mapping import Mapping, MappingRegistry
 from crosscodex_ingestion.output_schema import SCHEMA_VERSION
 from crosscodex_ingestion.structured import (
     ERROR_FILE_NAME,
@@ -54,6 +55,17 @@ PAGE_LIMIT_EXIT_CODE = 3
 # the worker leaves the reason in ERROR_FILE_NAME.
 INPUT_PARSE_EXIT_CODE = 4
 
+# Worker exit code meaning "the fallback structurer found no controls in the layout"; the worker writes no
+# error file, so nothing the subprocess says reaches the client.
+NO_STRUCTURE_EXIT_CODE = 5
+
+# Worker exit code meaning "the fallback structurer's controls repeat an ID"; the error file holds only the
+# winning tier's name, which the parent accepts only if it is one of _GUESSED_METHODS.
+REPEATED_IDS_EXIT_CODE = 6
+
+# The fallback structurer's tiers, as metadata.structure_method names them.
+_GUESSED_METHODS = ("heading", "table", "pattern")
+
 # Longest parse-failure reason relayed to the client; Docling's own messages can be long tracebacks' worth.
 _MAX_PARSE_REASON = 200
 
@@ -73,6 +85,37 @@ class DocumentLimitError(ValueError):
     def __init__(self, message: str, redacted_message: str | None = None) -> None:
         super().__init__(message)
         self.redacted_message = redacted_message or message
+
+
+def _mapping_remedy(detected_format: str, mapping_ids: Sequence[str]) -> str:
+    registered = ", ".join(mapping_ids) if mapping_ids else "none yet"
+    return f"Convert it with a document mapping for {detected_format}; registered: {registered}."
+
+
+class NoDocumentStructureError(ValueError):
+    """Raised when the fallback structurer finds no controls in a document (the caller's to fix).
+
+    The message is built from the validated format and registry mapping IDs only, never from document text.
+    """
+
+    def __init__(self, detected_format: str, mapping_ids: Sequence[str]) -> None:
+        super().__init__(
+            f"No controls found in this {detected_format} document: it has no headings, tables or numbered lines "
+            f"the fallback structurer recognises. {_mapping_remedy(detected_format, mapping_ids)}"
+        )
+
+
+class RepeatedControlIdsError(ValueError):
+    """Raised when the controls the fallback structurer found repeat an ID, so they are no catalog.
+
+    The message is built from the validated format, the validated tier name and registry mapping IDs only.
+    """
+
+    def __init__(self, detected_format: str, method: str, mapping_ids: Sequence[str]) -> None:
+        super().__init__(
+            f"The fallback structurer found controls in this {detected_format} document (method {method}), but "
+            f"their identifiers repeat, so they do not form a catalog. {_mapping_remedy(detected_format, mapping_ids)}"
+        )
 
 
 # Worker script executed in the subprocess
@@ -114,13 +157,15 @@ def main():
     from pathlib import Path
 
     from crosscodex_ingestion.extractor import extract_elements
+    from crosscodex_ingestion.fallback import NoStructure, structure_layout, to_tree
+    from crosscodex_ingestion.quality import measure_structure
     from docling.datamodel.base_models import ConversionStatus, InputFormat
     from docling.datamodel.pipeline_options import PdfPipelineOptions
     from docling.document_converter import DocumentConverter, HTMLFormatOption, PdfFormatOption
     from docling_core.types.doc import DocItemLabel, DoclingDocument
     from crosscodex_ingestion.html_backend import html_backend_for
     from crosscodex_ingestion.html_profile import HtmlProfile
-    from crosscodex_ingestion.structured import ERROR_FILE_NAME
+    from crosscodex_ingestion.structured import ERROR_FILE_NAME, emit_elements
 
     # The profiles are JSON on stdin; the backend class records which one a conversion applied.
     backend = html_backend_for([HtmlProfile.from_json(profile) for profile in json.load(sys.stdin)])
@@ -167,12 +212,24 @@ def main():
 
     # Extract elements; the extractor exports Markdown itself, only if it needs the fallback.
     extraction_result = extract_elements(doc, None, format_hint)
+    # The quality signals describe the layout, so they are measured before the structure replaces it.
+    layout_structure = measure_structure(extraction_result.elements)
+    # A LayoutError (our extractor's bug) is left to crash the worker: the parent reports it as internal.
+    try:
+        items, method = structure_layout(extraction_result.elements)
+    except NoStructure:
+        sys.exit(@NO_STRUCTURE_EXIT_CODE@)
+    if len({item.id for item in items}) != len(items):
+        Path(output_path).with_name(ERROR_FILE_NAME).write_text(method)
+        sys.exit(@REPEATED_IDS_EXIT_CODE@)
+    elements = emit_elements(to_tree(items))
+    metadata = extraction_result.metadata
+    metadata["element_count"] = len(elements)
+    metadata["structure_method"] = method
+    metadata["structure"] = layout_structure
 
     # Write output
-    output_data = {
-        "elements": extraction_result.elements,
-        "metadata": extraction_result.metadata,
-    }
+    output_data = {"elements": elements, "metadata": metadata}
     if backend.applied:
         output_data["metadata"]["html_profile"] = {"id": backend.applied.id, "sha256": backend.applied.sha256}
     if backend.ambiguous:
@@ -186,6 +243,8 @@ if __name__ == "__main__":
     main()
 """.replace("@PAGE_LIMIT_EXIT_CODE@", str(PAGE_LIMIT_EXIT_CODE))
     .replace("@INPUT_PARSE_EXIT_CODE@", str(INPUT_PARSE_EXIT_CODE))
+    .replace("@NO_STRUCTURE_EXIT_CODE@", str(NO_STRUCTURE_EXIT_CODE))
+    .replace("@REPEATED_IDS_EXIT_CODE@", str(REPEATED_IDS_EXIT_CODE))
     .replace("@CPU_KILL_GRACE_SECONDS@", str(CPU_KILL_GRACE_SECONDS))
 )
 
@@ -385,15 +444,20 @@ def _raise_for_exit(result: _WorkerResult, limits: _WorkerLimits) -> None:
 
 
 async def convert_document(
-    input_path: str, format_hint: str, settings: IngestionSettings, html_profiles: HtmlProfileRegistry
+    input_path: str,
+    format_hint: str,
+    settings: IngestionSettings,
+    html_profiles: HtmlProfileRegistry,
+    mappings: MappingRegistry,
 ) -> dict[str, Any]:
     """Convert a document using Docling in an isolated subprocess.
 
     The subprocess:
     1. Sets resource limits (RLIMIT_AS, RLIMIT_CPU, RLIMIT_FSIZE)
     2. Runs Docling conversion, with the HTML profiles read from stdin
-    3. Calls extract_elements()
-    4. Writes result JSON to temp directory
+    3. Calls extract_elements(), measures the layout's structure signals (metadata.structure)
+    4. Structures the layout with the fallback structurer (metadata.structure_method) and emits its nodes
+    5. Writes result JSON to temp directory
 
     The parent reads the JSON, adds processing_time_ms and schema_version, and returns the
     dict. It does not validate it: run_conversion does, right before storing it.
@@ -408,6 +472,8 @@ async def convert_document(
         Configuration settings.
     html_profiles : HtmlProfileRegistry
         HTML profiles the worker may apply; sent to it on stdin.
+    mappings : MappingRegistry
+        The registry whose mappings for *format_hint* the structure errors name as the remedy.
 
     Returns
     -------
@@ -423,8 +489,12 @@ async def convert_document(
         When the document exceeds max_pages or the output exceeds max_extraction_length.
     ValueError
         When Docling cannot parse input of *format_hint* (the client sees the reason).
+    NoDocumentStructureError
+        When the fallback structurer finds no controls in the document.
+    RepeatedControlIdsError
+        When the controls the fallback structurer found repeat an ID.
     ConversionError
-        When subprocess fails (non-zero exit code).
+        When subprocess fails (non-zero exit code), including on a malformed layout.
     """
     limits = _WorkerLimits(
         "Docling",
@@ -445,6 +515,11 @@ async def convert_document(
     )
     if result.returncode == PAGE_LIMIT_EXIT_CODE:
         raise DocumentLimitError(f"Document exceeds the maximum of {settings.max_pages} pages")
+    # The format is the one this service validated, never anything the worker wrote.
+    if result.returncode == NO_STRUCTURE_EXIT_CODE:
+        raise NoDocumentStructureError(format_hint, mappings.ids(format_hint))
+    if result.returncode == REPEATED_IDS_EXIT_CODE:
+        raise RepeatedControlIdsError(format_hint, _guessed_method(result.error_file), mappings.ids(format_hint))
     if result.returncode == INPUT_PARSE_EXIT_CODE:
         raise _parse_error(result.error_file, format_hint)
     _raise_for_exit(result, limits)
@@ -458,6 +533,14 @@ def _stamp(result: _WorkerResult) -> dict[str, Any]:
     output["metadata"]["processing_time_ms"] = result.processing_time_ms
     # The version leads the document so a reader sees it before anything it must interpret.
     return {"schema_version": SCHEMA_VERSION, **output}
+
+
+def _guessed_method(error_file: bytes | None) -> str:
+    """The tier the worker's error file names; ConversionError unless it is exactly one of _GUESSED_METHODS."""
+    for method in _GUESSED_METHODS:
+        if error_file == method.encode():
+            return method
+    raise ConversionError("The Docling worker reported repeated control IDs without naming a fallback tier")
 
 
 def _parse_error(error_file: bytes | None, format_hint: str) -> ValueError:

@@ -1,0 +1,156 @@
+{
+  "schema_version": "1.3",
+  "elements": [
+    {
+      "element_id": "e-001",
+      "type": "heading",
+      "content": "Running header",
+      "page": null,
+      "level": 1,
+      "parent_id": null,
+      "style": {}
+    },
+    {
+      "element_id": "e-002",
+      "type": "paragraph",
+      "content": "Section 1 prose line under the header",
+      "page": null,
+      "level": null,
+      "parent_id": "e-001",
+      "style": {}
+    },
+    {
+      "element_id": "e-003",
+      "type": "heading",
+      "content": "Page footer",
+      "page": null,
+      "level": 1,
+      "parent_id": null,
+      "style": {}
+    },
+    {
+      "element_id": "e-004",
+      "type": "paragraph",
+      "content": "Footer filler 1",
+      "page": null,
+      "level": null,
+      "parent_id": "e-003",
+      "style": {}
+    },
+    {
+      "element_id": "e-005",
+      "type": "heading",
+      "content": "Running header",
+      "page": null,
+      "level": 1,
+      "parent_id": null,
+      "style": {}
+    },
+    {
+      "element_id": "e-006",
+      "type": "paragraph",
+      "content": "Section 2 prose line under the header",
+      "page": null,
+      "level": null,
+      "parent_id": "e-005",
+      "style": {}
+    },
+    {
+      "element_id": "e-007",
+      "type": "heading",
+      "content": "Page footer",
+      "page": null,
+      "level": 1,
+      "parent_id": null,
+      "style": {}
+    },
+    {
+      "element_id": "e-008",
+      "type": "paragraph",
+      "content": "Footer filler 2",
+      "page": null,
+      "level": null,
+      "parent_id": "e-007",
+      "style": {}
+    },
+    {
+      "element_id": "e-009",
+      "type": "heading",
+      "content": "Running header",
+      "page": null,
+      "level": 1,
+      "parent_id": null,
+      "style": {}
+    },
+    {
+      "element_id": "e-010",
+      "type": "paragraph",
+      "content": "Section 3 prose line under the header",
+      "page": null,
+      "level": null,
+      "parent_id": "e-009",
+      "style": {}
+    },
+    {
+      "element_id": "e-011",
+      "type": "heading",
+      "content": "Page footer",
+      "page": null,
+      "level": 1,
+      "parent_id": null,
+      "style": {}
+    },
+    {
+      "element_id": "e-012",
+      "type": "paragraph",
+      "content": "Footer filler 3",
+      "page": null,
+      "level": null,
+      "parent_id": "e-011",
+      "style": {}
+    },
+    {
+      "element_id": "e-013",
+      "type": "heading",
+      "content": "Running header",
+      "page": null,
+      "level": 1,
+      "parent_id": null,
+      "style": {}
+    },
+    {
+      "element_id": "e-014",
+      "type": "paragraph",
+      "content": "Section 4 prose line under the header",
+      "page": null,
+      "level": null,
+      "parent_id": "e-013",
+      "style": {}
+    },
+    {
+      "element_id": "e-015",
+      "type": "heading",
+      "content": "Page footer",
+      "page": null,
+      "level": 1,
+      "parent_id": null,
+      "style": {}
+    },
+    {
+      "element_id": "e-016",
+      "type": "paragraph",
+      "content": "Footer filler 4",
+      "page": null,
+      "level": null,
+      "parent_id": "e-015",
+      "style": {}
+    }
+  ],
+  "metadata": {
+    "element_count": 16,
+    "detected_format": "txt",
+    "page_count": null,
+    "title": "Synthetic heading-all-furniture",
+    "dropped": []
+  }
+}

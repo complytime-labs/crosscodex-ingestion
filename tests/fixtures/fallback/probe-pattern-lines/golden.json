@@ -1,0 +1,65 @@
+{
+  "items": [
+    {
+      "ID": "1.1",
+      "Title": "",
+      "Text": "1.1 Padded with NBSP",
+      "Class": "compliance-requirement",
+      "ParentID": "",
+      "GroupID": "",
+      "ContainerKey": "",
+      "Props": null
+    },
+    {
+      "ID": "1.2",
+      "Title": "",
+      "Text": "1.2 Padded with NEL",
+      "Class": "compliance-requirement",
+      "ParentID": "",
+      "GroupID": "",
+      "ContainerKey": "",
+      "Props": null
+    },
+    {
+      "ID": "1.3",
+      "Title": "",
+      "Text": "1.3 Padded with ideographic space",
+      "Class": "compliance-requirement",
+      "ParentID": "",
+      "GroupID": "",
+      "ContainerKey": "",
+      "Props": null
+    },
+    {
+      "ID": "1.4",
+      "Title": "",
+      "Text": "1.4 Padded with vertical tab",
+      "Class": "compliance-requirement",
+      "ParentID": "",
+      "GroupID": "",
+      "ContainerKey": "",
+      "Props": null
+    },
+    {
+      "ID": "1.7",
+      "Title": "",
+      "Text": "1.7 Before CRLF",
+      "Class": "compliance-requirement",
+      "ParentID": "",
+      "GroupID": "",
+      "ContainerKey": "",
+      "Props": null
+    },
+    {
+      "ID": "1.8",
+      "Title": "",
+      "Text": "1.8 After CRLF",
+      "Class": "compliance-requirement",
+      "ParentID": "",
+      "GroupID": "",
+      "ContainerKey": "",
+      "Props": null
+    }
+  ],
+  "tier": "pattern"
+}

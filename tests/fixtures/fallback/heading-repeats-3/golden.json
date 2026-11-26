@@ -1,0 +1,55 @@
+{
+  "items": [
+    {
+      "ID": "sec-1",
+      "Title": "Overview",
+      "Text": "Body of Overview here",
+      "Class": "compliance-requirement",
+      "ParentID": "",
+      "GroupID": "",
+      "ContainerKey": "",
+      "Props": null
+    },
+    {
+      "ID": "sec-2",
+      "Title": "Details",
+      "Text": "Body of Details here",
+      "Class": "compliance-requirement",
+      "ParentID": "",
+      "GroupID": "",
+      "ContainerKey": "",
+      "Props": null
+    },
+    {
+      "ID": "sec-3",
+      "Title": "Overview",
+      "Text": "Body of Overview here",
+      "Class": "compliance-requirement",
+      "ParentID": "",
+      "GroupID": "",
+      "ContainerKey": "",
+      "Props": null
+    },
+    {
+      "ID": "sec-4",
+      "Title": "Notes",
+      "Text": "Body of Notes here",
+      "Class": "compliance-requirement",
+      "ParentID": "",
+      "GroupID": "",
+      "ContainerKey": "",
+      "Props": null
+    },
+    {
+      "ID": "sec-5",
+      "Title": "Overview",
+      "Text": "Body of Overview here",
+      "Class": "compliance-requirement",
+      "ParentID": "",
+      "GroupID": "",
+      "ContainerKey": "",
+      "Props": null
+    }
+  ],
+  "tier": "heading"
+}

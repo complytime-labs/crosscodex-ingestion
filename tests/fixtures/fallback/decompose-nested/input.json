@@ -1,0 +1,39 @@
+{
+  "schema_version": "1.3",
+  "elements": [
+    {
+      "element_id": "e-001",
+      "type": "heading",
+      "content": "Nested",
+      "page": null,
+      "level": 1,
+      "parent_id": null,
+      "style": {}
+    },
+    {
+      "element_id": "e-002",
+      "type": "paragraph",
+      "content": "(a) lead1 lead2 lead3 lead4 lead5 lead6 lead7 lead8 lead9 lead10 lead11 lead12 lead13 lead14 lead15 lead16 lead17 lead18 lead19 lead20 lead21 lead22 lead23 lead24 lead25 lead26 lead27 lead28 lead29 lead30\n1. mid1 mid2 mid3 mid4 mid5 mid6 mid7 mid8 mid9 mid10 mid11 mid12 mid13 mid14 mid15 mid16 mid17 mid18 mid19 mid20 mid21 mid22 mid23 mid24 mid25 mid26 mid27 mid28 mid29 mid30\n  i. p1 p2 p3 p4 p5 p6 p7 p8 p9\n  ii. q1 q2 q3 q4 q5 q6 q7 q8 q9\n2. r1 r2 r3 r4 r5 r6 r7 r8 r9",
+      "page": null,
+      "level": null,
+      "parent_id": "e-001",
+      "style": {}
+    },
+    {
+      "element_id": "e-003",
+      "type": "paragraph",
+      "content": "(b) flat1 flat2 flat3 flat4 flat5 flat6 flat7 flat8 flat9 flat10 flat11 flat12 flat13 flat14 flat15 flat16 flat17 flat18 flat19 flat20 flat21 flat22 flat23 flat24 flat25 flat26 flat27 flat28 flat29 flat30 flat31 flat32 flat33 flat34 flat35 flat36 flat37 flat38 flat39 flat40 flat41 flat42 flat43 flat44 flat45",
+      "page": null,
+      "level": null,
+      "parent_id": "e-001",
+      "style": {}
+    }
+  ],
+  "metadata": {
+    "element_count": 3,
+    "detected_format": "txt",
+    "page_count": null,
+    "title": "Synthetic decompose-nested",
+    "dropped": []
+  }
+}

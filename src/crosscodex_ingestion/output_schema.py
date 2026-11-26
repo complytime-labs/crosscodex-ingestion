@@ -4,7 +4,8 @@ Structured output contract — the versioned JSON Schema and the rules it can't 
 The schema ships as package data (schemas/structured-output-v1.json, one file per major version)
 and is compiled once at import. validate_output() is the last check before an output is stored:
 it applies the schema, then the rules JSON Schema has no keyword for (unique element_id, unique
-non-null source id, parent_id naming an earlier element, element_count matching the elements).
+non-null source id, parent_id naming an earlier element, element_count matching the elements, a
+section having children and never sitting under a control).
 
 Violation messages name where the output is wrong but never echo its values: element content
 is tenant data, and these messages reach the client, the logs and the audit stream. The only
@@ -22,7 +23,7 @@ from jsonschema import Draft202012Validator
 from jsonschema.exceptions import ValidationError
 
 # The version this service emits. The schema file lists every released 1.x it validates.
-SCHEMA_VERSION = "1.3"
+SCHEMA_VERSION = "1.4"
 
 _SCHEMA: dict[str, Any] = json.loads(
     files("crosscodex_ingestion").joinpath("schemas/structured-output-v1.json").read_text(encoding="utf-8")
@@ -112,7 +113,8 @@ def _schema_violation(output: dict[str, Any], error: ValidationError) -> Violati
 
 
 def _reference_violations(output: dict[str, Any]) -> list[Violation]:
-    """Check element_id and source id uniqueness, that each parent_id names an earlier element, and element_count.
+    """Check element_id and source id uniqueness, that each parent_id names an earlier element, element_count,
+    and that a section has a child node and is not under a control.
 
     Runs only on schema-valid output, so every field is present, typed and every element_id has the
     generated form (safe to quote). Source ids are tenant data and are never quoted.
@@ -121,6 +123,9 @@ def _reference_violations(output: dict[str, Any]) -> list[Violation]:
     violations = []
     seen: set[str] = set()
     source_ids: dict[str, int] = {}
+    roles: dict[str, str | None] = {}  # element_id -> role, for the elements seen so far
+    # A node's children are the elements with a source id under it; its id-less text paragraph is not one.
+    with_child_nodes = {e["parent_id"] for e in elements if isinstance(e.get("id"), str)}
     for index, element in enumerate(elements):
         source_id = element.get("id")
         if source_id is not None:
@@ -151,7 +156,25 @@ def _reference_violations(output: dict[str, Any]) -> list[Violation]:
                     element_id,
                 )
             )
+        if element.get("role") == "section":
+            if element_id not in with_child_nodes:
+                violations.append(
+                    Violation(
+                        f"{location}.role", "is section, but no child element with an id is under it", index, element_id
+                    )
+                )
+            if parent_id is not None and roles.get(parent_id) == "control":
+                violations.append(
+                    Violation(
+                        f"{location}.role",
+                        f"is section under a control ({parent_id!r}); a section sits at the top level, under a group "
+                        "or under a section",
+                        index,
+                        element_id,
+                    )
+                )
         seen.add(element_id)
+        roles[element_id] = element.get("role")
     if output["metadata"]["element_count"] != len(elements):
         violations.append(
             Violation(

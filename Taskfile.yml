@@ -62,6 +62,31 @@ tasks:
     cmds:
       - CERTS_DIR={{.CERTS_DIR}} scripts/compose_up.sh
 
+  fixtures:fallback-goldens:
+    desc: Regenerate tests/fixtures/fallback/*/golden.json with crosscodex's Go structurer (needs CROSSCODEX_DIR=<crosscodex checkout>)
+    summary: |
+      Checks out crosscodex at the pinned commit into a temporary git worktree, runs the capture
+      program (after `task generate` there, since api/gen is gitignored) over every tests/fixtures/fallback/*/input.json, and removes the worktree, also on
+      failure. The checkout itself is not modified. See tests/fixtures/fallback/capture/README.md.
+    requires:
+      vars: [CROSSCODEX_DIR]
+    vars:
+      CROSSCODEX_COMMIT: 80f764fe
+      FALLBACK_DIR: "{{.ROOT_DIR}}/tests/fixtures/fallback"
+      WORKTREE:
+        sh: mktemp -d /tmp/fallback-goldens.XXXXXX
+    cmds:
+      - defer: git -C "{{.CROSSCODEX_DIR}}" worktree remove --force "{{.WORKTREE}}"; rm -rf "{{.WORKTREE}}"
+      - git -C "{{.CROSSCODEX_DIR}}" worktree add --detach "{{.WORKTREE}}" {{.CROSSCODEX_COMMIT}}
+      - mkdir -p "{{.WORKTREE}}/.test-output/golden-capture"
+      - cp "{{.FALLBACK_DIR}}/capture/main.go" "{{.WORKTREE}}/.test-output/golden-capture/main.go"
+      - |
+        cd "{{.WORKTREE}}"
+        task generate
+        for input in "{{.FALLBACK_DIR}}"/*/input.json; do
+          go run ./.test-output/golden-capture "$input" "$(dirname "$input")/golden.json"
+        done
+
   build:
     desc: Build Python package
     cmds:

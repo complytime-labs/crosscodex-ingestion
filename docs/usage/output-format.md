@@ -6,26 +6,30 @@ The file at `structured_json_uri` is one JSON document. Its contract is the JSON
 [`src/crosscodex_ingestion/schemas/structured-output-v1.json`](../../src/crosscodex_ingestion/schemas/structured-output-v1.json),
 which is also installed with the package (`crosscodex_ingestion/schemas/structured-output-v1.json`).
 
+The fallback's output for a one-heading document (the `decompose-nested` test input) whose text has two
+clauses, `(a)` and `(b)`. Clause `(a)` splits again, so it is a `section`; `(b)` and the leaves are controls.
+`processing_time_ms` is the one illustrative value.
+
 ```json
 {
-  "schema_version": "1.3",
+  "schema_version": "1.4",
   "elements": [
-    {"element_id": "e-001", "type": "heading", "content": "Access Control", "page": 3,
-     "level": 1, "parent_id": null, "style": {}},
-    {"element_id": "e-002", "type": "paragraph", "content": "Limit system access to authorized users.",
-     "page": 3, "level": null, "parent_id": "e-001", "style": {}},
-    {"element_id": "e-003", "type": "table", "content": "| ID | Control |\n|----|----|\n| AC-1 | Policy |",
-     "page": 4, "level": null, "parent_id": "e-001", "style": {}}
+    {"element_id": "e-001", "type": "heading", "content": "Nested", "page": null, "level": 1, "parent_id": null, "style": {}, "id": "sec-1.a", "role": "section", "title": "Nested", "text": "lead1 lead2 lead3 lead4 lead5 lead6 lead7 lead8 lead9 lead10 lead11 lead12 lead13 lead14 lead15 lead16 lead17 lead18 lead19 lead20 lead21 lead22 lead23 lead24 lead25 lead26 lead27 lead28 lead29 lead30\n1. mid1 mid2 mid3 mid4 mid5 mid6 mid7 mid8 mid9 mid10 mid11 mid12 mid13 mid14 mid15 mid16 mid17 mid18 mid19 mid20 mid21 mid22 mid23 mid24 mid25 mid26 mid27 mid28 mid29 mid30\n  i. p1 p2 p3 p4 p5 p6 p7 p8 p9\n  ii. q1 q2 q3 q4 q5 q6 q7 q8 q9\n2. r1 r2 r3 r4 r5 r6 r7 r8 r9", "properties": {"label": "a"}},
+    {"element_id": "e-002", "type": "paragraph", "content": "lead1 lead2 lead3 lead4 lead5 lead6 lead7 lead8 lead9 lead10 lead11 lead12 lead13 lead14 lead15 lead16 lead17 lead18 lead19 lead20 lead21 lead22 lead23 lead24 lead25 lead26 lead27 lead28 lead29 lead30\n1. mid1 mid2 mid3 mid4 mid5 mid6 mid7 mid8 mid9 mid10 mid11 mid12 mid13 mid14 mid15 mid16 mid17 mid18 mid19 mid20 mid21 mid22 mid23 mid24 mid25 mid26 mid27 mid28 mid29 mid30\n  i. p1 p2 p3 p4 p5 p6 p7 p8 p9\n  ii. q1 q2 q3 q4 q5 q6 q7 q8 q9\n2. r1 r2 r3 r4 r5 r6 r7 r8 r9", "page": null, "level": null, "parent_id": "e-001", "style": {}, "id": null},
+    {"element_id": "e-003", "type": "heading", "content": "Nested", "page": null, "level": 2, "parent_id": "e-001", "style": {}, "id": "sec-1.a.1", "role": "section", "title": "Nested", "text": "mid1 mid2 mid3 mid4 mid5 mid6 mid7 mid8 mid9 mid10 mid11 mid12 mid13 mid14 mid15 mid16 mid17 mid18 mid19 mid20 mid21 mid22 mid23 mid24 mid25 mid26 mid27 mid28 mid29 mid30\n  i. p1 p2 p3 p4 p5 p6 p7 p8 p9\n  ii. q1 q2 q3 q4 q5 q6 q7 q8 q9", "properties": {"label": "1"}},
+    {"element_id": "e-004", "type": "paragraph", "content": "mid1 mid2 mid3 mid4 mid5 mid6 mid7 mid8 mid9 mid10 mid11 mid12 mid13 mid14 mid15 mid16 mid17 mid18 mid19 mid20 mid21 mid22 mid23 mid24 mid25 mid26 mid27 mid28 mid29 mid30\n  i. p1 p2 p3 p4 p5 p6 p7 p8 p9\n  ii. q1 q2 q3 q4 q5 q6 q7 q8 q9", "page": null, "level": null, "parent_id": "e-003", "style": {}, "id": null},
+    {"element_id": "e-005", "type": "paragraph", "content": "p1 p2 p3 p4 p5 p6 p7 p8 p9", "page": null, "level": null, "parent_id": "e-003", "style": {}, "id": "sec-1.a.1.i", "role": "control", "title": "Nested", "text": "p1 p2 p3 p4 p5 p6 p7 p8 p9", "properties": {"label": "i"}},
+    {"element_id": "e-006", "type": "paragraph", "content": "q1 q2 q3 q4 q5 q6 q7 q8 q9", "page": null, "level": null, "parent_id": "e-003", "style": {}, "id": "sec-1.a.1.ii", "role": "control", "title": "Nested", "text": "q1 q2 q3 q4 q5 q6 q7 q8 q9", "properties": {"label": "ii"}},
+    {"element_id": "e-007", "type": "paragraph", "content": "r1 r2 r3 r4 r5 r6 r7 r8 r9", "page": null, "level": null, "parent_id": "e-001", "style": {}, "id": "sec-1.a.2", "role": "control", "title": "Nested", "text": "r1 r2 r3 r4 r5 r6 r7 r8 r9", "properties": {"label": "2"}},
+    {"element_id": "e-008", "type": "paragraph", "content": "flat1 flat2 flat3 flat4 flat5 flat6 flat7 flat8 flat9 flat10 flat11 flat12 flat13 flat14 flat15 flat16 flat17 flat18 flat19 flat20 flat21 flat22 flat23 flat24 flat25 flat26 flat27 flat28 flat29 flat30 flat31 flat32 flat33 flat34 flat35 flat36 flat37 flat38 flat39 flat40 flat41 flat42 flat43 flat44 flat45", "page": null, "level": null, "parent_id": null, "style": {}, "id": "sec-1.b", "role": "control", "title": "Nested", "text": "flat1 flat2 flat3 flat4 flat5 flat6 flat7 flat8 flat9 flat10 flat11 flat12 flat13 flat14 flat15 flat16 flat17 flat18 flat19 flat20 flat21 flat22 flat23 flat24 flat25 flat26 flat27 flat28 flat29 flat30 flat31 flat32 flat33 flat34 flat35 flat36 flat37 flat38 flat39 flat40 flat41 flat42 flat43 flat44 flat45", "properties": {"label": "b"}}
   ],
-  "metadata": {
-    "element_count": 3, "detected_format": "pdf", "page_count": 12, "title": "Access Policy",
-    "processing_time_ms": 8412.5,
-    "dropped": [{"type": "table", "page": 7, "reason": "table could not be exported to Markdown (ValueError)"}],
-    "structure": {"heading_count": 1, "table_count": 1, "max_heading_depth": 1, "unparented_count": 0,
-                  "fragment_count": 0, "warnings": []}
-  }
+  "metadata": {"element_count": 8, "detected_format": "pdf", "page_count": null, "title": null, "processing_time_ms": 1.0, "dropped": [], "structure_method": "heading", "structure": {"heading_count": 1, "table_count": 0, "max_heading_depth": 1, "unparented_count": 0, "fragment_count": 0, "warnings": []}}
 }
 ```
+
+A node with children is a heading followed by an id-less paragraph holding its text, then its children;
+a node without children is one paragraph. This is the same shape for documents and structured sources.
+`metadata.structure` describes the layout the structurer was given (one heading, no tables), not these controls.
 
 For an HTML page that matched a profile, `metadata` also carries the profile that shaped it:
 
@@ -48,12 +52,13 @@ For an HTML page that matched a profile, `metadata` also carries the profile tha
 | `metadata.title`              | Document title as Docling labelled it, or `null`.                                                                                                         |
 | `metadata.processing_time_ms` | Wall time of the conversion worker.                                                                                                                       |
 | `metadata.dropped`            | Source content that was not emitted as an element, each with `type`, `page` and `reason`. Empty when nothing was dropped.                                 |
-| `id` (1.1)                    | The element's ID in the source (structured sources only); unique among non-null ids. `null` on an element without an ID of its own. Absent for documents. |
-| `title` (1.1)                 | The source node's title. Since 1.3, an element with a string `id` always carries it (`null` when the node has no title), headings included.               |
-| `role` (1.3)                  | `group` or `control`, on every element with a string `id` from a structured source; the mapping decides (see "Writing a mapping" in Structured sources).  |
-| `text` (1.3)                  | The node's own text, or `null` when it has none; on every element with a string `id`. Don't read the id-less paragraph that follows a heading for this.    |
+| `id` (1.1)                    | The node's ID: from the source for structured sources, derived by the fallback structurer for documents (since 1.4); unique among non-null ids. `null` on an element without an ID of its own. |
+| `title` (1.1)                 | The node's title (the source's, or for documents the heading's). Since 1.3, an element with a string `id` always carries it (`null` when the node has no title), headings included.               |
+| `role` (1.3)                  | `group`, `control` or (1.4) `section`, on every element with a string `id`. For structured sources the mapping decides (see "Writing a mapping" in Structured sources); for documents it is `control` or `section`.  |
+| `text` (1.3)                  | The node's own text, or `null` when it has none (structured sources and, since 1.4, documents); on every element with a string `id`. Don't read the id-less paragraph that follows a heading for this.    |
 | `properties` (1.1)            | Extra source fields the mapping names, as `name: string`.                                                                                                 |
 | `metadata.source` (1.1)       | Present for structured sources: `kind` (`structured`), `format`, `mapping` (`id`, `sha256`, `mapping_version`), `node_count`, `unmapped_fields`; since 1.3 also `catalog_version`, the mapping's `version` or `null`. |
+| `metadata.structure_method` (1.4) | How the structure was found, always present: `mapping` (structured sources), or `heading`, `table`, `pattern` (the fallback structurer's tier for a document). |
 | `metadata.structure` (1.2)    | Structure signals: `heading_count`, `table_count`, `max_heading_depth`, `unparented_count`, `fragment_count`, and `warnings` (open-ended codes such as `no_headings`). |
 | `metadata.html_profile` (1.2) | Present when an HTML profile shaped the conversion: `id` and the `sha256` of the profile file (see "HTML profiles").                                      |
 
@@ -181,6 +186,39 @@ pick up changes. Each output records the profile that shaped it in `metadata.htm
 SHA-256 of the file), so a stored output can be traced to the exact rules. A regex that runs long counts
 against the conversion's CPU limit and fails that conversion, not the service.
 
+## Document structure
+
+Since 1.4 a document (PDF, DOCX, HTML or text) is returned as a catalog of controls, not as raw layout. The
+service looks for controls in this order and stops at the first that finds any. `metadata.structure_method`
+names it.
+
+1. `heading`: one control per heading, its text the content under it. A heading title that repeats more than
+   three times (page furniture) is skipped.
+2. `table`: one control per table row, the first cell as the ID when it is 1 to 49 bytes.
+3. `pattern`: several numbering patterns are tried in a fixed order, and the first that starts at least three
+   lines wins, one control per matching line.
+
+A control of 40 words or more with clauses on separate lines, each labelled `(a)`, `1.`, `i.`, `a.` or `A.`, is
+replaced by its clauses, which become controls with IDs `<id>.<label>`. Any lines before the first clause (a
+lead-in) are not kept, which matches crosscodex's cascade. Only a clause that splits again becomes a `section`,
+and its `text` is that clause's full text, sub-clauses included. Each clause sits under its nearest enclosing section.
+
+What changes for a reader of document output:
+
+- Elements with an `id` carry `role`, `title` and `text`, as for structured sources. Read controls from
+  those; the heading and paragraph elements are the same nodes in the 1.0 layout shape.
+- IDs are derived from the document (`sec-3`, a table's first cell, a matched number, `<id>.<label>`
+  for clauses). They are stable for the same input and the same service version, and not a catalog's own IDs.
+  They are not a catalog's own IDs; document mappings that would give those are planned and none exist yet.
+- `page` is set where the layout had pages.
+- `metadata.structure` still describes the layout Docling produced, not the controls.
+- Nothing is configurable: the same document gives the same structure on every deployment.
+
+A document with no controls fails with `ERROR_CODE_INVALID_ARGUMENT` and nothing is stored. Prose-only text,
+or a document whose controls' identifiers repeat, is such a case. The message names the format and the
+registered mappings for it. The message suggests a document mapping, but none exist yet (planned: issue #38,
+phase 3), so such a document cannot be converted by this version.
+
 ## What version 1.0 guarantees
 
 These hold for every 1.x output, and version 1.1 adds the guarantees in [Structured sources](structured-sources.md).
@@ -224,3 +262,4 @@ major (`-v1`).
 | 1.1 | Optional element fields `id`, `title`, `properties` and optional `metadata.source`, emitted for structured sources. Documents converted by Docling are unchanged apart from the version. |
 | 1.2 | Optional `metadata.structure` (structure signals) and `metadata.html_profile` (the HTML profile applied, with its hash). |
 | 1.3 | Optional element fields `role`, `text` (and `title` on headings) on elements with a string `id`, and optional `metadata.source.catalog_version`, emitted for structured sources. |
+| 1.4 | Required `metadata.structure_method`; `role` `section`. Documents now carry `id`, `role`, `title` and `text` like structured sources. |

@@ -95,6 +95,12 @@ async def poll_until_complete(
         await asyncio.sleep(poll_interval)
 
 
+def _stored_nodes(final: ingestion_pb2.GetDocumentResponse) -> tuple[dict, list[dict]]:
+    """Return the stored output and its structure nodes (the elements carrying an id)."""
+    stored = json.loads(Path(final.document.structured_json_uri.removeprefix("file://")).read_text())
+    return stored, [e for e in stored["elements"] if e.get("id") is not None]
+
+
 @pytest.mark.integration
 @pytest.mark.asyncio
 async def test_convert_html_end_to_end(grpc_server_and_channel, sample_html):
@@ -120,9 +126,9 @@ async def test_convert_html_end_to_end(grpc_server_and_channel, sample_html):
     assert final_response.document.conversion_status == common_pb2.JOB_STATUS_COMPLETED
     assert final_response.document.structured_json_uri
 
-    # Verify structured JSON URI is set (actual JSON retrieval would require storage backend access)
-    # For now, just verify the URI exists
-    assert final_response.document.structured_json_uri
+    stored, nodes = _stored_nodes(final_response)
+    assert stored["metadata"]["structure_method"] == "heading"
+    assert [(n["id"], n["role"]) for n in nodes] == [("sec-1", "control")]
 
 
 @pytest.mark.integration
@@ -144,13 +150,19 @@ async def test_convert_txt_end_to_end(grpc_server_and_channel, sample_txt):
     final_response = await poll_until_complete(stub, "tenant-txt", convert_response.document_id, timeout_seconds=120)
 
     assert final_response.document.conversion_status == common_pb2.JOB_STATUS_COMPLETED
-    assert final_response.document.structured_json_uri
+    stored, nodes = _stored_nodes(final_response)
+    assert stored["metadata"]["structure_method"] == "pattern"
+    assert [(n["id"], n["role"], n["page"]) for n in nodes] == [
+        ("Section 1", "control", None),
+        ("Section 2", "control", None),
+        ("Section 3", "control", None),
+    ]
 
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_csv_looking_text_is_converted_as_plain_text(grpc_server_and_channel):
-    """Docling's sniffer would read this as a CSV table; text/plain is paragraphs."""
+async def test_prose_only_text_fails_with_no_structure(grpc_server_and_channel):
+    """CSV-looking text/plain is paragraphs (not a table), so the fallback structurer finds no controls."""
     _server, channel = grpc_server_and_channel
     stub = ingestion_pb2_grpc.IngestionServiceStub(channel)
 
@@ -163,10 +175,13 @@ async def test_csv_looking_text_is_converted_as_plain_text(grpc_server_and_chann
     )
     final = await poll_until_complete(stub, "tenant-csv-text", convert_response.document_id, timeout_seconds=120)
 
-    assert final.document.conversion_status == common_pb2.JOB_STATUS_COMPLETED, final.document.error.message
-    stored = json.loads(Path(final.document.structured_json_uri.removeprefix("file://")).read_text())
-    assert [e["type"] for e in stored["elements"]] == ["paragraph"]
-    assert "alice,admin" in stored["elements"][0]["content"]
+    assert final.document.conversion_status == common_pb2.JOB_STATUS_FAILED
+    assert final.document.error.code == common_pb2.ERROR_CODE_INVALID_ARGUMENT
+    assert final.document.error.message == (
+        "No controls found in this txt document: it has no headings, tables or numbered lines the fallback "
+        "structurer recognises. Convert it with a document mapping for txt; registered: none yet."
+    )
+    assert not final.document.structured_json_uri
 
 
 @pytest.mark.integration
@@ -192,17 +207,17 @@ async def test_corrupt_pdf_is_an_invalid_argument_not_internal(grpc_server_and_c
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_convert_pdf_end_to_end(grpc_server_and_channel, sample_pdf):
-    """Convert PDF document and verify COMPLETED status.
+async def test_convert_pdf_end_to_end(grpc_server_and_channel):
+    """Convert a PDF with headings: COMPLETED, heading-tier structure, every node carrying its page.
 
-    PDF conversion with Docling may require model downloads and is slower.
+    sample.pdf is prose, so it has no structure to convert; the NIST excerpt has real headings.
     """
     _server, channel = grpc_server_and_channel
     stub = ingestion_pb2_grpc.IngestionServiceStub(channel)
 
     request = ingestion_pb2.ConvertDocumentRequest(
         tenant_context=common_pb2.TenantContext(tenant_id="tenant-pdf"),
-        content=sample_pdf,
+        content=(Path(__file__).parent.parent / "fixtures" / "documents" / "nist-sp800-171r3-excerpt.pdf").read_bytes(),
         metadata=common_pb2.ContentMetadata(mime_type="application/pdf"),
     )
 
@@ -212,10 +227,36 @@ async def test_convert_pdf_end_to_end(grpc_server_and_channel, sample_pdf):
     # PDF conversion may be slow; allow more time
     final_response = await poll_until_complete(stub, "tenant-pdf", convert_response.document_id, timeout_seconds=180)
 
-    assert final_response.document.conversion_status in (common_pb2.JOB_STATUS_COMPLETED, common_pb2.JOB_STATUS_FAILED)
-    # If it succeeded, verify output
-    if final_response.document.conversion_status == common_pb2.JOB_STATUS_COMPLETED:
-        assert final_response.document.structured_json_uri
+    assert final_response.document.conversion_status == common_pb2.JOB_STATUS_COMPLETED, (
+        final_response.document.error.message
+    )
+    stored, nodes = _stored_nodes(final_response)
+    assert stored["metadata"]["structure_method"] == "heading"
+    assert nodes
+    assert {n["role"] for n in nodes} <= {"control", "section"}
+    assert all(isinstance(n["page"], int) and n["page"] >= 1 for n in nodes)
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_prose_only_pdf_fails_with_no_structure(grpc_server_and_channel, sample_pdf):
+    """sample.pdf has no headings, tables or numbered lines: the conversion is refused, nothing is stored."""
+    _server, channel = grpc_server_and_channel
+    stub = ingestion_pb2_grpc.IngestionServiceStub(channel)
+
+    convert_response = await stub.ConvertDocument(
+        ingestion_pb2.ConvertDocumentRequest(
+            tenant_context=common_pb2.TenantContext(tenant_id="tenant-prose-pdf"),
+            content=sample_pdf,
+            metadata=common_pb2.ContentMetadata(mime_type="application/pdf"),
+        )
+    )
+    final = await poll_until_complete(stub, "tenant-prose-pdf", convert_response.document_id, timeout_seconds=180)
+
+    assert final.document.conversion_status == common_pb2.JOB_STATUS_FAILED
+    assert final.document.error.code == common_pb2.ERROR_CODE_INVALID_ARGUMENT
+    assert final.document.error.message.startswith("No controls found in this pdf document: ")
+    assert not final.document.structured_json_uri
 
 
 @pytest.mark.integration
@@ -242,10 +283,12 @@ async def test_convert_docx_end_to_end(grpc_server_and_channel, sample_docx):
     # DOCX conversion may be slow; allow more time
     final_response = await poll_until_complete(stub, "tenant-docx", convert_response.document_id, timeout_seconds=180)
 
-    assert final_response.document.conversion_status in (common_pb2.JOB_STATUS_COMPLETED, common_pb2.JOB_STATUS_FAILED)
-    # If it succeeded, verify output
-    if final_response.document.conversion_status == common_pb2.JOB_STATUS_COMPLETED:
-        assert final_response.document.structured_json_uri
+    assert final_response.document.conversion_status == common_pb2.JOB_STATUS_COMPLETED, (
+        final_response.document.error.message
+    )
+    stored, nodes = _stored_nodes(final_response)
+    assert stored["metadata"]["structure_method"] == "heading"
+    assert [(n["id"], n["role"]) for n in nodes] == [("sec-1", "control"), ("sec-2", "control")]
 
 
 @pytest.mark.integration

@@ -1,0 +1,135 @@
+{
+  "items": [
+    {
+      "ID": "sec-1",
+      "Title": "2. The Fundamentals",
+      "Text": "This section describes the assumptions and methodology used to develop the requirements to protect the confidentiality of CUI in nonfederal systems and organizations. It also includes the tailoring 10 criteria applied to the controls in SP 800-53 [8].",
+      "Class": "compliance-requirement",
+      "ParentID": "",
+      "GroupID": "",
+      "ContainerKey": "",
+      "Props": null
+    },
+    {
+      "ID": "sec-2",
+      "Title": "2.1. Security Requirement Assumptions",
+      "Text": "The security requirements in this publication are based on the following assumptions:\n\nFederal information designated as CUI has the same value, whether such information resides in a federal or nonfederal system or organization.\n\nStatutory and regulatory requirements for the protection of CUI are consistent in federal and nonfederal systems and organizations.\n\nSafeguards implemented to protect CUI are consistent in federal and nonfederal systems and organizations.\n\nThe confidentiality impact value for CUI is no less than moderate. 11\n\nNonfederal organizations can directly implement a variety of potential security solutions or use external service providers to satisfy security requirements.",
+      "Class": "compliance-requirement",
+      "ParentID": "",
+      "GroupID": "",
+      "ContainerKey": "",
+      "Props": null
+    },
+    {
+      "ID": "sec-3",
+      "Title": "2.2. Security Requirement Development Methodology",
+      "Text": "Starting with the SP 800-53 controls in the SP 800-53B [12] moderate baseline, the controls are tailored to eliminate selected controls or parts of controls that are:\n\nPrimarily the responsibility of the Federal Government,\n\nNot directly related to protecting the confidentiality of CUI,\n\nAdequately addressed by other related controls, 12 or\n\nNot applicable.\n\nSP 800-171 security requirements represent a subset of the controls that are necessary to protect the confidentiality of CUI. The security requirements are organized into 17 families, as illustrated in Table 1. Each family contains the requirements related to the general security topic of the family. Certain families from SP 800-53 are not included due to the tailoring criteria. For example, the PII Processing and Transparency (PT) family is not included because personally identifiable information (PII) is a category of CUI, and therefore, no additional requirements are specified for confidentiality protection. The Program Management (PM) family is not included because it is not associated with any control baseline. Finally, the Contingency Planning (CP) family is not included because it addresses availability. 13\n\nTable 1. Security Requirement Families\n\n| Access Control                    | Maintenance         | Security Assessment and Monitoring   |\n|-----------------------------------|---------------------|--------------------------------------|\n| Awareness and Training            | Media Protection    | System and Communications Protection |\n| Audit and Accountability          | Personnel Security  | System and Information Integrity     |\n| Configuration Management          | Physical Protection | Planning                             |\n| Identification and Authentication | Risk Assessment     | System and Services Acquisition      |\n| Incident Response                 |                     | Supply Chain Risk Management         |\n\nOrganization-defined parameters (ODPs) are included in certain security requirements. ODPs provide flexibility through the use of assignment and selection operations to allow federal agencies and nonfederal organizations to specify values for the designated parameters in the requirements. 14 Assignment and selection operations provide the capability to customize the security requirements based on specific protection needs. The determination of ODP values can be guided and informed by laws, Executive Orders, directives, regulations, policies, standards, guidance, or mission and business needs. Once specified, the values for the organizationdefined parameters become part of the requirement.",
+      "Class": "compliance-requirement",
+      "ParentID": "",
+      "GroupID": "",
+      "ContainerKey": "",
+      "Props": null
+    },
+    {
+      "ID": "sec-4",
+      "Title": "ORGANIZATION-DEFINED PARAMETERS",
+      "Text": "Organization-defined parameters are an important part of a security requirement specification. ODPs provide both the flexibility and specificity needed by organizations to clearly define their CUI security requirements, given the diverse nature of their missions, business functions, operational environments, and risk tolerance. In addition, ODPs support consistent security assessments in determining whether specified security requirements have been satisfied. If a federal agency or a consortium of agencies do not specify a particular value or range of values for an ODP, nonfederal organizations must assign the value or values to complete the security requirement.\n\nA discussion section is included with each requirement. It is derived from the control discussion sections in SP 800-53 and provides additional information to facilitate the implementation and assessment of the requirements. The discussion section is informative, not normative. It is not intended to extend the scope of a requirement or influence the solutions that organizations may use to satisfy a requirement. The use of examples is notional, not exhaustive, and does not reflect the potential options available to organizations. A references section provides the source controls 15 from SP 800-53 and a list of NIST Special Publications with additional information on the topic described in the security requirement. The structure and content of a typical security requirement is provided in the example below.",
+      "Class": "compliance-requirement",
+      "ParentID": "",
+      "GroupID": "",
+      "ContainerKey": "",
+      "Props": null
+    },
+    {
+      "ID": "sec-5",
+      "Title": "03.13.11 Cryptographic Protection",
+      "Text": "Implement the following types of cryptography when used to protect the confidentiality of CUI: [Assignment: organization-defined types of cryptography].",
+      "Class": "compliance-requirement",
+      "ParentID": "",
+      "GroupID": "",
+      "ContainerKey": "",
+      "Props": null
+    },
+    {
+      "ID": "sec-6",
+      "Title": "DISCUSSION",
+      "Text": "Cryptography is implemented in accordance with applicable laws, Executive Orders, directives, policies, regulations, standards, and guidelines. FIPS-validated cryptography is recommended for the protection of CUI.",
+      "Class": "compliance-requirement",
+      "ParentID": "",
+      "GroupID": "",
+      "ContainerKey": "",
+      "Props": null
+    },
+    {
+      "ID": "sec-7",
+      "Title": "REFERENCES",
+      "Text": "Source Control: SC-13\n\nSupporting Publications: FIPS 140-3 [38]\n\nThe term organization is used in many security requirements, and its meaning depends on context. For example, in a security requirement with an ODP, an organization can refer to either the federal agency or the nonfederal organization establishing the parameter values for the requirement.\n\nAppendix C describes the security control tailoring criteria used to develop the security requirements and the results of the tailoring process. The appendix provides a list of controls from SP 800-53 that support the requirements and the controls that have been eliminated from the moderate baseline in accordance with the tailoring criteria.",
+      "Class": "compliance-requirement",
+      "ParentID": "",
+      "GroupID": "",
+      "ContainerKey": "",
+      "Props": null
+    },
+    {
+      "ID": "sec-8",
+      "Title": "ASSESSING SECURITY REQUIREMENTS",
+      "Text": "SP 800-171A [84] provides a set of procedures to assess the security requirements described in this publication. The assessment procedures are based on the procedures described in SP 800-53A [57].",
+      "Class": "compliance-requirement",
+      "ParentID": "",
+      "GroupID": "",
+      "ContainerKey": "",
+      "Props": null
+    },
+    {
+      "ID": "sec-9",
+      "Title": "3. The Security Requirements",
+      "Text": "This section describes 17 families of security requirements for protecting the confidentiality of CUI in nonfederal systems and organizations. When used in the context of the requirements in Sec. 3, the term system is defined to be nonfederal systems or system components that process, store, or transmit CUI or that provide protection for such systems or components. Not all security requirements mention CUI explicitly. However, the requirements are included because they directly affect the protection of CUI during processing, while in storage, and when in transmission between different locations.\n\nSome systems, including specialized systems (e.g., industrial/process control systems, medical devices, computer numerical control machines), may have limitations on the application of certain security requirements. To accommodate such issues, the system security plan - as reflected in requirement 03.15.02 - is used to describe any enduring exceptions to the security requirements. Individual, isolated, or temporary deficiencies are managed though plans of action and milestones, as reflected in requirement 03.12.02.",
+      "Class": "compliance-requirement",
+      "ParentID": "",
+      "GroupID": "",
+      "ContainerKey": "",
+      "Props": null
+    },
+    {
+      "ID": "sec-10",
+      "Title": "SCOPE AND APPLICABILITY OF SECURITY REQUIREMENTS",
+      "Text": "The security requirements in this section are only applicable to components of nonfederal systems that process, store, or transmit CUI or that provide protection for such components.",
+      "Class": "compliance-requirement",
+      "ParentID": "",
+      "GroupID": "",
+      "ContainerKey": "",
+      "Props": null
+    },
+    {
+      "ID": "sec-11",
+      "Title": "3.1. Access Control",
+      "Text": "",
+      "Class": "compliance-requirement",
+      "ParentID": "",
+      "GroupID": "",
+      "ContainerKey": "",
+      "Props": null
+    },
+    {
+      "ID": "sec-12",
+      "Title": "03.01.01 Account Management",
+      "Text": "Define the types of system accounts allowed and prohibited.\n\nCreate, enable, modify, disable, and remove system accounts in accordance with policy, procedures, prerequisites, and criteria.\n\nSpecify:\n\nAuthorized users of the system,\n\nGroup and role membership, and\n\nAccess authorizations (i.e., privileges) for each account.\n\nAuthorize access to the system based on:\n\nA valid access authorization and\n\nIntended system usage.\n\nMonitor the use of system accounts.\n\nDisable system accounts when:\n\nThe accounts have expired,\n\nThe accounts have been inactive for [Assignment: organization-defined time period],\n\nThe accounts are no longer associated with a user or individual,\n\nThe accounts are in violation of organizational policy, or\n\nSignificant risks associated with individuals are discovered.\n\nNotify account managers and designated personnel or roles within:\n\n[Assignment: organization-defined time period] when accounts are no longer required.\n\n[Assignment: organization-defined time period] when users are terminated or transferred.\n\n[Assignment: organization-defined time period] when system usage or the need-to-know changes for an individual.\n\nRequire that users log out of the system after [Assignment: organization-defined time period] of expected inactivity or when [Assignment: organization-defined circumstances].",
+      "Class": "compliance-requirement",
+      "ParentID": "",
+      "GroupID": "",
+      "ContainerKey": "",
+      "Props": null
+    },
+    {
+      "ID": "sec-13",
+      "Title": "DISCUSSION",
+      "Text": "This requirement focuses on account management for systems and applications. The definition and enforcement of access authorizations other than those determined by account type (e.g., privileged access, non-privileged access) are addressed in 03.01.02. System account types include individual, group, temporary, system, guest, anonymous, emergency, developer, and service. Users who require administrative privileges on system accounts receive additional scrutiny by personnel responsible for approving such accounts and privileged access. Types of accounts that organizations may prohibit due to increased risk include group, emergency, guest, anonymous, and temporary. Organizations may choose to define access privileges or other attributes by account, type of account, or a combination of both. Other attributes required for authorizing access include restrictions on the time of day, day of the week, and point of origin. When defining other system account attributes, organizations consider system requirements (e.g., system upgrades, scheduled maintenance) and mission and business requirements (e.g., time zone differences, remote access to facilitate travel requirements). Users who pose a significant security risk include individuals for whom reliable evidence indicates either the intention to use authorized access to the system to\n\ncause harm or that adversaries will cause harm through them. Close coordination",
+      "Class": "compliance-requirement",
+      "ParentID": "",
+      "GroupID": "",
+      "ContainerKey": "",
+      "Props": null
+    }
+  ],
+  "tier": "heading"
+}

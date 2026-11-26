@@ -1,0 +1,120 @@
+{
+  "schema_version": "1.3",
+  "elements": [
+    {
+      "element_id": "e-001",
+      "type": "heading",
+      "content": "Overview",
+      "page": null,
+      "level": 1,
+      "parent_id": null,
+      "style": {}
+    },
+    {
+      "element_id": "e-002",
+      "type": "paragraph",
+      "content": "Body of Overview here",
+      "page": null,
+      "level": null,
+      "parent_id": "e-001",
+      "style": {}
+    },
+    {
+      "element_id": "e-003",
+      "type": "heading",
+      "content": "Details",
+      "page": null,
+      "level": 1,
+      "parent_id": null,
+      "style": {}
+    },
+    {
+      "element_id": "e-004",
+      "type": "paragraph",
+      "content": "Body of Details here",
+      "page": null,
+      "level": null,
+      "parent_id": "e-003",
+      "style": {}
+    },
+    {
+      "element_id": "e-005",
+      "type": "heading",
+      "content": "Overview",
+      "page": null,
+      "level": 1,
+      "parent_id": null,
+      "style": {}
+    },
+    {
+      "element_id": "e-006",
+      "type": "paragraph",
+      "content": "Body of Overview here",
+      "page": null,
+      "level": null,
+      "parent_id": "e-005",
+      "style": {}
+    },
+    {
+      "element_id": "e-007",
+      "type": "heading",
+      "content": "Overview",
+      "page": null,
+      "level": 1,
+      "parent_id": null,
+      "style": {}
+    },
+    {
+      "element_id": "e-008",
+      "type": "paragraph",
+      "content": "Body of Overview here",
+      "page": null,
+      "level": null,
+      "parent_id": "e-007",
+      "style": {}
+    },
+    {
+      "element_id": "e-009",
+      "type": "heading",
+      "content": "Notes",
+      "page": null,
+      "level": 1,
+      "parent_id": null,
+      "style": {}
+    },
+    {
+      "element_id": "e-010",
+      "type": "paragraph",
+      "content": "Body of Notes here",
+      "page": null,
+      "level": null,
+      "parent_id": "e-009",
+      "style": {}
+    },
+    {
+      "element_id": "e-011",
+      "type": "heading",
+      "content": "Overview",
+      "page": null,
+      "level": 1,
+      "parent_id": null,
+      "style": {}
+    },
+    {
+      "element_id": "e-012",
+      "type": "paragraph",
+      "content": "Body of Overview here",
+      "page": null,
+      "level": null,
+      "parent_id": "e-011",
+      "style": {}
+    }
+  ],
+  "metadata": {
+    "element_count": 12,
+    "detected_format": "txt",
+    "page_count": null,
+    "title": "Synthetic heading-repeats-4",
+    "dropped": []
+  }
+}
