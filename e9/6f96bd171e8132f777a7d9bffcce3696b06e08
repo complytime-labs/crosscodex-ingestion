@@ -1,0 +1,21 @@
+tests/fixtures/generate_fixtures.py
+  s_44d9b3ea6744e9::t_d49a7d17aac484 11-15
+.mega-linter.local.yml
+  s_44d9b3ea6744e9::t_a1aace07362a8d 13-18
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e96f96bd171e8132f777a7d9bffcce3696b06e08",
+  "prompts": {},
+  "sessions": {
+    "s_44d9b3ea6744e9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "15a43ae7-1536-447f-acb3-18c723340357",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "LLM (riotbox) <llm@riotbox>"
+    }
+  }
+}
