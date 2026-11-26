@@ -1,0 +1,21 @@
+src/crosscodex_ingestion/fallback.py
+  s_412731fd637f69::t_c70b5ff57a90de 1-223
+tests/unit/test_fallback_adapter.py
+  s_412731fd637f69::t_3f26cb31c13197 1-191
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "8f2340cb9aacc5d15ba5ae0f81f6549697d33f4b",
+  "prompts": {},
+  "sessions": {
+    "s_412731fd637f69": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "baae5499-ef68-45d1-92de-9de7e802664e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "LLM (riotbox) <llm@riotbox>"
+    }
+  }
+}
