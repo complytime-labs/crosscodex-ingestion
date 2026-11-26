@@ -1,0 +1,32 @@
+tests/unit/test_fallback_redos.py
+  s_412731fd637f69::t_e6e2801be20cc0 1-102
+tests/unit/test_fallback_decompose.py
+  s_412731fd637f69::t_468c603d3c2e94 1-116
+tests/unit/test_fallback_parity.py
+  s_412731fd637f69::t_639d1880c5e06c 1-71
+src/crosscodex_ingestion/fallback.py
+  s_412731fd637f69::t_d8b68adbc1ec7f 429-430
+  s_412731fd637f69::t_494b51edbb5c49 432-434
+  s_412731fd637f69::t_4922aaccd155df 89-106
+  s_412731fd637f69::t_6c1a8359ce7ec7 426-428
+  s_412731fd637f69::t_4c78cb809967c0 431
+  s_412731fd637f69::t_e56e7fc456c96d 435-437
+src/crosscodex_ingestion/structured.py
+  s_412731fd637f69::t_58be8185cc688a 227-228
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "a5c87ba9e9e6580d18eb9790f3dba100a60e3e22",
+  "prompts": {},
+  "sessions": {
+    "s_412731fd637f69": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "baae5499-ef68-45d1-92de-9de7e802664e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "LLM (riotbox) <llm@riotbox>"
+    }
+  }
+}
