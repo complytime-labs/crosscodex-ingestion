@@ -98,6 +98,28 @@ instead of `content` to have the service fetch a URL. `tenant_id` must be a vali
 - **How it works (architecture and design notes):** [docs/dev/](docs/dev/README.md)
 - **Reporting a vulnerability:** [SECURITY.md](SECURITY.md)
 
+## Upgrading
+
+### Schema 1.4: documents are returned as structure
+
+- **Layout is gone.** A converted PDF, DOCX, HTML or text document no longer returns raw headings and
+  paragraphs. It returns the controls the fallback structurer found, with `id`, `role`, `title`, `text` and
+  `page` (`title`, `text` and `page` may be `null`), and `metadata.structure_method` (`heading`, `table` or `pattern`). A consumer that read layout
+  must read elements with an `id`, and one that validates against the schema needs the 1.4 copy.
+- **Prose-only documents now fail.** A document with no headings, tables or numbered lines the structurer
+  recognises fails with `ERROR_CODE_INVALID_ARGUMENT` (`No controls found in this <format> document ...`)
+  and stores nothing. The message suggests a document mapping, but document mappings are planned (issue #38,
+  phase 3) and none exist yet: until then this version cannot convert such a document, and a consumer that
+  needs it stays on a pre-1.4 ingestion.
+- **New `section` role.** A clause that splits into sub-clauses has role `section`: it is not itself a
+  requirement and has clause children.
+- **Larger documents.** Document output now repeats text (each node's `content` and `text`; a section's `text`
+  includes its clauses), so a document near `max_extraction_length` may now exceed it.
+- **The container offline check** (`task test:container`) now converts the NIST excerpt, because the old
+  `sample.pdf` is prose-only and fails.
+
+See [Output format](docs/usage/output-format.md#document-structure).
+
 ## Docling models
 
 The conversion worker is a resource-limited subprocess (see [Limits](docs/usage/configuration.md)) that runs
@@ -168,7 +190,7 @@ files mounted (see [gRPC authentication](docs/usage/configuration.md#grpc-authen
 `-e GRPC_TLS_MODE=off -e ATTESTATION_ENABLED=false` (and drop the `/certs` volume).
 
 `task test:container` builds both images, runs each image's `HEALTHCHECK` against a service started with mutual
-TLS and attestation, and converts `tests/fixtures/documents/sample.pdf` in a container started with
+TLS and attestation, and converts `tests/fixtures/documents/nist-sp800-171r3-excerpt.pdf` in a container started with
 `--network=none`. It needs `podman`, is slow (it downloads torch and the models), and runs in CI on every PR.
 If `podman build` fails with "mounting an overlay over build context directory" (podman nested inside another
 container), point `TMPDIR` at a directory on a non-overlay filesystem.

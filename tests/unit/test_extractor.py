@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 import pytest
 
 from crosscodex_ingestion.extractor import ExtractionResult, extract_elements
-from crosscodex_ingestion.output_schema import SCHEMA_VERSION, validate_output
+from crosscodex_ingestion.output_schema import validate_output
 
 
 # Mock Docling types (avoid importing the real library in unit tests)
@@ -599,8 +599,9 @@ class TestExtractionConformsToSchema:
     )
     def test_extraction_output_validates(self, doc, markdown, fmt):
         result = extract_elements(doc, markdown, fmt)
+        # Layout is the output shape before 1.4, which emits the structure found in it instead.
         output = {
-            "schema_version": SCHEMA_VERSION,
+            "schema_version": "1.3",
             "elements": result.elements,
             "metadata": {**result.metadata, "processing_time_ms": 1.0},
         }

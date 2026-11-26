@@ -8,11 +8,13 @@ import pytest
 from crosscodex_ingestion.config import IngestionSettings
 from crosscodex_ingestion.converter import convert_document
 from crosscodex_ingestion.html_profile import load_html_profiles
+from crosscodex_ingestion.mapping import load_registry
 from crosscodex_ingestion.output_schema import SCHEMA_VERSION, validate_output
 from crosscodex_ingestion.quality import measure_structure
 
 ARTIFACTS = os.environ.get("DOCLING_ARTIFACTS_PATH", "")
 PROFILES = load_html_profiles("")
+MAPPINGS = load_registry("")
 FIXTURES = Path(__file__).parent.parent / "fixtures" / "documents"
 
 pytestmark = [
@@ -25,11 +27,11 @@ pytestmark = [
 
 @pytest.mark.parametrize(
     ("fixture", "fmt"),
-    [("sample.pdf", "pdf"), ("sample.html", "html"), ("sample.docx", "docx"), ("sample.txt", "txt")],
+    [("nist-sp800-171r3-excerpt.pdf", "pdf"), ("sample.html", "html"), ("sample.docx", "docx"), ("sample.txt", "txt")],
 )
 async def test_fixture_conversion_conforms_to_the_output_schema(fixture, fmt):
     result = await convert_document(
-        str(FIXTURES / fixture), fmt, IngestionSettings(docling_artifacts_path=ARTIFACTS), PROFILES
+        str(FIXTURES / fixture), fmt, IngestionSettings(docling_artifacts_path=ARTIFACTS), PROFILES, MAPPINGS
     )
 
     # run_conversion adds metadata.structure after conversion; here the real elements must measure and validate.
@@ -38,3 +40,4 @@ async def test_fixture_conversion_conforms_to_the_output_schema(fixture, fmt):
     validate_output(result)
     assert result["schema_version"] == SCHEMA_VERSION
     assert result["elements"]
+    assert result["metadata"]["structure_method"] in {"heading", "table", "pattern"}

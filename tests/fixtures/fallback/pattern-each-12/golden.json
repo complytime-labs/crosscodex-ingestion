@@ -1,0 +1,35 @@
+{
+  "items": [
+    {
+      "ID": "1.",
+      "Title": "",
+      "Text": "1. First numbered item",
+      "Class": "compliance-requirement",
+      "ParentID": "",
+      "GroupID": "",
+      "ContainerKey": "",
+      "Props": null
+    },
+    {
+      "ID": "2.",
+      "Title": "",
+      "Text": "2. Second numbered item",
+      "Class": "compliance-requirement",
+      "ParentID": "",
+      "GroupID": "",
+      "ContainerKey": "",
+      "Props": null
+    },
+    {
+      "ID": "3.",
+      "Title": "",
+      "Text": "3. Third numbered item",
+      "Class": "compliance-requirement",
+      "ParentID": "",
+      "GroupID": "",
+      "ContainerKey": "",
+      "Props": null
+    }
+  ],
+  "tier": "pattern"
+}

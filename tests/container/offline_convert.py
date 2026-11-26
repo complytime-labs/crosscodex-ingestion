@@ -3,7 +3,8 @@
 Usage (run by `task test:container`, never on the host): python offline_convert.py <document>
 
 Exits non-zero, with a traceback or a message on stderr, if the network is reachable, a model
-directory is missing, or the conversion fails or yields no text.
+directory is missing, or the conversion fails or yields no elements. The document must have
+structure (headings, tables or numbered lines): a prose-only document is refused as having none.
 """
 
 import asyncio
@@ -14,6 +15,7 @@ from pathlib import Path
 from crosscodex_ingestion.config import IngestionSettings
 from crosscodex_ingestion.converter import convert_document
 from crosscodex_ingestion.html_profile import load_html_profiles
+from crosscodex_ingestion.mapping import load_registry
 
 # Directories `scripts/download_models.py` must leave in the models directory.
 EXPECTED_MODEL_DIRS = [
@@ -48,7 +50,8 @@ def main() -> None:
         sys.exit(f"models missing from {models}: {', '.join(missing)}")
 
     profiles = load_html_profiles(settings.html_profiles_path)
-    result = asyncio.run(convert_document(str(document), document.suffix.lstrip("."), settings, profiles))
+    mappings = load_registry(settings.mappings_path)
+    result = asyncio.run(convert_document(str(document), document.suffix.lstrip("."), settings, profiles, mappings))
     elements = result["elements"]
     if not elements:
         sys.exit(f"{document.name}: conversion returned no elements")

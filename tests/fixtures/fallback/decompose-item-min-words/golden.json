@@ -1,0 +1,123 @@
+{
+  "items": [
+    {
+      "ID": "sec-1.1",
+      "Title": "Eight words each",
+      "Text": "x1 x2 x3 x4 x5 x6 x7 x8",
+      "Class": "compliance-requirement",
+      "ParentID": "",
+      "GroupID": "",
+      "ContainerKey": "",
+      "Props": {
+        "label": "1"
+      }
+    },
+    {
+      "ID": "sec-1.2",
+      "Title": "Eight words each",
+      "Text": "x1 x2 x3 x4 x5 x6 x7 x8",
+      "Class": "compliance-requirement",
+      "ParentID": "",
+      "GroupID": "",
+      "ContainerKey": "",
+      "Props": {
+        "label": "2"
+      }
+    },
+    {
+      "ID": "sec-1.3",
+      "Title": "Eight words each",
+      "Text": "x1 x2 x3 x4 x5 x6 x7 x8",
+      "Class": "compliance-requirement",
+      "ParentID": "",
+      "GroupID": "",
+      "ContainerKey": "",
+      "Props": {
+        "label": "3"
+      }
+    },
+    {
+      "ID": "sec-1.4",
+      "Title": "Eight words each",
+      "Text": "x1 x2 x3 x4 x5 x6 x7 x8",
+      "Class": "compliance-requirement",
+      "ParentID": "",
+      "GroupID": "",
+      "ContainerKey": "",
+      "Props": {
+        "label": "4"
+      }
+    },
+    {
+      "ID": "sec-1.5",
+      "Title": "Eight words each",
+      "Text": "x1 x2 x3 x4 x5 x6 x7 x8",
+      "Class": "compliance-requirement",
+      "ParentID": "",
+      "GroupID": "",
+      "ContainerKey": "",
+      "Props": {
+        "label": "5"
+      }
+    },
+    {
+      "ID": "sec-2",
+      "Title": "Seven words each",
+      "Text": "1. x1 x2 x3 x4 x5 x6 x7\n\n2. x1 x2 x3 x4 x5 x6 x7\n\n3. x1 x2 x3 x4 x5 x6 x7\n\n4. x1 x2 x3 x4 x5 x6 x7\n\n5. x1 x2 x3 x4 x5 x6 x7\n\n6. x1 x2 x3 x4 x5 x6 x7",
+      "Class": "compliance-requirement",
+      "ParentID": "",
+      "GroupID": "",
+      "ContainerKey": "",
+      "Props": null
+    },
+    {
+      "ID": "sec-3.1",
+      "Title": "Short one dropped",
+      "Text": "x1 x2 x3 x4 x5 x6 x7 x8",
+      "Class": "compliance-requirement",
+      "ParentID": "",
+      "GroupID": "",
+      "ContainerKey": "",
+      "Props": {
+        "label": "1"
+      }
+    },
+    {
+      "ID": "sec-3.2",
+      "Title": "Short one dropped",
+      "Text": "x1 x2 x3 x4 x5 x6 x7 x8",
+      "Class": "compliance-requirement",
+      "ParentID": "",
+      "GroupID": "",
+      "ContainerKey": "",
+      "Props": {
+        "label": "2"
+      }
+    },
+    {
+      "ID": "sec-3.4",
+      "Title": "Short one dropped",
+      "Text": "x1 x2 x3 x4 x5 x6 x7 x8",
+      "Class": "compliance-requirement",
+      "ParentID": "",
+      "GroupID": "",
+      "ContainerKey": "",
+      "Props": {
+        "label": "4"
+      }
+    },
+    {
+      "ID": "sec-3.5",
+      "Title": "Short one dropped",
+      "Text": "x1 x2 x3 x4 x5 x6 x7 x8",
+      "Class": "compliance-requirement",
+      "ParentID": "",
+      "GroupID": "",
+      "ContainerKey": "",
+      "Props": {
+        "label": "5"
+      }
+    }
+  ],
+  "tier": "heading"
+}

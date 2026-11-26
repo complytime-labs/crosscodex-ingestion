@@ -1,0 +1,580 @@
+{
+  "schema_version": "1.3",
+  "elements": [
+    {
+      "element_id": "e-001",
+      "type": "heading",
+      "content": "2. The Fundamentals",
+      "page": 1,
+      "level": 1,
+      "parent_id": null,
+      "style": {}
+    },
+    {
+      "element_id": "e-002",
+      "type": "paragraph",
+      "content": "This section describes the assumptions and methodology used to develop the requirements to protect the confidentiality of CUI in nonfederal systems and organizations. It also includes the tailoring 10 criteria applied to the controls in SP 800-53 [8].",
+      "page": 1,
+      "level": null,
+      "parent_id": "e-001",
+      "style": {}
+    },
+    {
+      "element_id": "e-003",
+      "type": "heading",
+      "content": "2.1. Security Requirement Assumptions",
+      "page": 1,
+      "level": 2,
+      "parent_id": "e-001",
+      "style": {}
+    },
+    {
+      "element_id": "e-004",
+      "type": "paragraph",
+      "content": "The security requirements in this publication are based on the following assumptions:",
+      "page": 1,
+      "level": null,
+      "parent_id": "e-003",
+      "style": {}
+    },
+    {
+      "element_id": "e-005",
+      "type": "list_item",
+      "content": "Federal information designated as CUI has the same value, whether such information resides in a federal or nonfederal system or organization.",
+      "page": 1,
+      "level": null,
+      "parent_id": "e-003",
+      "style": {}
+    },
+    {
+      "element_id": "e-006",
+      "type": "list_item",
+      "content": "Statutory and regulatory requirements for the protection of CUI are consistent in federal and nonfederal systems and organizations.",
+      "page": 1,
+      "level": null,
+      "parent_id": "e-003",
+      "style": {}
+    },
+    {
+      "element_id": "e-007",
+      "type": "list_item",
+      "content": "Safeguards implemented to protect CUI are consistent in federal and nonfederal systems and organizations.",
+      "page": 1,
+      "level": null,
+      "parent_id": "e-003",
+      "style": {}
+    },
+    {
+      "element_id": "e-008",
+      "type": "list_item",
+      "content": "The confidentiality impact value for CUI is no less than moderate. 11",
+      "page": 1,
+      "level": null,
+      "parent_id": "e-003",
+      "style": {}
+    },
+    {
+      "element_id": "e-009",
+      "type": "list_item",
+      "content": "Nonfederal organizations can directly implement a variety of potential security solutions or use external service providers to satisfy security requirements.",
+      "page": 1,
+      "level": null,
+      "parent_id": "e-003",
+      "style": {}
+    },
+    {
+      "element_id": "e-010",
+      "type": "heading",
+      "content": "2.2. Security Requirement Development Methodology",
+      "page": 1,
+      "level": 2,
+      "parent_id": "e-001",
+      "style": {}
+    },
+    {
+      "element_id": "e-011",
+      "type": "paragraph",
+      "content": "Starting with the SP 800-53 controls in the SP 800-53B [12] moderate baseline, the controls are tailored to eliminate selected controls or parts of controls that are:",
+      "page": 1,
+      "level": null,
+      "parent_id": "e-010",
+      "style": {}
+    },
+    {
+      "element_id": "e-012",
+      "type": "list_item",
+      "content": "Primarily the responsibility of the Federal Government,",
+      "page": 1,
+      "level": null,
+      "parent_id": "e-010",
+      "style": {}
+    },
+    {
+      "element_id": "e-013",
+      "type": "list_item",
+      "content": "Not directly related to protecting the confidentiality of CUI,",
+      "page": 1,
+      "level": null,
+      "parent_id": "e-010",
+      "style": {}
+    },
+    {
+      "element_id": "e-014",
+      "type": "list_item",
+      "content": "Adequately addressed by other related controls, 12 or",
+      "page": 1,
+      "level": null,
+      "parent_id": "e-010",
+      "style": {}
+    },
+    {
+      "element_id": "e-015",
+      "type": "list_item",
+      "content": "Not applicable.",
+      "page": 1,
+      "level": null,
+      "parent_id": "e-010",
+      "style": {}
+    },
+    {
+      "element_id": "e-016",
+      "type": "paragraph",
+      "content": "SP 800-171 security requirements represent a subset of the controls that are necessary to protect the confidentiality of CUI. The security requirements are organized into 17 families, as illustrated in Table 1. Each family contains the requirements related to the general security topic of the family. Certain families from SP 800-53 are not included due to the tailoring criteria. For example, the PII Processing and Transparency (PT) family is not included because personally identifiable information (PII) is a category of CUI, and therefore, no additional requirements are specified for confidentiality protection. The Program Management (PM) family is not included because it is not associated with any control baseline. Finally, the Contingency Planning (CP) family is not included because it addresses availability. 13",
+      "page": 1,
+      "level": null,
+      "parent_id": "e-010",
+      "style": {}
+    },
+    {
+      "element_id": "e-017",
+      "type": "table",
+      "content": "Table 1. Security Requirement Families\n\n| Access Control                    | Maintenance         | Security Assessment and Monitoring   |\n|-----------------------------------|---------------------|--------------------------------------|\n| Awareness and Training            | Media Protection    | System and Communications Protection |\n| Audit and Accountability          | Personnel Security  | System and Information Integrity     |\n| Configuration Management          | Physical Protection | Planning                             |\n| Identification and Authentication | Risk Assessment     | System and Services Acquisition      |\n| Incident Response                 |                     | Supply Chain Risk Management         |",
+      "page": 2,
+      "level": null,
+      "parent_id": "e-010",
+      "style": {}
+    },
+    {
+      "element_id": "e-018",
+      "type": "paragraph",
+      "content": "Organization-defined parameters (ODPs) are included in certain security requirements. ODPs provide flexibility through the use of assignment and selection operations to allow federal agencies and nonfederal organizations to specify values for the designated parameters in the requirements. 14 Assignment and selection operations provide the capability to customize the security requirements based on specific protection needs. The determination of ODP values can be guided and informed by laws, Executive Orders, directives, regulations, policies, standards, guidance, or mission and business needs. Once specified, the values for the organizationdefined parameters become part of the requirement.",
+      "page": 2,
+      "level": null,
+      "parent_id": "e-010",
+      "style": {}
+    },
+    {
+      "element_id": "e-019",
+      "type": "heading",
+      "content": "ORGANIZATION-DEFINED PARAMETERS",
+      "page": 2,
+      "level": 3,
+      "parent_id": "e-010",
+      "style": {}
+    },
+    {
+      "element_id": "e-020",
+      "type": "paragraph",
+      "content": "Organization-defined parameters are an important part of a security requirement specification. ODPs provide both the flexibility and specificity needed by organizations to clearly define their CUI security requirements, given the diverse nature of their missions, business functions, operational environments, and risk tolerance. In addition, ODPs support consistent security assessments in determining whether specified security requirements have been satisfied. If a federal agency or a consortium of agencies do not specify a particular value or range of values for an ODP, nonfederal organizations must assign the value or values to complete the security requirement.",
+      "page": 2,
+      "level": null,
+      "parent_id": "e-019",
+      "style": {}
+    },
+    {
+      "element_id": "e-021",
+      "type": "paragraph",
+      "content": "A discussion section is included with each requirement. It is derived from the control discussion sections in SP 800-53 and provides additional information to facilitate the implementation and assessment of the requirements. The discussion section is informative, not normative. It is not intended to extend the scope of a requirement or influence the solutions that organizations may use to satisfy a requirement. The use of examples is notional, not exhaustive, and does not reflect the potential options available to organizations. A references section provides the source controls 15 from SP 800-53 and a list of NIST Special Publications with additional information on the topic described in the security requirement. The structure and content of a typical security requirement is provided in the example below.",
+      "page": 2,
+      "level": null,
+      "parent_id": "e-019",
+      "style": {}
+    },
+    {
+      "element_id": "e-022",
+      "type": "heading",
+      "content": "03.13.11 Cryptographic Protection",
+      "page": 3,
+      "level": 3,
+      "parent_id": "e-010",
+      "style": {}
+    },
+    {
+      "element_id": "e-023",
+      "type": "paragraph",
+      "content": "Implement the following types of cryptography when used to protect the confidentiality of CUI: [Assignment: organization-defined types of cryptography].",
+      "page": 3,
+      "level": null,
+      "parent_id": "e-022",
+      "style": {}
+    },
+    {
+      "element_id": "e-024",
+      "type": "heading",
+      "content": "DISCUSSION",
+      "page": 3,
+      "level": 4,
+      "parent_id": "e-022",
+      "style": {}
+    },
+    {
+      "element_id": "e-025",
+      "type": "paragraph",
+      "content": "Cryptography is implemented in accordance with applicable laws, Executive Orders, directives, policies, regulations, standards, and guidelines. FIPS-validated cryptography is recommended for the protection of CUI.",
+      "page": 3,
+      "level": null,
+      "parent_id": "e-024",
+      "style": {}
+    },
+    {
+      "element_id": "e-026",
+      "type": "heading",
+      "content": "REFERENCES",
+      "page": 3,
+      "level": 4,
+      "parent_id": "e-022",
+      "style": {}
+    },
+    {
+      "element_id": "e-027",
+      "type": "paragraph",
+      "content": "Source Control: SC-13",
+      "page": 3,
+      "level": null,
+      "parent_id": "e-026",
+      "style": {}
+    },
+    {
+      "element_id": "e-028",
+      "type": "paragraph",
+      "content": "Supporting Publications: FIPS 140-3 [38]",
+      "page": 3,
+      "level": null,
+      "parent_id": "e-026",
+      "style": {}
+    },
+    {
+      "element_id": "e-029",
+      "type": "paragraph",
+      "content": "The term organization is used in many security requirements, and its meaning depends on context. For example, in a security requirement with an ODP, an organization can refer to either the federal agency or the nonfederal organization establishing the parameter values for the requirement.",
+      "page": 3,
+      "level": null,
+      "parent_id": "e-026",
+      "style": {}
+    },
+    {
+      "element_id": "e-030",
+      "type": "paragraph",
+      "content": "Appendix C describes the security control tailoring criteria used to develop the security requirements and the results of the tailoring process. The appendix provides a list of controls from SP 800-53 that support the requirements and the controls that have been eliminated from the moderate baseline in accordance with the tailoring criteria.",
+      "page": 3,
+      "level": null,
+      "parent_id": "e-026",
+      "style": {}
+    },
+    {
+      "element_id": "e-031",
+      "type": "heading",
+      "content": "ASSESSING SECURITY REQUIREMENTS",
+      "page": 3,
+      "level": 4,
+      "parent_id": "e-022",
+      "style": {}
+    },
+    {
+      "element_id": "e-032",
+      "type": "paragraph",
+      "content": "SP 800-171A [84] provides a set of procedures to assess the security requirements described in this publication. The assessment procedures are based on the procedures described in SP 800-53A [57].",
+      "page": 3,
+      "level": null,
+      "parent_id": "e-031",
+      "style": {}
+    },
+    {
+      "element_id": "e-033",
+      "type": "heading",
+      "content": "3. The Security Requirements",
+      "page": 4,
+      "level": 1,
+      "parent_id": null,
+      "style": {}
+    },
+    {
+      "element_id": "e-034",
+      "type": "paragraph",
+      "content": "This section describes 17 families of security requirements for protecting the confidentiality of CUI in nonfederal systems and organizations. When used in the context of the requirements in Sec. 3, the term system is defined to be nonfederal systems or system components that process, store, or transmit CUI or that provide protection for such systems or components. Not all security requirements mention CUI explicitly. However, the requirements are included because they directly affect the protection of CUI during processing, while in storage, and when in transmission between different locations.",
+      "page": 4,
+      "level": null,
+      "parent_id": "e-033",
+      "style": {}
+    },
+    {
+      "element_id": "e-035",
+      "type": "paragraph",
+      "content": "Some systems, including specialized systems (e.g., industrial/process control systems, medical devices, computer numerical control machines), may have limitations on the application of certain security requirements. To accommodate such issues, the system security plan - as reflected in requirement 03.15.02 - is used to describe any enduring exceptions to the security requirements. Individual, isolated, or temporary deficiencies are managed though plans of action and milestones, as reflected in requirement 03.12.02.",
+      "page": 4,
+      "level": null,
+      "parent_id": "e-033",
+      "style": {}
+    },
+    {
+      "element_id": "e-036",
+      "type": "heading",
+      "content": "SCOPE AND APPLICABILITY OF SECURITY REQUIREMENTS",
+      "page": 4,
+      "level": 2,
+      "parent_id": "e-033",
+      "style": {}
+    },
+    {
+      "element_id": "e-037",
+      "type": "paragraph",
+      "content": "The security requirements in this section are only applicable to components of nonfederal systems that process, store, or transmit CUI or that provide protection for such components.",
+      "page": 4,
+      "level": null,
+      "parent_id": "e-036",
+      "style": {}
+    },
+    {
+      "element_id": "e-038",
+      "type": "heading",
+      "content": "3.1. Access Control",
+      "page": 4,
+      "level": 2,
+      "parent_id": "e-033",
+      "style": {}
+    },
+    {
+      "element_id": "e-039",
+      "type": "heading",
+      "content": "03.01.01 Account Management",
+      "page": 4,
+      "level": 3,
+      "parent_id": "e-038",
+      "style": {}
+    },
+    {
+      "element_id": "e-040",
+      "type": "list_item",
+      "content": "Define the types of system accounts allowed and prohibited.",
+      "page": 4,
+      "level": null,
+      "parent_id": "e-039",
+      "style": {}
+    },
+    {
+      "element_id": "e-041",
+      "type": "list_item",
+      "content": "Create, enable, modify, disable, and remove system accounts in accordance with policy, procedures, prerequisites, and criteria.",
+      "page": 4,
+      "level": null,
+      "parent_id": "e-039",
+      "style": {}
+    },
+    {
+      "element_id": "e-042",
+      "type": "list_item",
+      "content": "Specify:",
+      "page": 4,
+      "level": null,
+      "parent_id": "e-039",
+      "style": {}
+    },
+    {
+      "element_id": "e-043",
+      "type": "list_item",
+      "content": "Authorized users of the system,",
+      "page": 4,
+      "level": null,
+      "parent_id": "e-039",
+      "style": {}
+    },
+    {
+      "element_id": "e-044",
+      "type": "list_item",
+      "content": "Group and role membership, and",
+      "page": 4,
+      "level": null,
+      "parent_id": "e-039",
+      "style": {}
+    },
+    {
+      "element_id": "e-045",
+      "type": "list_item",
+      "content": "Access authorizations (i.e., privileges) for each account.",
+      "page": 4,
+      "level": null,
+      "parent_id": "e-039",
+      "style": {}
+    },
+    {
+      "element_id": "e-046",
+      "type": "list_item",
+      "content": "Authorize access to the system based on:",
+      "page": 4,
+      "level": null,
+      "parent_id": "e-039",
+      "style": {}
+    },
+    {
+      "element_id": "e-047",
+      "type": "list_item",
+      "content": "A valid access authorization and",
+      "page": 4,
+      "level": null,
+      "parent_id": "e-039",
+      "style": {}
+    },
+    {
+      "element_id": "e-048",
+      "type": "list_item",
+      "content": "Intended system usage.",
+      "page": 4,
+      "level": null,
+      "parent_id": "e-039",
+      "style": {}
+    },
+    {
+      "element_id": "e-049",
+      "type": "list_item",
+      "content": "Monitor the use of system accounts.",
+      "page": 4,
+      "level": null,
+      "parent_id": "e-039",
+      "style": {}
+    },
+    {
+      "element_id": "e-050",
+      "type": "list_item",
+      "content": "Disable system accounts when:",
+      "page": 5,
+      "level": null,
+      "parent_id": "e-039",
+      "style": {}
+    },
+    {
+      "element_id": "e-051",
+      "type": "list_item",
+      "content": "The accounts have expired,",
+      "page": 5,
+      "level": null,
+      "parent_id": "e-039",
+      "style": {}
+    },
+    {
+      "element_id": "e-052",
+      "type": "list_item",
+      "content": "The accounts have been inactive for [Assignment: organization-defined time period],",
+      "page": 5,
+      "level": null,
+      "parent_id": "e-039",
+      "style": {}
+    },
+    {
+      "element_id": "e-053",
+      "type": "list_item",
+      "content": "The accounts are no longer associated with a user or individual,",
+      "page": 5,
+      "level": null,
+      "parent_id": "e-039",
+      "style": {}
+    },
+    {
+      "element_id": "e-054",
+      "type": "list_item",
+      "content": "The accounts are in violation of organizational policy, or",
+      "page": 5,
+      "level": null,
+      "parent_id": "e-039",
+      "style": {}
+    },
+    {
+      "element_id": "e-055",
+      "type": "list_item",
+      "content": "Significant risks associated with individuals are discovered.",
+      "page": 5,
+      "level": null,
+      "parent_id": "e-039",
+      "style": {}
+    },
+    {
+      "element_id": "e-056",
+      "type": "list_item",
+      "content": "Notify account managers and designated personnel or roles within:",
+      "page": 5,
+      "level": null,
+      "parent_id": "e-039",
+      "style": {}
+    },
+    {
+      "element_id": "e-057",
+      "type": "list_item",
+      "content": "[Assignment: organization-defined time period] when accounts are no longer required.",
+      "page": 5,
+      "level": null,
+      "parent_id": "e-039",
+      "style": {}
+    },
+    {
+      "element_id": "e-058",
+      "type": "list_item",
+      "content": "[Assignment: organization-defined time period] when users are terminated or transferred.",
+      "page": 5,
+      "level": null,
+      "parent_id": "e-039",
+      "style": {}
+    },
+    {
+      "element_id": "e-059",
+      "type": "list_item",
+      "content": "[Assignment: organization-defined time period] when system usage or the need-to-know changes for an individual.",
+      "page": 5,
+      "level": null,
+      "parent_id": "e-039",
+      "style": {}
+    },
+    {
+      "element_id": "e-060",
+      "type": "list_item",
+      "content": "Require that users log out of the system after [Assignment: organization-defined time period] of expected inactivity or when [Assignment: organization-defined circumstances].",
+      "page": 5,
+      "level": null,
+      "parent_id": "e-039",
+      "style": {}
+    },
+    {
+      "element_id": "e-061",
+      "type": "heading",
+      "content": "DISCUSSION",
+      "page": 5,
+      "level": 4,
+      "parent_id": "e-039",
+      "style": {}
+    },
+    {
+      "element_id": "e-062",
+      "type": "paragraph",
+      "content": "This requirement focuses on account management for systems and applications. The definition and enforcement of access authorizations other than those determined by account type (e.g., privileged access, non-privileged access) are addressed in 03.01.02. System account types include individual, group, temporary, system, guest, anonymous, emergency, developer, and service. Users who require administrative privileges on system accounts receive additional scrutiny by personnel responsible for approving such accounts and privileged access. Types of accounts that organizations may prohibit due to increased risk include group, emergency, guest, anonymous, and temporary. Organizations may choose to define access privileges or other attributes by account, type of account, or a combination of both. Other attributes required for authorizing access include restrictions on the time of day, day of the week, and point of origin. When defining other system account attributes, organizations consider system requirements (e.g., system upgrades, scheduled maintenance) and mission and business requirements (e.g., time zone differences, remote access to facilitate travel requirements). Users who pose a significant security risk include individuals for whom reliable evidence indicates either the intention to use authorized access to the system to",
+      "page": 5,
+      "level": null,
+      "parent_id": "e-061",
+      "style": {}
+    },
+    {
+      "element_id": "e-063",
+      "type": "paragraph",
+      "content": "cause harm or that adversaries will cause harm through them. Close coordination",
+      "page": 5,
+      "level": null,
+      "parent_id": "e-061",
+      "style": {}
+    }
+  ],
+  "metadata": {
+    "element_count": 63,
+    "detected_format": "pdf",
+    "page_count": 5,
+    "title": null,
+    "dropped": [],
+    "processing_time_ms": 19628.94
+  }
+}

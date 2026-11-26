@@ -1,13 +1,19 @@
-"""Integration tests: real NIST PDF pages convert to nested headings (levels from section numbering)."""
+"""Integration tests: real NIST PDF pages extract to nested headings (levels from section numbering).
 
+Heading nesting is a property of the extracted layout. Converted documents no longer emit layout
+elements (they emit structure nodes), so these tests call `extract_elements` on a Docling conversion.
+"""
+
+import asyncio
 import os
 from pathlib import Path
 
 import pytest
+from docling.datamodel.base_models import ConversionStatus, InputFormat
+from docling.datamodel.pipeline_options import PdfPipelineOptions
+from docling.document_converter import DocumentConverter, PdfFormatOption
 
-from crosscodex_ingestion.config import IngestionSettings
-from crosscodex_ingestion.converter import convert_document
-from crosscodex_ingestion.html_profile import load_html_profiles
+from crosscodex_ingestion.extractor import extract_elements
 
 ARTIFACTS = os.environ.get("DOCLING_ARTIFACTS_PATH", "")
 FIXTURES = Path(__file__).parent.parent / "fixtures" / "documents"
@@ -22,13 +28,19 @@ pytestmark = [
 
 async def _heading_tree(fixture: str) -> list[tuple[str, int, str | None]]:
     """Return (content, level, parent heading content) for each heading of the converted *fixture*."""
-    result = await convert_document(
-        str(FIXTURES / fixture), "pdf", IngestionSettings(docling_artifacts_path=ARTIFACTS), load_html_profiles("")
+    converter = DocumentConverter(
+        allowed_formats=[InputFormat.PDF],
+        format_options={
+            InputFormat.PDF: PdfFormatOption(pipeline_options=PdfPipelineOptions(artifacts_path=ARTIFACTS))
+        },
     )
-    by_id = {e["element_id"]: e for e in result["elements"]}
+    result = await asyncio.to_thread(converter.convert, str(FIXTURES / fixture), raises_on_error=False)
+    assert result.status == ConversionStatus.SUCCESS
+    elements = extract_elements(result.document, None, "pdf").elements
+    by_id = {e["element_id"]: e for e in elements}
     return [
         (e["content"], e["level"], by_id[e["parent_id"]]["content"] if e["parent_id"] else None)
-        for e in result["elements"]
+        for e in elements
         if e["type"] == "heading"
     ]
 

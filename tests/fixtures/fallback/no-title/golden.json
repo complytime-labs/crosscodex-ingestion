@@ -1,0 +1,35 @@
+{
+  "items": [
+    {
+      "ID": "sec-1",
+      "Title": "First topic",
+      "Text": "Text under the first topic",
+      "Class": "compliance-requirement",
+      "ParentID": "",
+      "GroupID": "",
+      "ContainerKey": "",
+      "Props": null
+    },
+    {
+      "ID": "sec-2",
+      "Title": "Empty topic",
+      "Text": "",
+      "Class": "compliance-requirement",
+      "ParentID": "",
+      "GroupID": "",
+      "ContainerKey": "",
+      "Props": null
+    },
+    {
+      "ID": "sec-3",
+      "Title": "Last topic",
+      "Text": "List item under the last topic",
+      "Class": "compliance-requirement",
+      "ParentID": "",
+      "GroupID": "",
+      "ContainerKey": "",
+      "Props": null
+    }
+  ],
+  "tier": "heading"
+}

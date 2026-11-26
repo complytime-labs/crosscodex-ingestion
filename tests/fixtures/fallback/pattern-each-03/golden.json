@@ -1,0 +1,35 @@
+{
+  "items": [
+    {
+      "ID": "Article 1",
+      "Title": "",
+      "Text": "Article 1 First article",
+      "Class": "compliance-requirement",
+      "ParentID": "",
+      "GroupID": "",
+      "ContainerKey": "",
+      "Props": null
+    },
+    {
+      "ID": "Article 2",
+      "Title": "",
+      "Text": "Article 2 Second article",
+      "Class": "compliance-requirement",
+      "ParentID": "",
+      "GroupID": "",
+      "ContainerKey": "",
+      "Props": null
+    },
+    {
+      "ID": "Article   3",
+      "Title": "",
+      "Text": "Article   3 Third article, wide gap",
+      "Class": "compliance-requirement",
+      "ParentID": "",
+      "GroupID": "",
+      "ContainerKey": "",
+      "Props": null
+    }
+  ],
+  "tier": "pattern"
+}

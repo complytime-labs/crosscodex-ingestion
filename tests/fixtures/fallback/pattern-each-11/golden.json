@@ -1,0 +1,35 @@
+{
+  "items": [
+    {
+      "ID": "A.",
+      "Title": "",
+      "Text": "A. First uppercase item",
+      "Class": "compliance-requirement",
+      "ParentID": "",
+      "GroupID": "",
+      "ContainerKey": "",
+      "Props": null
+    },
+    {
+      "ID": "B.",
+      "Title": "",
+      "Text": "B. Second uppercase item",
+      "Class": "compliance-requirement",
+      "ParentID": "",
+      "GroupID": "",
+      "ContainerKey": "",
+      "Props": null
+    },
+    {
+      "ID": "E.",
+      "Title": "",
+      "Text": "E. Third uppercase item",
+      "Class": "compliance-requirement",
+      "ParentID": "",
+      "GroupID": "",
+      "ContainerKey": "",
+      "Props": null
+    }
+  ],
+  "tier": "pattern"
+}

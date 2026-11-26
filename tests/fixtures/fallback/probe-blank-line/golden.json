@@ -1,0 +1,125 @@
+{
+  "items": [
+    {
+      "ID": "sec-1.a",
+      "Title": "Blank lines inside an item",
+      "Text": "a1 a2 a3 a4 a5 a6 a7 a8 a9 a10\n   \na21 a22 a23 a24",
+      "Class": "compliance-requirement",
+      "ParentID": "",
+      "GroupID": "",
+      "ContainerKey": "",
+      "Props": {
+        "label": "a"
+      }
+    },
+    {
+      "ID": "sec-1.b",
+      "Title": "Blank lines inside an item",
+      "Text": "b1 b2 b3 b4 b5 b6 b7 b8 b9 b10 b11 b12 b13 b14",
+      "Class": "compliance-requirement",
+      "ParentID": "",
+      "GroupID": "",
+      "ContainerKey": "",
+      "Props": {
+        "label": "b"
+      }
+    },
+    {
+      "ID": "sec-1.c",
+      "Title": "Blank lines inside an item",
+      "Text": "c1 c2 c3 c4 c5 c6 c7 c8 c9 c10 c11 c12 c13 c14",
+      "Class": "compliance-requirement",
+      "ParentID": "",
+      "GroupID": "",
+      "ContainerKey": "",
+      "Props": {
+        "label": "c"
+      }
+    },
+    {
+      "ID": "sec-2.a",
+      "Title": "Label with blank text",
+      "Text": "a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13",
+      "Class": "compliance-requirement",
+      "ParentID": "",
+      "GroupID": "",
+      "ContainerKey": "",
+      "Props": {
+        "label": "a"
+      }
+    },
+    {
+      "ID": "sec-2.b",
+      "Title": "Label with blank text",
+      "Text": "b1 b2 b3 b4 b5 b6 b7 b8 b9 b10 b11 b12 b13",
+      "Class": "compliance-requirement",
+      "ParentID": "",
+      "GroupID": "",
+      "ContainerKey": "",
+      "Props": {
+        "label": "b"
+      }
+    },
+    {
+      "ID": "sec-2.c",
+      "Title": "Label with blank text",
+      "Text": "c1 c2 c3 c4 c5 c6 c7 c8 c9 c10 c11 c12 c13",
+      "Class": "compliance-requirement",
+      "ParentID": "",
+      "GroupID": "",
+      "ContainerKey": "",
+      "Props": {
+        "label": "c"
+      }
+    },
+    {
+      "ID": "sec-3.1",
+      "Title": "Numbered with blank line",
+      "Text": "n1 n2 n3 n4 n5 n6 n7 n8 n9 n10",
+      "Class": "compliance-requirement",
+      "ParentID": "",
+      "GroupID": "",
+      "ContainerKey": "",
+      "Props": {
+        "label": "1"
+      }
+    },
+    {
+      "ID": "sec-3.2",
+      "Title": "Numbered with blank line",
+      "Text": "m1 m2 m3 m4 m5 m6 m7 m8 m9 m10",
+      "Class": "compliance-requirement",
+      "ParentID": "",
+      "GroupID": "",
+      "ContainerKey": "",
+      "Props": {
+        "label": "2"
+      }
+    },
+    {
+      "ID": "sec-3.3",
+      "Title": "Numbered with blank line",
+      "Text": "o1 o2 o3 o4 o5 o6 o7 o8 o9 o10",
+      "Class": "compliance-requirement",
+      "ParentID": "",
+      "GroupID": "",
+      "ContainerKey": "",
+      "Props": {
+        "label": "3"
+      }
+    },
+    {
+      "ID": "sec-3.4",
+      "Title": "Numbered with blank line",
+      "Text": "q1 q2 q3 q4 q5 q6 q7 q8 q9 q10",
+      "Class": "compliance-requirement",
+      "ParentID": "",
+      "GroupID": "",
+      "ContainerKey": "",
+      "Props": {
+        "label": "4"
+      }
+    }
+  ],
+  "tier": "heading"
+}

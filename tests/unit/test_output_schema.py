@@ -8,6 +8,7 @@ from jsonschema import Draft202012Validator
 
 from crosscodex_ingestion.output_schema import SCHEMA_VERSION, OutputSchemaError, validate_output
 from crosscodex_ingestion.quality import measure_structure
+from crosscodex_ingestion.structured import TreeNode, emit_elements
 from tests.unit.output_samples import conforming_output, structured_output
 
 
@@ -15,6 +16,14 @@ def _violation(output: dict) -> OutputSchemaError:
     with pytest.raises(OutputSchemaError) as excinfo:
         validate_output(output)
     return excinfo.value
+
+
+def _at_version(output: dict, version: str) -> dict:
+    """*output* declared as *version*; below 1.4 without metadata.structure_method, which 1.4 added."""
+    output["schema_version"] = version
+    if version != "1.4":
+        output["metadata"].pop("structure_method")
+    return output
 
 
 class TestShippedSchema:
@@ -36,9 +45,7 @@ class TestShippedSchema:
 
         assert all(v.split(".")[0] == "1" and v.split(".")[1].isdigit() for v in released)
         for version in released:
-            output = conforming_output()
-            output["schema_version"] = version
-            validate_output(output)
+            validate_output(_at_version(conforming_output(), version))
 
 
 class TestConformingOutput:
@@ -253,15 +260,17 @@ class TestReferenceViolations:
 class TestStructuredSourceFields:
     """Schema 1.1 adds source ids, titles, properties and metadata.source, all optional."""
 
-    def test_this_service_emits_1_3(self):
-        assert SCHEMA_VERSION == "1.3"
+    def test_this_service_emits_1_4(self):
+        assert SCHEMA_VERSION == "1.4"
 
     def test_structured_output_passes(self):
         validate_output(structured_output())
 
     def test_an_output_without_the_new_fields_still_passes(self):
-        output = conforming_output()
-        assert "id" not in output["elements"][0]
+        output = _at_version(conforming_output(), "1.0")
+        for element in output["elements"]:
+            for field in ("id", "role", "title", "text", "properties"):
+                del element[field]
 
         validate_output(output)
 
@@ -327,8 +336,7 @@ class TestElementRoles:
     """Schema 1.3 adds role, text and a nullable title on elements that have a source id."""
 
     def test_1_3_structured_output_validates(self):
-        output = structured_output()
-        assert output["schema_version"] == "1.3"
+        output = _at_version(structured_output(), "1.3")
         assert {e.get("role") for e in output["elements"] if e.get("id")} == {"control"}
 
         validate_output(output)
@@ -379,8 +387,7 @@ class TestElementRoles:
         assert _violation(output).violations[0].element_index == 2
 
     def test_1_2_output_with_ids_and_no_role_validates(self):
-        output = structured_output()
-        output["schema_version"] = "1.2"
+        output = _at_version(structured_output(), "1.2")
         for element in output["elements"]:
             for field in ("role", "text", "title"):
                 element.pop(field, None)
@@ -412,14 +419,9 @@ class TestStructureFields:
 
         validate_output(output)
 
-        assert output["schema_version"] == "1.3"
-
     @pytest.mark.parametrize("version", ["1.0", "1.1", "1.2"])
     def test_older_versions_still_validate(self, version):
-        output = conforming_output()
-        output["schema_version"] = version
-
-        validate_output(output)
+        validate_output(_at_version(conforming_output(), version))
 
     @pytest.mark.parametrize(
         "mutate",
@@ -440,3 +442,100 @@ class TestStructureFields:
         mutate(output["metadata"])
 
         _violation(output)
+
+
+class TestStructureMethod:
+    """Schema 1.4 adds metadata.structure_method: how the elements' structure was found."""
+
+    @pytest.mark.parametrize("output", [conforming_output(), structured_output()], ids=["heading", "mapping"])
+    def test_1_4_output_with_a_method_validates(self, output):
+        validate_output(output)
+
+    def test_1_4_requires_the_method(self):
+        output = conforming_output()
+        del output["metadata"]["structure_method"]
+
+        error = _violation(output)
+
+        assert error.violations[0].location == "metadata"
+        assert "structure_method" in error.violations[0].reason
+
+    def test_unknown_method_is_rejected(self):
+        output = conforming_output()
+        output["metadata"]["structure_method"] = "llm"
+
+        assert _violation(output).violations[0].location == "metadata.structure_method"
+
+    def test_method_below_1_4_is_rejected(self):
+        output = conforming_output()
+        output["schema_version"] = "1.3"
+
+        assert _violation(output).violations[0].location == "metadata.structure_method"
+
+    def test_mapping_without_a_source_mapping_is_rejected(self):
+        output = conforming_output()
+        output["metadata"]["structure_method"] = "mapping"
+
+        assert _violation(output).violations[0].location.startswith("metadata")
+
+    def test_guessed_method_with_a_source_mapping_is_rejected(self):
+        output = structured_output()
+        output["metadata"]["structure_method"] = "heading"
+
+        assert _violation(output).violations[0].location == "metadata.structure_method"
+
+
+def _tree_output(roots: list[TreeNode]) -> dict:
+    """A 1.4 document output whose elements emit_elements made from *roots*."""
+    output = conforming_output()
+    output["elements"] = emit_elements(roots)
+    output["metadata"]["element_count"] = len(output["elements"])
+    return output
+
+
+def _node(node_id: str, role: str, children: list[TreeNode] | None = None) -> TreeNode:
+    return TreeNode(f"items[{node_id}]", 0, node_id, f"Title {node_id}", f"Text {node_id}", {}, children or [], role)
+
+
+class TestSectionRole:
+    """Schema 1.4 adds role section: a lead-in with children that is not itself a requirement."""
+
+    @pytest.mark.parametrize(
+        "roots",
+        [
+            [_node("s", "section", [_node("c", "control")])],
+            [_node("g", "group", [_node("s", "section", [_node("c", "control")])])],
+            [_node("s", "section", [_node("s.1", "section", [_node("c", "control")])])],
+        ],
+        ids=["top_level", "under_a_group", "under_a_section"],
+    )
+    def test_section_with_children_is_accepted(self, roots):
+        validate_output(_tree_output(roots))
+
+    def test_section_without_children_is_rejected(self):
+        output = _tree_output([_node("c", "control"), _node("s", "section")])
+
+        error = _violation(output)
+
+        assert [(v.location, v.element_index) for v in error.violations] == [
+            ("elements[1] (element_id 'e-002').role", 1)
+        ]
+        assert "no child" in error.violations[0].reason
+
+    def test_section_whose_only_child_is_its_text_is_rejected(self):
+        output = _tree_output([_node("s", "section", [_node("c", "control")])])
+        del output["elements"][2:]  # leaves the heading and its id-less text paragraph
+        output["metadata"]["element_count"] = 2
+
+        assert _violation(output).violations[0].element_index == 0
+
+    def test_section_under_a_control_is_rejected(self):
+        output = _tree_output([_node("c", "control", [_node("s", "section", [_node("c.1", "control")])])])
+
+        error = _violation(output)
+
+        assert [(v.location, v.element_index) for v in error.violations] == [
+            ("elements[2] (element_id 'e-003').role", 2)
+        ]
+        assert "under a control" in error.violations[0].reason
+        assert "Title" not in str(error)

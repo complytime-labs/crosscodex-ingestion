@@ -179,3 +179,39 @@ names the group levels and, when absent, there are no groups. The producer sets 
   element with the `id`; the paragraph's text is the same text, repeated.
 - `role` is an enum (`group`, `control`) so a later minor can add values; readers should tolerate a value
   they don't know.
+
+## 1.4: document structure
+
+`metadata.structure_method` is required from 1.4 and the `role` enum gains `section`. 1.0 to 1.3 outputs
+still validate (the requirement applies only when `schema_version` is `1.4`, and an older version may not
+carry the field), and older readers still work: they ignore what they don't know.
+
+From 1.4 every stored conversion has roles. A document is no longer returned as raw layout: the fallback
+structurer (`fallback.py`) turns the layout into controls, and the output carries them in the shape 1.3
+gave structured sources.
+
+- `metadata.structure_method` is the closed enum `mapping | heading | table | pattern`. `mapping` is valid
+  exactly when `metadata.source.mapping` is present, and the schema enforces both directions. The other
+  three name the structurer tier that won (heading, then table, then pattern).
+- A document's layout elements (headings, paragraphs, tables) are replaced by the controls the structurer
+  found. They are the same element kinds as a structured source's: a node with children is a heading
+  followed by an id-less paragraph with its text.
+- `role` `section` is a lead-in that introduces its children and is not itself a requirement. Only
+  clause decomposition produces it. The rules, checked in `output_schema.py` because JSON Schema cannot
+  express them: a section has at least one child element with an `id`, and it never sits under a control. It
+  sits at the top level, under a group or under a section.
+- `page` is set on a structure element from the layout page it came from, and is `null` when the layout
+  had none (HTML, DOCX, text). A clause takes its item's page.
+- `metadata.structure` is measured on the layout, before the structure replaces it, so its counts describe
+  the document Docling produced, not the controls. Its warnings (such as `no_headings`) therefore still
+  tell an auditor how much structure the source offered.
+- A document with no structure fails the conversion; nothing is stored. The two failures, both
+  `ERROR_CODE_INVALID_ARGUMENT`, built from the format, the registry mapping IDs and (for repeated IDs) the
+  winning method name from the closed enum, never document text:
+  - `No controls found in this <format> document: it has no headings, tables or numbered lines the fallback structurer recognises. Convert it with a document mapping for <format>; registered: <ids>.`
+  - `The fallback structurer found controls in this <format> document (method <tier>), but their identifiers repeat, so they do not form a catalog. Convert it with a document mapping for <format>; registered: <ids>.`
+
+  `<ids>` is `none yet` when no mapping is registered for the format.
+
+  The message's advice to use a document mapping is forward-looking: document mappings are planned (issue #38,
+  phase 3) and none exist yet.

@@ -1,0 +1,445 @@
+{
+  "items": [
+    {
+      "ID": "sec-1",
+      "Title": "CHAPTER I - GENERAL PROVISIONS",
+      "Text": "",
+      "Class": "compliance-requirement",
+      "ParentID": "",
+      "GroupID": "",
+      "ContainerKey": "",
+      "Props": null
+    },
+    {
+      "ID": "sec-2.a",
+      "Title": "Article 1 - Subject matter",
+      "Text": "obligations that require Member States to adopt national cybersecurity strategies and to designate or establish competent authorities, cyber crisis management authorities, single points of contact on cybersecurity (single points of contact) and computer security incident response teams (CSIRTs);",
+      "Class": "compliance-requirement",
+      "ParentID": "",
+      "GroupID": "",
+      "ContainerKey": "",
+      "Props": {
+        "label": "a"
+      }
+    },
+    {
+      "ID": "sec-2.b",
+      "Title": "Article 1 - Subject matter",
+      "Text": "cybersecurity risk-management measures and reporting obligations for entities of a type referred to in Annex I or II as well as for entities identified as critical entities under Directive (EU) 2022/2557;",
+      "Class": "compliance-requirement",
+      "ParentID": "",
+      "GroupID": "",
+      "ContainerKey": "",
+      "Props": {
+        "label": "b"
+      }
+    },
+    {
+      "ID": "sec-2.c",
+      "Title": "Article 1 - Subject matter",
+      "Text": "rules and obligations on cybersecurity information sharing;",
+      "Class": "compliance-requirement",
+      "ParentID": "",
+      "GroupID": "",
+      "ContainerKey": "",
+      "Props": {
+        "label": "c"
+      }
+    },
+    {
+      "ID": "sec-2.d",
+      "Title": "Article 1 - Subject matter",
+      "Text": "supervisory and enforcement obligations on Member States.",
+      "Class": "compliance-requirement",
+      "ParentID": "",
+      "GroupID": "",
+      "ContainerKey": "",
+      "Props": {
+        "label": "d"
+      }
+    },
+    {
+      "ID": "sec-3.a",
+      "Title": "Article 2 - Scope",
+      "Text": "services are provided by:",
+      "Class": "compliance-requirement",
+      "ParentID": "",
+      "GroupID": "",
+      "ContainerKey": "",
+      "Props": {
+        "label": "a"
+      }
+    },
+    {
+      "ID": "sec-3.i",
+      "Title": "Article 2 - Scope",
+      "Text": "providers of public electronic communications networks or of publicly available electronic communications services;",
+      "Class": "compliance-requirement",
+      "ParentID": "",
+      "GroupID": "",
+      "ContainerKey": "",
+      "Props": {
+        "label": "i"
+      }
+    },
+    {
+      "ID": "sec-3.ii",
+      "Title": "Article 2 - Scope",
+      "Text": "trust service providers;",
+      "Class": "compliance-requirement",
+      "ParentID": "",
+      "GroupID": "",
+      "ContainerKey": "",
+      "Props": {
+        "label": "ii"
+      }
+    },
+    {
+      "ID": "sec-3.iii",
+      "Title": "Article 2 - Scope",
+      "Text": "top-level domain name registries and domain name system service providers;",
+      "Class": "compliance-requirement",
+      "ParentID": "",
+      "GroupID": "",
+      "ContainerKey": "",
+      "Props": {
+        "label": "iii"
+      }
+    },
+    {
+      "ID": "sec-3.b",
+      "Title": "Article 2 - Scope",
+      "Text": "the entity is the sole provider in a Member State of a service which is essential for the maintenance of critical societal or economic activities;",
+      "Class": "compliance-requirement",
+      "ParentID": "",
+      "GroupID": "",
+      "ContainerKey": "",
+      "Props": {
+        "label": "b"
+      }
+    },
+    {
+      "ID": "sec-3.c",
+      "Title": "Article 2 - Scope",
+      "Text": "disruption of the service provided by the entity could have a significant impact on public safety, public security or public health;",
+      "Class": "compliance-requirement",
+      "ParentID": "",
+      "GroupID": "",
+      "ContainerKey": "",
+      "Props": {
+        "label": "c"
+      }
+    },
+    {
+      "ID": "sec-3.d",
+      "Title": "Article 2 - Scope",
+      "Text": "disruption of the service provided by the entity could induce a significant systemic risk, in particular for sectors where such disruption could have a cross-border impact;",
+      "Class": "compliance-requirement",
+      "ParentID": "",
+      "GroupID": "",
+      "ContainerKey": "",
+      "Props": {
+        "label": "d"
+      }
+    },
+    {
+      "ID": "sec-3.e",
+      "Title": "Article 2 - Scope",
+      "Text": "the entity is critical because of its specific importance at national or regional level for the particular sector or type of service, or for other interdependent sectors in the Member State;",
+      "Class": "compliance-requirement",
+      "ParentID": "",
+      "GroupID": "",
+      "ContainerKey": "",
+      "Props": {
+        "label": "e"
+      }
+    },
+    {
+      "ID": "sec-3.f",
+      "Title": "Article 2 - Scope",
+      "Text": "the entity is a public administration entity:",
+      "Class": "compliance-requirement",
+      "ParentID": "",
+      "GroupID": "",
+      "ContainerKey": "",
+      "Props": {
+        "label": "f"
+      }
+    },
+    {
+      "ID": "sec-3.i-2",
+      "Title": "Article 2 - Scope",
+      "Text": "of central government as defined by a Member State in accordance with national law; or",
+      "Class": "compliance-requirement",
+      "ParentID": "",
+      "GroupID": "",
+      "ContainerKey": "",
+      "Props": {
+        "label": "i"
+      }
+    },
+    {
+      "ID": "sec-3.ii-2",
+      "Title": "Article 2 - Scope",
+      "Text": "at regional level as defined by a Member State in accordance with national law that, following a risk-based assessment, provides services the disruption of which could have a significant impact on critical societal or economic activities.\n\n3. Regardless of their size, this Directive applies to entities identified as critical entities under Directive (EU) 2022/2557.\n\n4. Regardless of their size, this Directive applies to entities providing domain name registration services.\n\n5. Member States may provide for this Directive to apply to:",
+      "Class": "compliance-section",
+      "ParentID": "",
+      "GroupID": "",
+      "ContainerKey": "",
+      "Props": {
+        "label": "ii"
+      }
+    },
+    {
+      "ID": "sec-3.ii-2.3",
+      "Title": "Article 2 - Scope",
+      "Text": "Regardless of their size, this Directive applies to entities identified as critical entities under Directive (EU) 2022/2557.",
+      "Class": "compliance-requirement",
+      "ParentID": "sec-3.ii-2",
+      "GroupID": "",
+      "ContainerKey": "",
+      "Props": {
+        "label": "3",
+        "parent-id": "sec-3.ii-2"
+      }
+    },
+    {
+      "ID": "sec-3.ii-2.4",
+      "Title": "Article 2 - Scope",
+      "Text": "Regardless of their size, this Directive applies to entities providing domain name registration services.",
+      "Class": "compliance-requirement",
+      "ParentID": "sec-3.ii-2",
+      "GroupID": "",
+      "ContainerKey": "",
+      "Props": {
+        "label": "4",
+        "parent-id": "sec-3.ii-2"
+      }
+    },
+    {
+      "ID": "sec-3.ii-2.5",
+      "Title": "Article 2 - Scope",
+      "Text": "Member States may provide for this Directive to apply to:",
+      "Class": "compliance-requirement",
+      "ParentID": "sec-3.ii-2",
+      "GroupID": "",
+      "ContainerKey": "",
+      "Props": {
+        "label": "5",
+        "parent-id": "sec-3.ii-2"
+      }
+    },
+    {
+      "ID": "sec-3.a-2",
+      "Title": "Article 2 - Scope",
+      "Text": "public administration entities at local level;",
+      "Class": "compliance-requirement",
+      "ParentID": "",
+      "GroupID": "",
+      "ContainerKey": "",
+      "Props": {
+        "label": "a"
+      }
+    },
+    {
+      "ID": "sec-3.b-2",
+      "Title": "Article 2 - Scope",
+      "Text": "education institutions, in particular where they carry out critical research activities.\n\n6. This Directive is without prejudice to the Member States' responsibility for safeguarding national security and their power to safeguard other essential State functions, including ensuring the territorial integrity of the State and maintaining law and order.\n\n7. This Directive does not apply to public administration entities that carry out their activities in the areas of national security, public security, defence or law enforcement, including the prevention, investigation, detection and prosecution of criminal offences.\n\n8. Member States may exempt specific entities which carry out activities in the areas of national security, public security, defence or law enforcement, including the prevention, investigation, detection and prosecution of criminal offences, or which provide services exclusively to the public administration entities referred to in paragraph 7 of this Article, from the obligations laid down in Article 21 or 23 with regard to those activities or services. In such cases, the supervisory and enforcement measures referred to in Chapter VII shall not apply in relation to those specific activities or services. Where the entities carry out activities or provide services exclusively of the type referred to in this paragraph, Member States may decide also to exempt those entities from the obligations laid down in Articles 3 and 27.\n\n9. Paragraphs 7 and 8 shall not apply where an entity acts as a trust service provider.\n\n10. This Directive does not apply to entities which Member States have exempted from the scope of Regulation (EU) 2022/2554 in accordance with Article 2(4) of that Regulation.\n\n11. The obligations laid down in this Directive shall not entail the supply of information the disclosure of which would be contrary to the essential interests of Member States' national security, public security or defence.\n\n12. This Directive applies without prejudice to Regulation (EU) 2016/679, Directive 2002/58/EC, Directives 2011/93/EU (27) and 2013/40/EU (28) of the European Parliament and of the Council and Directive (EU) 2022/2557.\n\n13. Without prejudice to Article 346 TFEU, information that is confidential pursuant to Union or national rules, such as rules on business confidentiality, shall be exchanged with the Commission and other relevant authorities in accordance with this Directive only where that exchange is necessary for the application of this Directive. The information exchanged shall be limited to that which is relevant and proportionate to the purpose of that exchange. The exchange of information shall preserve the confidentiality of that information and protect the security and commercial interests of entities concerned.\n\n14. Entities, the competent authorities, the single points of contact and the CSIRTs shall process personal data to the extent necessary for the purposes of this Directive and in accordance with Regulation (EU) 2016/679, in particular such processing shall rely on Article 6 thereof.\n\nThe processing of personal data pursuant to this Directive by providers of public electronic communications networks or providers of publicly available electronic communications services shall be carried out in accordance with Union data protection law and Union privacy law, in particular Directive 2002/58/EC.",
+      "Class": "compliance-section",
+      "ParentID": "",
+      "GroupID": "",
+      "ContainerKey": "",
+      "Props": {
+        "label": "b"
+      }
+    },
+    {
+      "ID": "sec-3.b-2.6",
+      "Title": "Article 2 - Scope",
+      "Text": "This Directive is without prejudice to the Member States' responsibility for safeguarding national security and their power to safeguard other essential State functions, including ensuring the territorial integrity of the State and maintaining law and order.",
+      "Class": "compliance-requirement",
+      "ParentID": "sec-3.b-2",
+      "GroupID": "",
+      "ContainerKey": "",
+      "Props": {
+        "label": "6",
+        "parent-id": "sec-3.b-2"
+      }
+    },
+    {
+      "ID": "sec-3.b-2.7",
+      "Title": "Article 2 - Scope",
+      "Text": "This Directive does not apply to public administration entities that carry out their activities in the areas of national security, public security, defence or law enforcement, including the prevention, investigation, detection and prosecution of criminal offences.",
+      "Class": "compliance-requirement",
+      "ParentID": "sec-3.b-2",
+      "GroupID": "",
+      "ContainerKey": "",
+      "Props": {
+        "label": "7",
+        "parent-id": "sec-3.b-2"
+      }
+    },
+    {
+      "ID": "sec-3.b-2.8",
+      "Title": "Article 2 - Scope",
+      "Text": "Member States may exempt specific entities which carry out activities in the areas of national security, public security, defence or law enforcement, including the prevention, investigation, detection and prosecution of criminal offences, or which provide services exclusively to the public administration entities referred to in paragraph 7 of this Article, from the obligations laid down in Article 21 or 23 with regard to those activities or services. In such cases, the supervisory and enforcement measures referred to in Chapter VII shall not apply in relation to those specific activities or services. Where the entities carry out activities or provide services exclusively of the type referred to in this paragraph, Member States may decide also to exempt those entities from the obligations laid down in Articles 3 and 27.",
+      "Class": "compliance-requirement",
+      "ParentID": "sec-3.b-2",
+      "GroupID": "",
+      "ContainerKey": "",
+      "Props": {
+        "label": "8",
+        "parent-id": "sec-3.b-2"
+      }
+    },
+    {
+      "ID": "sec-3.b-2.9",
+      "Title": "Article 2 - Scope",
+      "Text": "Paragraphs 7 and 8 shall not apply where an entity acts as a trust service provider.",
+      "Class": "compliance-requirement",
+      "ParentID": "sec-3.b-2",
+      "GroupID": "",
+      "ContainerKey": "",
+      "Props": {
+        "label": "9",
+        "parent-id": "sec-3.b-2"
+      }
+    },
+    {
+      "ID": "sec-3.b-2.10",
+      "Title": "Article 2 - Scope",
+      "Text": "This Directive does not apply to entities which Member States have exempted from the scope of Regulation (EU) 2022/2554 in accordance with Article 2(4) of that Regulation.",
+      "Class": "compliance-requirement",
+      "ParentID": "sec-3.b-2",
+      "GroupID": "",
+      "ContainerKey": "",
+      "Props": {
+        "label": "10",
+        "parent-id": "sec-3.b-2"
+      }
+    },
+    {
+      "ID": "sec-3.b-2.11",
+      "Title": "Article 2 - Scope",
+      "Text": "The obligations laid down in this Directive shall not entail the supply of information the disclosure of which would be contrary to the essential interests of Member States' national security, public security or defence.",
+      "Class": "compliance-requirement",
+      "ParentID": "sec-3.b-2",
+      "GroupID": "",
+      "ContainerKey": "",
+      "Props": {
+        "label": "11",
+        "parent-id": "sec-3.b-2"
+      }
+    },
+    {
+      "ID": "sec-3.b-2.12",
+      "Title": "Article 2 - Scope",
+      "Text": "This Directive applies without prejudice to Regulation (EU) 2016/679, Directive 2002/58/EC, Directives 2011/93/EU (27) and 2013/40/EU (28) of the European Parliament and of the Council and Directive (EU) 2022/2557.",
+      "Class": "compliance-requirement",
+      "ParentID": "sec-3.b-2",
+      "GroupID": "",
+      "ContainerKey": "",
+      "Props": {
+        "label": "12",
+        "parent-id": "sec-3.b-2"
+      }
+    },
+    {
+      "ID": "sec-3.b-2.13",
+      "Title": "Article 2 - Scope",
+      "Text": "Without prejudice to Article 346 TFEU, information that is confidential pursuant to Union or national rules, such as rules on business confidentiality, shall be exchanged with the Commission and other relevant authorities in accordance with this Directive only where that exchange is necessary for the application of this Directive. The information exchanged shall be limited to that which is relevant and proportionate to the purpose of that exchange. The exchange of information shall preserve the confidentiality of that information and protect the security and commercial interests of entities concerned.",
+      "Class": "compliance-requirement",
+      "ParentID": "sec-3.b-2",
+      "GroupID": "",
+      "ContainerKey": "",
+      "Props": {
+        "label": "13",
+        "parent-id": "sec-3.b-2"
+      }
+    },
+    {
+      "ID": "sec-3.b-2.14",
+      "Title": "Article 2 - Scope",
+      "Text": "Entities, the competent authorities, the single points of contact and the CSIRTs shall process personal data to the extent necessary for the purposes of this Directive and in accordance with Regulation (EU) 2016/679, in particular such processing shall rely on Article 6 thereof.\n\nThe processing of personal data pursuant to this Directive by providers of public electronic communications networks or providers of publicly available electronic communications services shall be carried out in accordance with Union data protection law and Union privacy law, in particular Directive 2002/58/EC.",
+      "Class": "compliance-requirement",
+      "ParentID": "sec-3.b-2",
+      "GroupID": "",
+      "ContainerKey": "",
+      "Props": {
+        "label": "14",
+        "parent-id": "sec-3.b-2"
+      }
+    },
+    {
+      "ID": "sec-3.4",
+      "Title": "Article 2 - Scope",
+      "Text": "Directive (EU) 2016/1148 of the European Parliament and of the Council of 6 July 2016 concerning measures for a high common level of security of network and information systems across the Union (OJ L 194, 19.7.2016, p. 1).",
+      "Class": "compliance-requirement",
+      "ParentID": "",
+      "GroupID": "",
+      "ContainerKey": "",
+      "Props": {
+        "label": "4"
+      }
+    },
+    {
+      "ID": "sec-3.27",
+      "Title": "Article 2 - Scope",
+      "Text": "Directive 2011/93/EU of the European Parliament and of the Council of 13 December 2011 on combating the sexual abuse and sexual exploitation of children and child pornography, and replacing Council Framework Decision 2004/68/JHA (OJ L 335, 17.12.2011, p. 1).",
+      "Class": "compliance-requirement",
+      "ParentID": "",
+      "GroupID": "",
+      "ContainerKey": "",
+      "Props": {
+        "label": "27"
+      }
+    },
+    {
+      "ID": "sec-3.28",
+      "Title": "Article 2 - Scope",
+      "Text": "Directive 2013/40/EU of the European Parliament and of the Council of 12 August 2013 on attacks against information systems and replacing Council Framework Decision 2005/222/JHA (OJ L 218, 14.8.2013, p. 8).",
+      "Class": "compliance-requirement",
+      "ParentID": "",
+      "GroupID": "",
+      "ContainerKey": "",
+      "Props": {
+        "label": "28"
+      }
+    },
+    {
+      "ID": "sec-4.a",
+      "Title": "ANNEX I - SECTORS OF HIGH CRITICALITY",
+      "Text": "Electricity\n\n- Electricity undertakings as defined in Article 2, point (57), of Directive (EU) 2019/944 of the European Parliament and of the Council (1), which carry out the function of 'supply' as defined in Article 2, point (12), of that Directive\n\n- Distribution system operators as defined in Article 2, point (29), of Directive (EU) 2019/944",
+      "Class": "compliance-requirement",
+      "ParentID": "",
+      "GroupID": "",
+      "ContainerKey": "",
+      "Props": {
+        "label": "a"
+      }
+    },
+    {
+      "ID": "sec-4.1",
+      "Title": "ANNEX I - SECTORS OF HIGH CRITICALITY",
+      "Text": "Directive (EU) 2019/944 of the European Parliament and of the Council of 5 June 2019 on common rules for the internal market for electricity and amending Directive 2012/27/EU (OJ L 158, 14.6.2019, p. 125).",
+      "Class": "compliance-requirement",
+      "ParentID": "",
+      "GroupID": "",
+      "ContainerKey": "",
+      "Props": {
+        "label": "1"
+      }
+    },
+    {
+      "ID": "sec-5",
+      "Title": "ANNEX III - CORRELATION TABLE",
+      "Text": "| Directive (EU) 2016/1148   | This Directive   |\n|----------------------------|------------------|\n| Article 1(1)               | Article 1(1)     |\n| Article 1(2)               | Article 1(2)     |",
+      "Class": "compliance-requirement",
+      "ParentID": "",
+      "GroupID": "",
+      "ContainerKey": "",
+      "Props": null
+    }
+  ],
+  "tier": "heading"
+}

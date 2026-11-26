@@ -1,0 +1,35 @@
+{
+  "items": [
+    {
+      "ID": "Rule 1",
+      "Title": "",
+      "Text": "Rule 1 First rule",
+      "Class": "compliance-requirement",
+      "ParentID": "",
+      "GroupID": "",
+      "ContainerKey": "",
+      "Props": null
+    },
+    {
+      "ID": "Rule 2",
+      "Title": "",
+      "Text": "Rule 2 Second rule",
+      "Class": "compliance-requirement",
+      "ParentID": "",
+      "GroupID": "",
+      "ContainerKey": "",
+      "Props": null
+    },
+    {
+      "ID": "Rule 3",
+      "Title": "",
+      "Text": "Rule 3 Third rule",
+      "Class": "compliance-requirement",
+      "ParentID": "",
+      "GroupID": "",
+      "ContainerKey": "",
+      "Props": null
+    }
+  ],
+  "tier": "pattern"
+}

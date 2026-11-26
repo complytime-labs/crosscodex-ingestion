@@ -1,0 +1,35 @@
+{
+  "items": [
+    {
+      "ID": "(a)",
+      "Title": "",
+      "Text": "(a) First lettered clause",
+      "Class": "compliance-requirement",
+      "ParentID": "",
+      "GroupID": "",
+      "ContainerKey": "",
+      "Props": null
+    },
+    {
+      "ID": "(b)",
+      "Title": "",
+      "Text": "(b) Second lettered clause",
+      "Class": "compliance-requirement",
+      "ParentID": "",
+      "GroupID": "",
+      "ContainerKey": "",
+      "Props": null
+    },
+    {
+      "ID": "(c)",
+      "Title": "",
+      "Text": "(c) Third lettered clause",
+      "Class": "compliance-requirement",
+      "ParentID": "",
+      "GroupID": "",
+      "ContainerKey": "",
+      "Props": null
+    }
+  ],
+  "tier": "pattern"
+}

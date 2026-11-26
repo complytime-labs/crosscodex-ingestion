@@ -1,0 +1,25 @@
+{
+  "items": [
+    {
+      "ID": "sec-2",
+      "Title": "Details",
+      "Text": "Body of Details here",
+      "Class": "compliance-requirement",
+      "ParentID": "",
+      "GroupID": "",
+      "ContainerKey": "",
+      "Props": null
+    },
+    {
+      "ID": "sec-5",
+      "Title": "Notes",
+      "Text": "Body of Notes here",
+      "Class": "compliance-requirement",
+      "ParentID": "",
+      "GroupID": "",
+      "ContainerKey": "",
+      "Props": null
+    }
+  ],
+  "tier": "heading"
+}

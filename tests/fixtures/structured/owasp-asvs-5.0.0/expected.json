@@ -949,6 +949,7 @@
     "page_count": null,
     "title": "OWASP Application Security Verification Standard 5.0.0",
     "dropped": [],
+    "structure_method": "mapping",
     "source": {
       "kind": "structured",
       "format": "json",

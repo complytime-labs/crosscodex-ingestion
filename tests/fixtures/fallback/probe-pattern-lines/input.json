@@ -1,0 +1,75 @@
+{
+  "schema_version": "1.3",
+  "elements": [
+    {
+      "element_id": "e-001",
+      "type": "paragraph",
+      "content": "\u00a01.1 Padded with NBSP",
+      "page": null,
+      "level": null,
+      "parent_id": null,
+      "style": {}
+    },
+    {
+      "element_id": "e-002",
+      "type": "paragraph",
+      "content": "\u00851.2 Padded with NEL",
+      "page": null,
+      "level": null,
+      "parent_id": null,
+      "style": {}
+    },
+    {
+      "element_id": "e-003",
+      "type": "paragraph",
+      "content": "\u30001.3 Padded with ideographic space",
+      "page": null,
+      "level": null,
+      "parent_id": null,
+      "style": {}
+    },
+    {
+      "element_id": "e-004",
+      "type": "paragraph",
+      "content": "\u000b1.4 Padded with vertical tab",
+      "page": null,
+      "level": null,
+      "parent_id": null,
+      "style": {}
+    },
+    {
+      "element_id": "e-005",
+      "type": "paragraph",
+      "content": "\u001c1.5 Padded with file separator, which Go does not trim",
+      "page": null,
+      "level": null,
+      "parent_id": null,
+      "style": {}
+    },
+    {
+      "element_id": "e-006",
+      "type": "paragraph",
+      "content": "\u06611.6 Arabic-Indic digit before the number",
+      "page": null,
+      "level": null,
+      "parent_id": null,
+      "style": {}
+    },
+    {
+      "element_id": "e-007",
+      "type": "paragraph",
+      "content": "1.7 Before CRLF\r\n1.8 After CRLF",
+      "page": null,
+      "level": null,
+      "parent_id": null,
+      "style": {}
+    }
+  ],
+  "metadata": {
+    "element_count": 7,
+    "detected_format": "txt",
+    "page_count": null,
+    "title": "Synthetic probe-pattern-lines",
+    "dropped": []
+  }
+}

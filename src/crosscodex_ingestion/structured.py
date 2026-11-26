@@ -224,7 +224,8 @@ class TreeNode:
     text: str | None
     properties: dict[str, str]
     children: list["TreeNode"] = field(default_factory=list)
-    role: str = "control"  # "group" for nodes within the mapping's group_levels, else "control"
+    role: str = "control"  # "group" within the mapping's group_levels, "section" for a fallback lead-in
+    page: int | None = None  # the layout page a document node came from; None for structured sources
 
 
 class _Invalid:
@@ -987,12 +988,12 @@ def emit_elements(roots: list[TreeNode]) -> list[dict[str, Any]]:
     """Pre-order, source-order elements: a node with children is a heading (then its text, then its children)."""
     elements: list[dict[str, Any]] = []
 
-    def element(kind: str, content: str, level: int | None, parent_id: str | None) -> dict[str, Any]:
+    def element(kind: str, content: str, page: int | None, level: int | None, parent_id: str | None) -> dict[str, Any]:
         item: dict[str, Any] = {
             "element_id": f"e-{len(elements) + 1:03d}",
             "type": kind,
             "content": content,
-            "page": None,
+            "page": page,
             "level": level,
             "parent_id": parent_id,
             "style": {},
@@ -1004,13 +1005,14 @@ def emit_elements(roots: list[TreeNode]) -> list[dict[str, Any]]:
     while stack:
         node, depth, parent_id = stack.pop()
         if node.children:
-            heading = element("heading", node.title or "", depth, parent_id)
+            heading = element("heading", node.title or "", node.page, depth, parent_id)
             heading.update(id=node.id, role=node.role, title=node.title, text=node.text, properties=node.properties)
             if node.text is not None:
-                element("paragraph", node.text, None, heading["element_id"])["id"] = None
+                element("paragraph", node.text, node.page, None, heading["element_id"])["id"] = None
             stack.extend((child, depth + 1, heading["element_id"]) for child in reversed(node.children))
         else:
-            leaf = element("paragraph", node.text if node.text is not None else node.title or "", None, parent_id)
+            text = node.text if node.text is not None else node.title or ""
+            leaf = element("paragraph", text, node.page, None, parent_id)
             leaf.update(id=node.id, role=node.role, title=node.title, text=node.text, properties=node.properties)
     return elements
 
@@ -1038,6 +1040,7 @@ def convert_source(data: bytes, mapping: Mapping, limits: StructuredLimits) -> d
             "page_count": None,
             "title": mapping.title,
             "dropped": [],
+            "structure_method": "mapping",
             "source": {
                 "kind": "structured",
                 "format": mapping.format,

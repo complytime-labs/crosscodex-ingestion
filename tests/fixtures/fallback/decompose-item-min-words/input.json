@@ -1,0 +1,183 @@
+{
+  "schema_version": "1.3",
+  "elements": [
+    {
+      "element_id": "e-001",
+      "type": "heading",
+      "content": "Eight words each",
+      "page": null,
+      "level": 1,
+      "parent_id": null,
+      "style": {}
+    },
+    {
+      "element_id": "e-002",
+      "type": "list_item",
+      "content": "1. x1 x2 x3 x4 x5 x6 x7 x8",
+      "page": null,
+      "level": null,
+      "parent_id": "e-001",
+      "style": {}
+    },
+    {
+      "element_id": "e-003",
+      "type": "list_item",
+      "content": "2. x1 x2 x3 x4 x5 x6 x7 x8",
+      "page": null,
+      "level": null,
+      "parent_id": "e-001",
+      "style": {}
+    },
+    {
+      "element_id": "e-004",
+      "type": "list_item",
+      "content": "3. x1 x2 x3 x4 x5 x6 x7 x8",
+      "page": null,
+      "level": null,
+      "parent_id": "e-001",
+      "style": {}
+    },
+    {
+      "element_id": "e-005",
+      "type": "list_item",
+      "content": "4. x1 x2 x3 x4 x5 x6 x7 x8",
+      "page": null,
+      "level": null,
+      "parent_id": "e-001",
+      "style": {}
+    },
+    {
+      "element_id": "e-006",
+      "type": "list_item",
+      "content": "5. x1 x2 x3 x4 x5 x6 x7 x8",
+      "page": null,
+      "level": null,
+      "parent_id": "e-001",
+      "style": {}
+    },
+    {
+      "element_id": "e-007",
+      "type": "heading",
+      "content": "Seven words each",
+      "page": null,
+      "level": 1,
+      "parent_id": null,
+      "style": {}
+    },
+    {
+      "element_id": "e-008",
+      "type": "list_item",
+      "content": "1. x1 x2 x3 x4 x5 x6 x7",
+      "page": null,
+      "level": null,
+      "parent_id": "e-007",
+      "style": {}
+    },
+    {
+      "element_id": "e-009",
+      "type": "list_item",
+      "content": "2. x1 x2 x3 x4 x5 x6 x7",
+      "page": null,
+      "level": null,
+      "parent_id": "e-007",
+      "style": {}
+    },
+    {
+      "element_id": "e-010",
+      "type": "list_item",
+      "content": "3. x1 x2 x3 x4 x5 x6 x7",
+      "page": null,
+      "level": null,
+      "parent_id": "e-007",
+      "style": {}
+    },
+    {
+      "element_id": "e-011",
+      "type": "list_item",
+      "content": "4. x1 x2 x3 x4 x5 x6 x7",
+      "page": null,
+      "level": null,
+      "parent_id": "e-007",
+      "style": {}
+    },
+    {
+      "element_id": "e-012",
+      "type": "list_item",
+      "content": "5. x1 x2 x3 x4 x5 x6 x7",
+      "page": null,
+      "level": null,
+      "parent_id": "e-007",
+      "style": {}
+    },
+    {
+      "element_id": "e-013",
+      "type": "list_item",
+      "content": "6. x1 x2 x3 x4 x5 x6 x7",
+      "page": null,
+      "level": null,
+      "parent_id": "e-007",
+      "style": {}
+    },
+    {
+      "element_id": "e-014",
+      "type": "heading",
+      "content": "Short one dropped",
+      "page": null,
+      "level": 1,
+      "parent_id": null,
+      "style": {}
+    },
+    {
+      "element_id": "e-015",
+      "type": "list_item",
+      "content": "1. x1 x2 x3 x4 x5 x6 x7 x8",
+      "page": null,
+      "level": null,
+      "parent_id": "e-014",
+      "style": {}
+    },
+    {
+      "element_id": "e-016",
+      "type": "list_item",
+      "content": "2. x1 x2 x3 x4 x5 x6 x7 x8",
+      "page": null,
+      "level": null,
+      "parent_id": "e-014",
+      "style": {}
+    },
+    {
+      "element_id": "e-017",
+      "type": "list_item",
+      "content": "3. x1 x2 x3 x4 x5 x6 x7",
+      "page": null,
+      "level": null,
+      "parent_id": "e-014",
+      "style": {}
+    },
+    {
+      "element_id": "e-018",
+      "type": "list_item",
+      "content": "4. x1 x2 x3 x4 x5 x6 x7 x8",
+      "page": null,
+      "level": null,
+      "parent_id": "e-014",
+      "style": {}
+    },
+    {
+      "element_id": "e-019",
+      "type": "list_item",
+      "content": "5. x1 x2 x3 x4 x5 x6 x7 x8",
+      "page": null,
+      "level": null,
+      "parent_id": "e-014",
+      "style": {}
+    }
+  ],
+  "metadata": {
+    "element_count": 19,
+    "detected_format": "txt",
+    "page_count": null,
+    "title": "Synthetic decompose-item-min-words",
+    "dropped": []
+  }
+}

@@ -1,0 +1,57 @@
+{
+  "schema_version": "1.3",
+  "elements": [
+    {
+      "element_id": "e-001",
+      "type": "paragraph",
+      "content": "The policy applies to every system the organisation operates.",
+      "page": null,
+      "level": null,
+      "parent_id": null,
+      "style": {}
+    },
+    {
+      "element_id": "e-002",
+      "type": "paragraph",
+      "content": "Reviews happen yearly and after any significant change.",
+      "page": null,
+      "level": null,
+      "parent_id": null,
+      "style": {}
+    },
+    {
+      "element_id": "e-003",
+      "type": "paragraph",
+      "content": "Nothing in this text is numbered or lettered.",
+      "page": null,
+      "level": null,
+      "parent_id": null,
+      "style": {}
+    },
+    {
+      "element_id": "e-004",
+      "type": "paragraph",
+      "content": "Contact the owner of the system for exceptions.",
+      "page": null,
+      "level": null,
+      "parent_id": null,
+      "style": {}
+    },
+    {
+      "element_id": "e-005",
+      "type": "list_item",
+      "content": "A list item without any marker",
+      "page": null,
+      "level": null,
+      "parent_id": null,
+      "style": {}
+    }
+  ],
+  "metadata": {
+    "element_count": 5,
+    "detected_format": "txt",
+    "page_count": null,
+    "title": "Synthetic no-structure-paragraphs",
+    "dropped": []
+  }
+}
