@@ -1,0 +1,35 @@
+README.md
+  s_412731fd637f69::t_eed5eb91ad362b 171
+scripts/test_container.sh
+  s_412731fd637f69::t_162aeab08e9425 3,80,87
+tests/container/offline_convert.py
+  s_412731fd637f69::t_cf3180cb3f61c1 6-7
+tests/integration/test_conversion_e2e.py
+  s_412731fd637f69::t_eaa6ab87e4277d 98-103,129-131,153-159,164-165,178-184,210-211,213,220,230-259,286-291
+tests/integration/test_fallback_parity_e2e.py
+  s_412731fd637f69::t_5ec4c4ec70a7ad 1-85
+tests/integration/test_limits_e2e.py
+  s_412731fd637f69::t_a28c3d44e2ddd3 31-33,35,57,81
+tests/integration/test_output_schema_e2e.py
+  s_412731fd637f69::t_5343d5dbe122b2 30,43
+tests/integration/test_pdf_heading_levels_e2e.py
+  s_412731fd637f69::t_7dd4016708847e 1,3-7,12-14,16,31-35,37-40,43
+tests/integration/test_reproducibility_e2e.py
+  s_412731fd637f69::t_b53e188ef998b1 17
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "3a0e293b6d238d365a83243f04a3e0f12d33bf3a",
+  "prompts": {},
+  "sessions": {
+    "s_412731fd637f69": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "baae5499-ef68-45d1-92de-9de7e802664e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "LLM (riotbox) <llm@riotbox>"
+    }
+  }
+}
