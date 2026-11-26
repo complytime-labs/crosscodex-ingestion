@@ -1,0 +1,25 @@
+README.md
+  s_412731fd637f69::t_44432e66f72937 101-116
+docs/dev/architecture.md
+  s_412731fd637f69::t_fb3d051c0629e9 70,81-107
+docs/output-schema.md
+  s_412731fd637f69::t_7ee4c5ba854e96 182-213
+docs/usage/output-format.md
+  s_412731fd637f69::t_39e1cc913fa068 11,57-58,186-215,259
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "1c5a00a9ace0628e3fe75595ca41ff5474952f88",
+  "prompts": {},
+  "sessions": {
+    "s_412731fd637f69": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "baae5499-ef68-45d1-92de-9de7e802664e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "LLM (riotbox) <llm@riotbox>"
+    }
+  }
+}
