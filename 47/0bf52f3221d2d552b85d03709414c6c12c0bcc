@@ -1,0 +1,23 @@
+README.md
+  s_412731fd637f69::t_a5671666ee1603 107
+docs/output-schema.md
+  s_412731fd637f69::t_ef9a9e98394d79 209-210
+docs/usage/output-format.md
+  s_412731fd637f69::t_fa75079bf11dcc 13-23,26-27,35-38,60-63,203-204
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "470bf52f3221d2d552b85d03709414c6c12c0bcc",
+  "prompts": {},
+  "sessions": {
+    "s_412731fd637f69": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "baae5499-ef68-45d1-92de-9de7e802664e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "LLM (riotbox) <llm@riotbox>"
+    }
+  }
+}
