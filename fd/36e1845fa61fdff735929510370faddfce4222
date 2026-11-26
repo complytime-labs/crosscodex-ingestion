@@ -1,0 +1,191 @@
+Taskfile.yml
+  s_412731fd637f69::t_6e9bfda777b0a3 65-89
+tests/fixtures/fallback/PROVENANCE.md
+  s_412731fd637f69::t_5ca0d36051359e 1-100
+tests/fixtures/fallback/capture/README.md
+  s_412731fd637f69::t_e1d81b03feaea1 1-33
+tests/fixtures/fallback/capture/capture_layout.py
+  s_412731fd637f69::t_6a34bf007a6fee 1-34
+tests/fixtures/fallback/capture/main.go
+  s_412731fd637f69::t_26a1be61f9ac4d 1-76
+tests/fixtures/fallback/decompose-39-words/golden.json
+  s_412731fd637f69::t_311475245e846e 1-15
+tests/fixtures/fallback/decompose-39-words/input.json
+  s_412731fd637f69::t_c1d0cca3ab2556 1-39
+tests/fixtures/fallback/decompose-40-words/golden.json
+  s_412731fd637f69::t_fa154e025e65bf 1-29
+tests/fixtures/fallback/decompose-40-words/input.json
+  s_412731fd637f69::t_90e86893bd38ca 1-39
+tests/fixtures/fallback/decompose-41-words/golden.json
+  s_412731fd637f69::t_ee3022d9dc884e 1-29
+tests/fixtures/fallback/decompose-41-words/input.json
+  s_412731fd637f69::t_a42c20ec1cfbff 1-39
+tests/fixtures/fallback/decompose-each-tier/golden.json
+  s_412731fd637f69::t_6dbfe9ff648df3 1-293
+tests/fixtures/fallback/decompose-each-tier/input.json
+  s_412731fd637f69::t_9bae6495ec1fd7 1-273
+tests/fixtures/fallback/decompose-item-min-words/golden.json
+  s_412731fd637f69::t_371304030030fe 1-123
+tests/fixtures/fallback/decompose-item-min-words/input.json
+  s_412731fd637f69::t_2467eba04f3998 1-183
+tests/fixtures/fallback/decompose-nested/golden.json
+  s_412731fd637f69::t_f5a3d52581248b 1-81
+tests/fixtures/fallback/decompose-nested/input.json
+  s_412731fd637f69::t_ce5e619b110064 1-39
+tests/fixtures/fallback/decompose-repeated-labels/golden.json
+  s_412731fd637f69::t_6ba476398240b8 1-113
+tests/fixtures/fallback/decompose-repeated-labels/input.json
+  s_412731fd637f69::t_651cb7ec377e44 1-111
+tests/fixtures/fallback/eurlex-nis2-32022L2555/golden.json
+  s_412731fd637f69::t_819acf78eb472c 1-445
+tests/fixtures/fallback/eurlex-nis2-32022L2555/input.json
+  s_412731fd637f69::t_9d288430f382f3 1-512
+tests/fixtures/fallback/heading-all-furniture/golden.json
+  s_412731fd637f69::t_620c7284c405cd 1-45
+tests/fixtures/fallback/heading-all-furniture/input.json
+  s_412731fd637f69::t_6f7af8cb66b56c 1-156
+tests/fixtures/fallback/heading-repeats-3/golden.json
+  s_412731fd637f69::t_2457d8a8def970 1-55
+tests/fixtures/fallback/heading-repeats-3/input.json
+  s_412731fd637f69::t_87b25aa9778758 1-102
+tests/fixtures/fallback/heading-repeats-4/golden.json
+  s_412731fd637f69::t_e11da6542a0772 1-25
+tests/fixtures/fallback/heading-repeats-4/input.json
+  s_412731fd637f69::t_705307738f848e 1-120
+tests/fixtures/fallback/nist-sp800-171r3-excerpt/golden.json
+  s_412731fd637f69::t_8432b5427379a9 1-135
+tests/fixtures/fallback/nist-sp800-171r3-excerpt/input.json
+  s_412731fd637f69::t_3ee6905fafcd6e 1-580
+tests/fixtures/fallback/no-structure-empty/golden.json
+  s_412731fd637f69::t_e1a040969f34f5 1-4
+tests/fixtures/fallback/no-structure-empty/input.json
+  s_412731fd637f69::t_fac6865e091ffa 1-11
+tests/fixtures/fallback/no-structure-paragraphs/golden.json
+  s_412731fd637f69::t_6e9ba5461718fa 1-4
+tests/fixtures/fallback/no-structure-paragraphs/input.json
+  s_412731fd637f69::t_76162036f5f251 1-57
+tests/fixtures/fallback/no-title/golden.json
+  s_412731fd637f69::t_b3fd86814afc21 1-35
+tests/fixtures/fallback/no-title/input.json
+  s_412731fd637f69::t_a2f0f63dc0346d 1-75
+tests/fixtures/fallback/pattern-each-01/golden.json
+  s_412731fd637f69::t_088f4953b8aadd 1-35
+tests/fixtures/fallback/pattern-each-01/input.json
+  s_412731fd637f69::t_cd0c034a394491 1-39
+tests/fixtures/fallback/pattern-each-02/golden.json
+  s_412731fd637f69::t_457f45e8223f55 1-35
+tests/fixtures/fallback/pattern-each-02/input.json
+  s_412731fd637f69::t_e427e51853a453 1-39
+tests/fixtures/fallback/pattern-each-03/golden.json
+  s_412731fd637f69::t_2e870565148284 1-35
+tests/fixtures/fallback/pattern-each-03/input.json
+  s_412731fd637f69::t_27b271a4b56d9b 1-39
+tests/fixtures/fallback/pattern-each-04/golden.json
+  s_412731fd637f69::t_fac7dcce123f95 1-35
+tests/fixtures/fallback/pattern-each-04/input.json
+  s_412731fd637f69::t_8ca10419a0b773 1-39
+tests/fixtures/fallback/pattern-each-05/golden.json
+  s_412731fd637f69::t_bfe4570c4b4bba 1-35
+tests/fixtures/fallback/pattern-each-05/input.json
+  s_412731fd637f69::t_fa4052e5f55ae8 1-39
+tests/fixtures/fallback/pattern-each-06/golden.json
+  s_412731fd637f69::t_8fb0f44fc79d88 1-35
+tests/fixtures/fallback/pattern-each-06/input.json
+  s_412731fd637f69::t_03f5144d1d65ba 1-39
+tests/fixtures/fallback/pattern-each-07/golden.json
+  s_412731fd637f69::t_ce0871383d5bf5 1-35
+tests/fixtures/fallback/pattern-each-07/input.json
+  s_412731fd637f69::t_945edc49105141 1-39
+tests/fixtures/fallback/pattern-each-08/golden.json
+  s_412731fd637f69::t_56dc65e6520885 1-35
+tests/fixtures/fallback/pattern-each-08/input.json
+  s_412731fd637f69::t_8a9d065d003819 1-39
+tests/fixtures/fallback/pattern-each-09/golden.json
+  s_412731fd637f69::t_702a3f34cfb977 1-35
+tests/fixtures/fallback/pattern-each-09/input.json
+  s_412731fd637f69::t_177e2ee7a03991 1-39
+tests/fixtures/fallback/pattern-each-10/golden.json
+  s_412731fd637f69::t_bc30ca9f87963c 1-35
+tests/fixtures/fallback/pattern-each-10/input.json
+  s_412731fd637f69::t_34e855fcb84529 1-39
+tests/fixtures/fallback/pattern-each-11/golden.json
+  s_412731fd637f69::t_6055ea23c2f36f 1-35
+tests/fixtures/fallback/pattern-each-11/input.json
+  s_412731fd637f69::t_c7746f5fff03c0 1-39
+tests/fixtures/fallback/pattern-each-12/golden.json
+  s_412731fd637f69::t_d893d8026a4a63 1-35
+tests/fixtures/fallback/pattern-each-12/input.json
+  s_412731fd637f69::t_7ecb4dca69b290 1-39
+tests/fixtures/fallback/pattern-priority-fallthrough/golden.json
+  s_412731fd637f69::t_6ef5788ee137cd 1-35
+tests/fixtures/fallback/pattern-priority-fallthrough/input.json
+  s_412731fd637f69::t_3c292257ebe94a 1-39
+tests/fixtures/fallback/pattern-priority/golden.json
+  s_412731fd637f69::t_f2c9290d3d9364 1-35
+tests/fixtures/fallback/pattern-priority/input.json
+  s_412731fd637f69::t_9ada6f65668094 1-66
+tests/fixtures/fallback/pattern-two-lines/golden.json
+  s_412731fd637f69::t_768d767addcc0b 1-4
+tests/fixtures/fallback/pattern-two-lines/input.json
+  s_412731fd637f69::t_4d3dcd32e0c100 1-48
+tests/fixtures/fallback/probe-blank-line/golden.json
+  s_412731fd637f69::t_fe4c8ca3134eae 1-125
+tests/fixtures/fallback/probe-blank-line/input.json
+  s_412731fd637f69::t_d12845cc2f1f9e 1-66
+tests/fixtures/fallback/probe-crlf/golden.json
+  s_412731fd637f69::t_24626a101187e1 1-61
+tests/fixtures/fallback/probe-crlf/input.json
+  s_412731fd637f69::t_91615973a13399 1-66
+tests/fixtures/fallback/probe-nbsp/golden.json
+  s_412731fd637f69::t_c8dad2a10c03f1 1-111
+tests/fixtures/fallback/probe-nbsp/input.json
+  s_412731fd637f69::t_49f9cc09742750 1-156
+tests/fixtures/fallback/probe-nel/golden.json
+  s_412731fd637f69::t_7ba20b84a32894 1-111
+tests/fixtures/fallback/probe-nel/input.json
+  s_412731fd637f69::t_5c4dda5a6188c7 1-156
+tests/fixtures/fallback/probe-nonascii-digits/golden.json
+  s_412731fd637f69::t_e3c5651da0be3e 1-53
+tests/fixtures/fallback/probe-nonascii-digits/input.json
+  s_412731fd637f69::t_86d2e00deda7d8 1-102
+tests/fixtures/fallback/probe-pattern-lines/golden.json
+  s_412731fd637f69::t_ce28ac00089249 1-65
+tests/fixtures/fallback/probe-pattern-lines/input.json
+  s_412731fd637f69::t_d5aa32e2e6ac97 1-75
+tests/fixtures/fallback/probe-trailing-newline/golden.json
+  s_412731fd637f69::t_21605fa70b9128 1-81
+tests/fixtures/fallback/probe-trailing-newline/input.json
+  s_412731fd637f69::t_a9cafaeea6b20d 1-120
+tests/fixtures/fallback/probe-u2028/golden.json
+  s_412731fd637f69::t_c0756b10e47263 1-111
+tests/fixtures/fallback/probe-u2028/input.json
+  s_412731fd637f69::t_aef5ebd50299c3 1-156
+tests/fixtures/fallback/probe-u3000/golden.json
+  s_412731fd637f69::t_aa3c5f51d4eda0 1-111
+tests/fixtures/fallback/probe-u3000/input.json
+  s_412731fd637f69::t_8ee8cfdeb5630e 1-156
+tests/fixtures/fallback/probe-vtab/golden.json
+  s_412731fd637f69::t_27051fc6f3f04d 1-111
+tests/fixtures/fallback/probe-vtab/input.json
+  s_412731fd637f69::t_15c506f26cab97 1-156
+tests/fixtures/fallback/table-tier/golden.json
+  s_412731fd637f69::t_7c8baf6e66446e 1-95
+tests/fixtures/fallback/table-tier/input.json
+  s_412731fd637f69::t_0371006144a3c0 1-39
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "fd36e1845fa61fdff735929510370faddfce4222",
+  "prompts": {},
+  "sessions": {
+    "s_412731fd637f69": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "baae5499-ef68-45d1-92de-9de7e802664e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "LLM (riotbox) <llm@riotbox>"
+    }
+  }
+}
