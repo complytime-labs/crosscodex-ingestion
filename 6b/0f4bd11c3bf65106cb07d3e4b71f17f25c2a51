@@ -1,0 +1,302 @@
+docs/output-schema.md
+  s_412731fd637f69::t_7ee4c5ba854e96 182-208,211-214
+  s_412731fd637f69::t_303de6bb8b1364 215-217
+  s_412731fd637f69::t_ef9a9e98394d79 209-210
+tests/fixtures/fallback/no-structure-empty/input.json
+  s_412731fd637f69::t_fac6865e091ffa 1-11
+tests/unit/test_fallback_decompose.py
+  s_412731fd637f69::t_4a1ff69bb87790 9,25-36,72-77,81-83
+  s_412731fd637f69::t_468c603d3c2e94 1-8,10-24,37-71,78-80,84-88,92-123
+  s_412731fd637f69::t_e68865b97c571f 89-91
+tests/fixtures/fallback/probe-vtab/golden.json
+  s_412731fd637f69::t_27051fc6f3f04d 1-111
+scripts/test_container.sh
+  s_412731fd637f69::t_162aeab08e9425 3,80,87
+tests/fixtures/fallback/decompose-40-words/golden.json
+  s_412731fd637f69::t_fa154e025e65bf 1-29
+tests/fixtures/fallback/capture/capture_layout.py
+  s_412731fd637f69::t_6a34bf007a6fee 1-34
+tests/fixtures/fallback/probe-u2028/input.json
+  s_412731fd637f69::t_aef5ebd50299c3 1-156
+src/crosscodex_ingestion/fallback.py
+  s_412731fd637f69::t_866522e9935905 346-367
+  s_412731fd637f69::t_d8b68adbc1ec7f 432-433
+  s_412731fd637f69::t_4c78cb809967c0 400,434,467
+  s_412731fd637f69::t_0064cac3cfd022 69-88,264-333,392
+  s_412731fd637f69::t_e56e7fc456c96d 438-440
+  s_412731fd637f69::t_494b51edbb5c49 435-437
+  s_412731fd637f69::t_4922aaccd155df 89-106
+  s_412731fd637f69::t_c70b5ff57a90de 1-68,107-263,454,480,483
+  s_412731fd637f69::t_6c1a8359ce7ec7 429-431
+  s_412731fd637f69::t_434d809ce2eff9 334-336,343-345
+  s_412731fd637f69::t_f7da92407941fa 368-370,389-391
+  s_412731fd637f69::t_cfa5fa182c712d 393-395,397-399
+  s_412731fd637f69::t_bac9bd27d32488 401-403,426-428
+  s_412731fd637f69::t_4f6097bb68368f 441-443,451-453
+  s_412731fd637f69::t_ce201aa16341b1 455-457,464-466
+  s_412731fd637f69::t_9894f06f5f7b76 468-470,477-479
+  s_412731fd637f69::t_8dbe0e6bc4b8b5 481-482
+  s_412731fd637f69::t_0243e80b7fb952 484-486
+  s_412731fd637f69::t_ace0a3e4beed3b 337-342,371-388,396,404-425,444-450,458-463,471-476
+tests/fixtures/fallback/pattern-each-06/golden.json
+  s_412731fd637f69::t_8fb0f44fc79d88 1-35
+tests/unit/test_converter.py
+  s_412731fd637f69::t_231673a4d88581 24-25,30,32,38,76,104,119,135,167,194,219,259,289,381,393-395,410-412,424-426,458,470,482,495,507,518,529,544,559,576,596-598,614,824,852-856,862,864-875,878-880,882,886,888,890-891,897-898,900-902,913,923,931,972-1156
+tests/fixtures/fallback/pattern-each-03/golden.json
+  s_412731fd637f69::t_2e870565148284 1-35
+tests/fixtures/fallback/decompose-41-words/golden.json
+  s_412731fd637f69::t_ee3022d9dc884e 1-29
+tests/fixtures/fallback/heading-repeats-3/golden.json
+  s_412731fd637f69::t_2457d8a8def970 1-55
+src/crosscodex_ingestion/converter.py
+  s_412731fd637f69::t_a85dbfdfd683b7 20,27,58-68,90-120,160-161,168,215-229,232,246-247,447-451,458-460,475-476,492-495,497,518-522,538-545
+tests/fixtures/structured/owasp-asvs-5.0.0/expected.json
+  s_412731fd637f69::t_05fd3e640141f5 952
+tests/fixtures/fallback/pattern-each-02/golden.json
+  s_412731fd637f69::t_457f45e8223f55 1-35
+tests/fixtures/fallback/decompose-39-words/input.json
+  s_412731fd637f69::t_c1d0cca3ab2556 1-39
+tests/fixtures/fallback/heading-all-furniture/input.json
+  s_412731fd637f69::t_6f7af8cb66b56c 1-156
+tests/integration/test_reproducibility_e2e.py
+  s_412731fd637f69::t_44fde5ee214038 12,16,39,41
+  s_412731fd637f69::t_1c88feabb3c5d3 17,30-31,40
+tests/fixtures/fallback/pattern-each-09/golden.json
+  s_412731fd637f69::t_702a3f34cfb977 1-35
+tests/fixtures/fallback/pattern-each-08/golden.json
+  s_412731fd637f69::t_56dc65e6520885 1-35
+tests/fixtures/fallback/probe-blank-line/golden.json
+  s_412731fd637f69::t_fe4c8ca3134eae 1-125
+tests/fixtures/fallback/capture/main.go
+  s_412731fd637f69::t_26a1be61f9ac4d 1-76
+tests/unit/test_fallback_tiers.py
+  s_412731fd637f69::t_261dc7ddb8a537 1-117
+tests/fixtures/fallback/pattern-each-01/input.json
+  s_412731fd637f69::t_cd0c034a394491 1-39
+tests/fixtures/fallback/probe-nbsp/input.json
+  s_412731fd637f69::t_49f9cc09742750 1-156
+tests/fixtures/fallback/nist-sp800-171r3-excerpt/input.json
+  s_412731fd637f69::t_3ee6905fafcd6e 1-580
+tests/fixtures/fallback/heading-all-furniture/golden.json
+  s_412731fd637f69::t_620c7284c405cd 1-45
+docs/dev/architecture.md
+  s_412731fd637f69::t_fb3d051c0629e9 70,81-107
+tests/unit/test_extractor.py
+  s_412731fd637f69::t_34673958f5ad22 9,602,604
+tests/fixtures/fallback/probe-crlf/input.json
+  s_412731fd637f69::t_91615973a13399 1-66
+tests/fixtures/fallback/no-structure-empty/golden.json
+  s_412731fd637f69::t_e1a040969f34f5 1-4
+src/crosscodex_ingestion/schemas/structured-output-v1.json
+  s_412731fd637f69::t_c41988fba8f9e5 5,11-12,21-36,85-86,168-185,222
+tests/fixtures/fallback/probe-u2028/golden.json
+  s_412731fd637f69::t_c0756b10e47263 1-111
+tests/unit/test_fallback_adapter.py
+  s_412731fd637f69::t_3f26cb31c13197 1-191
+README.md
+  s_412731fd637f69::t_eed5eb91ad362b 193
+  s_412731fd637f69::t_1a92c021ec2157 111-117
+  s_412731fd637f69::t_a5671666ee1603 107
+  s_412731fd637f69::t_44432e66f72937 101-106,108-110,118-122
+tests/fixtures/fallback/pattern-each-01/golden.json
+  s_412731fd637f69::t_088f4953b8aadd 1-35
+tests/fixtures/fallback/probe-u3000/input.json
+  s_412731fd637f69::t_8ee8cfdeb5630e 1-156
+tests/integration/test_fallback_parity_e2e.py
+  s_412731fd637f69::t_5ec4c4ec70a7ad 1-85
+tests/integration/test_output_schema_e2e.py
+  s_412731fd637f69::t_5343d5dbe122b2 30,43
+  s_412731fd637f69::t_d129a44a822340 11,17,34
+tests/fixtures/fallback/decompose-item-min-words/input.json
+  s_412731fd637f69::t_2467eba04f3998 1-183
+tests/fixtures/fallback/decompose-repeated-labels/golden.json
+  s_412731fd637f69::t_6ba476398240b8 1-113
+tests/fixtures/fallback/pattern-each-04/golden.json
+  s_412731fd637f69::t_fac7dcce123f95 1-35
+tests/fixtures/fallback/probe-trailing-newline/golden.json
+  s_412731fd637f69::t_21605fa70b9128 1-81
+src/crosscodex_ingestion/worker.py
+  s_412731fd637f69::t_e9f2bf231e9c89 389,398-405
+tests/unit/test_mapping.py
+  s_412731fd637f69::t_d2d0aa49985a30 252-258
+tests/fixtures/fallback/pattern-priority/golden.json
+  s_412731fd637f69::t_f2c9290d3d9364 1-35
+tests/fixtures/fallback/pattern-each-07/golden.json
+  s_412731fd637f69::t_ce0871383d5bf5 1-35
+tests/fixtures/fallback/pattern-each-12/golden.json
+  s_412731fd637f69::t_d893d8026a4a63 1-35
+tests/fixtures/fallback/pattern-each-06/input.json
+  s_412731fd637f69::t_03f5144d1d65ba 1-39
+tests/fixtures/fallback/pattern-each-11/input.json
+  s_412731fd637f69::t_c7746f5fff03c0 1-39
+tests/unit/test_shutdown.py
+  s_412731fd637f69::t_785f888375c05d 32-34
+tests/fixtures/fallback/no-title/golden.json
+  s_412731fd637f69::t_b3fd86814afc21 1-35
+tests/fixtures/fallback/probe-crlf/golden.json
+  s_412731fd637f69::t_24626a101187e1 1-61
+tests/fixtures/fallback/pattern-each-03/input.json
+  s_412731fd637f69::t_27b271a4b56d9b 1-39
+tests/fixtures/fallback/heading-repeats-3/input.json
+  s_412731fd637f69::t_87b25aa9778758 1-102
+tests/fixtures/fallback/probe-nel/golden.json
+  s_412731fd637f69::t_7ba20b84a32894 1-111
+tests/fixtures/fallback/heading-repeats-4/input.json
+  s_412731fd637f69::t_705307738f848e 1-120
+tests/unit/output_samples.py
+  s_412731fd637f69::t_d55f17d0be482a 9-12,24-28,38-42,52-60,123
+tests/fixtures/fallback/eurlex-nis2-32022L2555/input.json
+  s_412731fd637f69::t_9d288430f382f3 1-512
+tests/fixtures/fallback/pattern-each-02/input.json
+  s_412731fd637f69::t_e427e51853a453 1-39
+tests/fixtures/fallback/pattern-priority-fallthrough/golden.json
+  s_412731fd637f69::t_6ef5788ee137cd 1-35
+tests/fixtures/fallback/heading-repeats-4/golden.json
+  s_412731fd637f69::t_e11da6542a0772 1-25
+tests/fixtures/fallback/decompose-40-words/input.json
+  s_412731fd637f69::t_90e86893bd38ca 1-39
+tests/fixtures/fallback/probe-blank-line/input.json
+  s_412731fd637f69::t_d12845cc2f1f9e 1-66
+tests/unit/test_fallback_parity.py
+  s_412731fd637f69::t_4ed6eff5abc8b8 7-9,11,75-100
+  s_412731fd637f69::t_639d1880c5e06c 1-6,10,12-74
+tests/unit/test_output_schema.py
+  s_412731fd637f69::t_7038f0efb45b0c 11,21-28,48,263-264,270-273,339,390,424,445-541
+src/crosscodex_ingestion/mapping.py
+  s_412731fd637f69::t_c042190b2d37ae 127-129
+tests/fixtures/fallback/decompose-nested/input.json
+  s_412731fd637f69::t_ce5e619b110064 1-39
+tests/fixtures/fallback/capture/README.md
+  s_412731fd637f69::t_e1d81b03feaea1 1-33
+tests/fixtures/fallback/no-title/input.json
+  s_412731fd637f69::t_a2f0f63dc0346d 1-75
+tests/fixtures/fallback/probe-pattern-lines/golden.json
+  s_412731fd637f69::t_ce28ac00089249 1-65
+tests/integration/test_pdf_heading_levels_e2e.py
+  s_412731fd637f69::t_7dd4016708847e 1,3-7,12-14,16,31-35,37-40,43
+tests/fixtures/fallback/pattern-each-08/input.json
+  s_412731fd637f69::t_8a9d065d003819 1-39
+tests/fixtures/fallback/probe-nel/input.json
+  s_412731fd637f69::t_5c4dda5a6188c7 1-156
+tests/unit/test_worker.py
+  s_412731fd637f69::t_30f6d1e8f39f58 15-21,26,769-785,1010-1011,1015,1021-1026,1029-1030,1118-1150,1504
+tests/fixtures/fallback/pattern-each-04/input.json
+  s_412731fd637f69::t_8ca10419a0b773 1-39
+tests/fixtures/fallback/pattern-each-10/input.json
+  s_412731fd637f69::t_34e855fcb84529 1-39
+tests/fixtures/fallback/probe-vtab/input.json
+  s_412731fd637f69::t_15c506f26cab97 1-156
+tests/fixtures/fallback/probe-pattern-lines/input.json
+  s_412731fd637f69::t_d5aa32e2e6ac97 1-75
+tests/fixtures/fallback/decompose-39-words/golden.json
+  s_412731fd637f69::t_311475245e846e 1-15
+tests/fixtures/structured/nist-sp800-53r5/expected.json
+  s_412731fd637f69::t_bdc2956fe3f099 122
+tests/fixtures/fallback/pattern-each-12/input.json
+  s_412731fd637f69::t_7ecb4dca69b290 1-39
+src/crosscodex_ingestion/structured.py
+  s_412731fd637f69::t_1e0fc5b8c2828c 991,996,1008,1011,1014-1015,1043
+  s_412731fd637f69::t_58be8185cc688a 227-228
+tests/fixtures/fallback/probe-u3000/golden.json
+  s_412731fd637f69::t_aa3c5f51d4eda0 1-111
+Taskfile.yml
+  s_412731fd637f69::t_6e9bfda777b0a3 65-89
+tests/unit/fallback_golden.py
+  s_412731fd637f69::t_b6d58584206a6d 18-38,43-44,47,58
+  s_412731fd637f69::t_1ee1df65619f06 1-17,39-42,45-46,48-57,59-63
+tests/fixtures/fallback/probe-nonascii-digits/input.json
+  s_412731fd637f69::t_86d2e00deda7d8 1-102
+tests/fixtures/structured/owasp-asvs-5.0.0-csv/expected.json
+  s_412731fd637f69::t_6a5cc528facd72 948
+tests/fixtures/fallback/pattern-each-11/golden.json
+  s_412731fd637f69::t_6055ea23c2f36f 1-35
+tests/fixtures/fallback/pattern-each-10/golden.json
+  s_412731fd637f69::t_bc30ca9f87963c 1-35
+tests/fixtures/fallback/nist-sp800-171r3-excerpt/golden.json
+  s_412731fd637f69::t_8432b5427379a9 1-135
+tests/fixtures/fallback/pattern-priority/input.json
+  s_412731fd637f69::t_9ada6f65668094 1-66
+tests/fixtures/fallback/probe-nbsp/golden.json
+  s_412731fd637f69::t_c8dad2a10c03f1 1-111
+tests/fixtures/fallback/no-structure-paragraphs/golden.json
+  s_412731fd637f69::t_6e9ba5461718fa 1-4
+tests/fixtures/fallback/pattern-each-05/input.json
+  s_412731fd637f69::t_fa4052e5f55ae8 1-39
+tests/fixtures/fallback/table-tier/input.json
+  s_412731fd637f69::t_0371006144a3c0 1-39
+tests/fixtures/fallback/no-structure-paragraphs/input.json
+  s_412731fd637f69::t_76162036f5f251 1-57
+tests/fixtures/structured/mitre-attack-enterprise-17.1/expected.json
+  s_412731fd637f69::t_1dadf56f62916f 211
+tests/fixtures/fallback/eurlex-nis2-32022L2555/golden.json
+  s_412731fd637f69::t_819acf78eb472c 1-445
+tests/fixtures/fallback/pattern-priority-fallthrough/input.json
+  s_412731fd637f69::t_3c292257ebe94a 1-39
+tests/fixtures/fallback/decompose-41-words/input.json
+  s_412731fd637f69::t_a42c20ec1cfbff 1-39
+tests/unit/test_fallback_redos.py
+  s_412731fd637f69::t_f9b959fcd81534 4-9,24-26,28-29,37-48,95-102,104-124,128,131,137,139-141
+  s_412731fd637f69::t_e6e2801be20cc0 1-3,10-23,27,30-36,49-94,103,125-127,129-130,132-136,138
+tests/fixtures/fallback/decompose-each-tier/input.json
+  s_412731fd637f69::t_9bae6495ec1fd7 1-273
+tests/fixtures/structured/nist-csf-2.0/expected.json
+  s_412731fd637f69::t_28364c50ccb382 378
+tests/fixtures/fallback/pattern-each-07/input.json
+  s_412731fd637f69::t_945edc49105141 1-39
+tests/fixtures/fallback/probe-trailing-newline/input.json
+  s_412731fd637f69::t_a9cafaeea6b20d 1-120
+tests/fixtures/fallback/table-tier/golden.json
+  s_412731fd637f69::t_7c8baf6e66446e 1-95
+src/crosscodex_ingestion/output_schema.py
+  s_412731fd637f69::t_9c70d4e210379f 7-8,26,116-117,126-128,159-175,177
+tests/fixtures/fallback/pattern-two-lines/golden.json
+  s_412731fd637f69::t_768d767addcc0b 1-4
+tests/integration/test_conversion_e2e.py
+  s_412731fd637f69::t_eaa6ab87e4277d 98-103,129-131,153-159,164-165,178-184,210-211,213,220,230-259,286-291
+tests/container/offline_convert.py
+  s_412731fd637f69::t_cf3180cb3f61c1 6-7
+  s_412731fd637f69::t_7369abe5d49b6c 18,53-54
+tests/integration/test_limits_e2e.py
+  s_412731fd637f69::t_a28c3d44e2ddd3 31-33,35,57,81
+  s_412731fd637f69::t_f302a898732b58 12,16,45,53,67,74-76,84
+docs/usage/output-format.md
+  s_412731fd637f69::t_e3140140c6993f 9-12,17-24,26,32,201-204,212,219-220
+  s_412731fd637f69::t_fa75079bf11dcc 30-31,33,55-58,198-199
+  s_412731fd637f69::t_39e1cc913fa068 15,61,189-197,200,205-211,213-218,221,265
+tests/fixtures/fallback/decompose-each-tier/golden.json
+  s_412731fd637f69::t_6dbfe9ff648df3 1-293
+tests/fixtures/fallback/probe-nonascii-digits/golden.json
+  s_412731fd637f69::t_e3c5651da0be3e 1-53
+tests/fixtures/fallback/decompose-item-min-words/golden.json
+  s_412731fd637f69::t_371304030030fe 1-123
+tests/fixtures/fallback/pattern-two-lines/input.json
+  s_412731fd637f69::t_4d3dcd32e0c100 1-48
+tests/fixtures/fallback/decompose-repeated-labels/input.json
+  s_412731fd637f69::t_651cb7ec377e44 1-111
+tests/fixtures/fallback/pattern-each-05/golden.json
+  s_412731fd637f69::t_bfe4570c4b4bba 1-35
+tests/unit/test_structured.py
+  s_412731fd637f69::t_42de128345d4c5 29,31,1437-1453
+tests/fixtures/fallback/decompose-nested/golden.json
+  s_412731fd637f69::t_f5a3d52581248b 1-81
+tests/fixtures/fallback/pattern-each-09/input.json
+  s_412731fd637f69::t_177e2ee7a03991 1-39
+tests/fixtures/fallback/PROVENANCE.md
+  s_412731fd637f69::t_5ca0d36051359e 1-100
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6b0f4bd11c3bf65106cb07d3e4b71f17f25c2a51",
+  "prompts": {},
+  "sessions": {
+    "s_412731fd637f69": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "baae5499-ef68-45d1-92de-9de7e802664e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "LLM (riotbox) <llm@riotbox>"
+    }
+  }
+}
