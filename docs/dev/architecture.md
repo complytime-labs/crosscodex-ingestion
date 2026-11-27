@@ -62,6 +62,7 @@ gRPC Request → Dispatch → Worker → [Converter → Extractor | Structured] 
 - `security.py`: SSRF prevention, URL validation, content type detection, resource limit enforcement. URL fetches connect directly and ignore `HTTP_PROXY`/`HTTPS_PROXY`/`ALL_PROXY`: the address actually connected to is checked against the blocked ranges, and through a proxy that check would only see the proxy.
 - `converter.py`: Async subprocess-based Docling execution with rlimits and timeout. The subprocess is resource-limited, and its process group is killed on timeout or cancellation. It is not a security sandbox: it runs as the service's uid (so it can read the attestation signing key and the mTLS key files), and `HF_HUB_OFFLINE=1` only stops Docling fetching models, it does not block the network. Network policy is the container operator's job. The worker allows only the one Docling format the service validated (`allowed_formats`), so Docling never re-sniffs the input; `txt` bypasses Docling and becomes one paragraph per blank-line-separated block. A Docling parse failure exits 4 with a reason file and reaches the client as `INVALID_ARGUMENT` ("The input could not be parsed as <format>: <reason>"); any other worker failure stays `INTERNAL`
 - `extractor.py`: Structured element extraction from Docling output
+- `layout_repair.py`: The table cell model, removal of unlabelled running headers and footers, and rejoining of PDF tables continued across a page break (design: "Layout repair" below)
 - `heading_levels.py`: Heading levels for PDF headings Docling leaves flat, inferred from section numbering
 - `html_backend.py`: Docling HTML backend that drops navigation and, on pages with a main landmark, page-level `<header>`/`<footer>` before conversion, and applies the HTML profile a page matches (design: [docs/html-profiles.md](../html-profiles.md))
 - `output_schema.py`: Validates every output against the versioned output schema before it is stored (design: [docs/output-schema.md](../output-schema.md))
@@ -105,3 +106,43 @@ Its result goes through the same `emit_elements` as structured sources, so one o
   `DecomposeText` overwrites the inner call's parent, which leaves a middle section childless, and schema
   1.4 rejects a childless section. The goldens are corrected the same way. (2) Items carry a `page`, which
   Go has no field for. (3) An empty layout is "no structure" here, as for any layout no tier can use.
+
+## Layout repair
+
+`layout_repair.py` repairs PDF layout inside `extractor.py`, before the structurer sees it. The worker runs
+in this order, and the order matters:
+
+1. **Furniture** (`find_furniture`): finds body TEXT/PARAGRAPH items repeated in the page margin. This
+   comes first because removed furniture is transparent to a table join: a footer between two parts of a table
+   must not keep them apart.
+2. **Walk with rejoin** (`plan_rejoins`, then the extractor's walk): each chain of table parts is emitted as
+   one element at its first part (`render_chain`), later parts emit nothing, removed items are listed in
+   `dropped`.
+3. **Measure** (`quality.measure_structure`): runs on the repaired layout, so `table_rejoin_count` and the
+   `table_rejoined` warning come from the `row_pages` the walk wrote.
+4. **Fallback** (`fallback.structure_layout`): reads the layout. Of the cell model only `row_pages` is read
+   today (here and by step 3). The table tier gives each control its row's page from `row_pages` when the
+   list aligns with the rows (header plus every body row), else the table's page. `cells` and `header_rows`
+   are for phase 3's document mappings (issue #38); nothing reads them yet. None of the three reaches the
+   output: `structured.emit_elements` builds output elements from the structure tree, not from layout
+   elements.
+
+Why these choices:
+
+- **Cell model.** `table_cells` reads Docling's grid as strings, so later steps never re-parse Markdown.
+  `header_rows` counts leading rows with a `column_header` cell where every non-empty cell is one; the join
+  compares them. A rich cell reads its referenced item's text, as the Markdown export does.
+- **Fail closed.** The join compares headers exactly (Go-whitespace collapse, case-sensitive, no digit
+  folding). Docling sometimes reads a repeated header differently on a later page, and those splits
+  stay split; see `tests/fixtures/layout/PROVENANCE.md` for the measured cases. An unjoined table's
+  `content` stays byte-identical to Docling's Markdown, so only joined tables change.
+- **No document text in diagnostics.** A `dropped` reason holds only integers. `render_chain` raises a
+  `RuntimeError` naming pages and the exception type, with the cause suppressed, since Docling's messages may
+  quote cell text.
+- **Frozen constants.** `FURNITURE_MIN_PAGES = 3`, `FURNITURE_MARGIN = 0.10` and `FURNITURE_MAX_CHARS = 100`
+  are not configuration, like the structurer's other choices, so a service version reproduces a result.
+- **Unknown is kept.** An occurrence with no bbox or page size is outside the margin, so an unknown position
+  never removes text.
+- **PDF only.** Both repairs run only when `format_hint == "pdf"`; other formats have no pages.
+- **Fixtures.** Real-document fixtures, their capture command and the feasibility gate are in
+  `tests/fixtures/layout/PROVENANCE.md`.

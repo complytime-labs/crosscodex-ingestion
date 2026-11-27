@@ -22,7 +22,7 @@ from crosscodex_ingestion.converter import (
 from crosscodex_ingestion.html_profile import load_html_profiles
 from crosscodex_ingestion.mapping import load_registry
 from crosscodex_ingestion.nats_connection import NATS_UNAVAILABLE_MESSAGE
-from crosscodex_ingestion.output_schema import SCHEMA_VERSION
+from crosscodex_ingestion.output_schema import SCHEMA_VERSION, validate_output
 from crosscodex_ingestion.quality import measure_structure
 from crosscodex_ingestion.state import DocumentRecord, MemoryStateBackend
 from crosscodex_ingestion.storage import FilesystemStorage
@@ -1225,6 +1225,18 @@ class TestStructuredConversion:
 
         stored = await _stored_output(state_backend, "tenant-s", "doc-s")
         assert stored["metadata"]["structure"]["heading_count"] == 1
+
+    async def test_stored_structured_output_conforms_to_the_current_schema(
+        self, state_backend, storage_backend, audit_publisher
+    ):
+        """The worker attaches metadata.structure after its own validation, so validate what it stored."""
+        with patch("crosscodex_ingestion.worker.convert_structured", return_value=structured_output()):
+            await _run_structured(state_backend, storage_backend, audit_publisher)
+
+        stored = await _stored_output(state_backend, "tenant-s", "doc-s")
+        assert stored["schema_version"] == SCHEMA_VERSION
+        assert stored["metadata"]["structure"]["table_rejoin_count"] == 0
+        validate_output(stored)
 
     async def test_mapping_routes_to_the_structured_worker_and_is_attested(
         self, state_backend, storage_backend, audit_publisher

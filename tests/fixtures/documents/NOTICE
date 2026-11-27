@@ -42,3 +42,31 @@ nist-sp800-53r5-excerpt.pdf
   Only whole pages were kept, copied unchanged with pypdfium2 (outline and document metadata are
   not carried over): pages 13-17 of SP 800-171r3, and pages 43, 45, 67 and 68 of SP 800-53r5 (PDF
   page numbers, counting from 1).
+
+owasp-asvs-5.0.0-excerpt.pdf
+  Page excerpt of the OWASP Application Security Verification Standard 5.0.0 (May 2025), by the
+  OWASP Foundation and the ASVS project contributors:
+  https://github.com/OWASP/ASVS/releases/download/v5.0.0_release/OWASP_Application_Security_Verification_Standard_5.0.0_en.pdf
+  Source SHA-256 f3e9a2f1098bc4af594578acb404121af69e3964aa4d90abd4b00607218d30c6.
+  Licensed under the Creative Commons Attribution-ShareAlike 4.0 International licence (CC BY-SA 4.0),
+  https://creativecommons.org/licenses/by-sa/4.0/. The excerpt is a modified version: trimmed to PDF
+  pages 66-70, 110-112 and 119-120 (counting from 1), copied unchanged with qpdf 11.8.0; nothing else was
+  changed. The excerpt is shared under the same licence.
+  tests/fixtures/layout/owasp-asvs-5.0.0-excerpt/ holds derived data under the same licence and
+  attribution: the Docling conversion of the excerpt, and oracle.json, the requirement-to-section map
+  of the requirements on those pages, taken from the 5.0.0 JSON release
+  https://github.com/OWASP/ASVS/releases/download/v5.0.0_release/OWASP_Application_Security_Verification_Standard_5.0.0_en.json
+  (SHA-256 bcdbec214d70abcfad9284a31d4f9e5134305831d628aad3aa85d7e26626cb35).
+
+cisa-cpg-2.0-excerpt.pdf
+nist-sp800-53b-excerpt.pdf
+  Page excerpts of CISA's Cross-Sector Cybersecurity Performance Goals (CPG), Version 2.0:
+  https://www.cisa.gov/sites/default/files/2025-12/CPG_Report_2.0_508c.pdf
+  (source SHA-256 44ace92a275468d1946868855c44cb9d914ef0ce3d6656ebca5c9b9fa879f85e), and of NIST SP 800-53B, "Control
+  Baselines for Information Systems and Organizations" (October 2020):
+  https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-53B.pdf
+  (source SHA-256 8a9dae903c2e4924d7b67c246faa32757d15f9731abb85922fad63f9ea0e02fa).
+  Retrieved 2026-11-08 (CPG) and 2026-11-26 (SP 800-53B). Works of the U.S. Government, not subject to copyright protection in the
+  United States (17 U.S.C. 105).
+  Only whole pages were kept, copied unchanged with qpdf 11.8.0: pages 24-31 of CPG 2.0 and pages
+  65-68 of SP 800-53B (PDF page numbers, counting from 1).

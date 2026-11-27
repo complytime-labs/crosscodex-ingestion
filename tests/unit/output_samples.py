@@ -56,6 +56,7 @@ def conforming_output() -> dict[str, Any]:
                 "max_heading_depth": 1,
                 "unparented_count": 0,
                 "fragment_count": 0,
+                "table_rejoin_count": 0,
                 "warnings": [],
             },
         },

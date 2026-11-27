@@ -24,6 +24,7 @@ def test_empty_input() -> None:
         "max_heading_depth": 0,
         "unparented_count": 0,
         "fragment_count": 0,
+        "table_rejoin_count": 0,
         "warnings": [],
     }
 
@@ -66,3 +67,48 @@ def test_unparented_excludes_headings() -> None:
     result = measure_structure(elements)
     assert result["unparented_count"] == 1
     assert result["table_count"] == 1
+
+
+def _table(row_pages: list[int | None] | None = None) -> dict[str, Any]:
+    element = _el("table", "| a |\n|---|\n| 1 |")
+    if row_pages is not None:
+        element["row_pages"] = row_pages
+    return element
+
+
+def test_rejoin_count_zero_without_row_pages() -> None:
+    result = measure_structure([_table(), _table([])])
+    assert result["table_rejoin_count"] == 0
+    assert result["warnings"] == []
+
+
+def test_rejoin_count_for_three_part_chain() -> None:
+    result = measure_structure([_table([3, 3, 4, 4, 5])])
+    assert result["table_rejoin_count"] == 2
+    assert result["warnings"] == ["table_rejoined"]
+
+
+def test_rejoin_count_single_page_table() -> None:
+    result = measure_structure([_table([7, 7, 7])])
+    assert result["table_rejoin_count"] == 0
+    assert result["warnings"] == []
+
+
+def test_rejoin_count_ignores_none_pages() -> None:
+    assert measure_structure([_table([None, None, 2])])["table_rejoin_count"] == 0
+
+
+def test_rejoin_count_sums_over_tables() -> None:
+    result = measure_structure([_table([1, 2]), _table([5, 5]), _table([8, 9, 10])])
+    assert result["table_rejoin_count"] == 3
+
+
+def test_rejoin_count_ignores_row_pages_on_non_tables() -> None:
+    paragraph = _el("paragraph")
+    paragraph["row_pages"] = [1, 2, 3]
+    assert measure_structure([paragraph])["table_rejoin_count"] == 0
+
+
+def test_rejoined_warning_follows_no_headings() -> None:
+    elements = [_table([1, 2])] + [_el("paragraph", parent_id=None) for _ in range(60)]
+    assert measure_structure(elements)["warnings"] == ["no_headings", "table_rejoined"]

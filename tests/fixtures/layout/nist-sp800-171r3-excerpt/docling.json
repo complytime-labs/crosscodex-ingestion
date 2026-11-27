@@ -1,0 +1,3544 @@
+{
+ "schema_name": "DoclingDocument",
+ "version": "1.11.0",
+ "name": "nist-sp800-171r3-excerpt",
+ "origin": {
+  "mimetype": "application/pdf",
+  "binary_hash": 11707558181906133115,
+  "filename": "nist-sp800-171r3-excerpt.pdf"
+ },
+ "furniture": {
+  "self_ref": "#/furniture",
+  "children": [],
+  "content_layer": "furniture",
+  "name": "_root_",
+  "label": "unspecified"
+ },
+ "body": {
+  "self_ref": "#/body",
+  "children": [
+   {
+    "$ref": "#/texts/0"
+   },
+   {
+    "$ref": "#/texts/1"
+   },
+   {
+    "$ref": "#/texts/2"
+   },
+   {
+    "$ref": "#/texts/3"
+   },
+   {
+    "$ref": "#/texts/4"
+   },
+   {
+    "$ref": "#/texts/5"
+   },
+   {
+    "$ref": "#/texts/6"
+   },
+   {
+    "$ref": "#/groups/0"
+   },
+   {
+    "$ref": "#/texts/12"
+   },
+   {
+    "$ref": "#/texts/13"
+   },
+   {
+    "$ref": "#/groups/1"
+   },
+   {
+    "$ref": "#/texts/18"
+   },
+   {
+    "$ref": "#/texts/19"
+   },
+   {
+    "$ref": "#/texts/20"
+   },
+   {
+    "$ref": "#/texts/21"
+   },
+   {
+    "$ref": "#/texts/22"
+   },
+   {
+    "$ref": "#/texts/23"
+   },
+   {
+    "$ref": "#/texts/24"
+   },
+   {
+    "$ref": "#/tables/0"
+   },
+   {
+    "$ref": "#/texts/26"
+   },
+   {
+    "$ref": "#/texts/27"
+   },
+   {
+    "$ref": "#/texts/28"
+   },
+   {
+    "$ref": "#/texts/29"
+   },
+   {
+    "$ref": "#/texts/30"
+   },
+   {
+    "$ref": "#/texts/31"
+   },
+   {
+    "$ref": "#/texts/32"
+   },
+   {
+    "$ref": "#/texts/33"
+   },
+   {
+    "$ref": "#/texts/34"
+   },
+   {
+    "$ref": "#/texts/35"
+   },
+   {
+    "$ref": "#/texts/36"
+   },
+   {
+    "$ref": "#/texts/37"
+   },
+   {
+    "$ref": "#/texts/38"
+   },
+   {
+    "$ref": "#/texts/39"
+   },
+   {
+    "$ref": "#/groups/2"
+   },
+   {
+    "$ref": "#/texts/42"
+   },
+   {
+    "$ref": "#/texts/43"
+   },
+   {
+    "$ref": "#/texts/44"
+   },
+   {
+    "$ref": "#/texts/45"
+   },
+   {
+    "$ref": "#/texts/46"
+   },
+   {
+    "$ref": "#/texts/47"
+   },
+   {
+    "$ref": "#/texts/48"
+   },
+   {
+    "$ref": "#/texts/49"
+   },
+   {
+    "$ref": "#/texts/50"
+   },
+   {
+    "$ref": "#/texts/51"
+   },
+   {
+    "$ref": "#/texts/52"
+   },
+   {
+    "$ref": "#/texts/53"
+   },
+   {
+    "$ref": "#/texts/54"
+   },
+   {
+    "$ref": "#/texts/55"
+   },
+   {
+    "$ref": "#/texts/56"
+   },
+   {
+    "$ref": "#/texts/57"
+   },
+   {
+    "$ref": "#/groups/3"
+   },
+   {
+    "$ref": "#/texts/68"
+   },
+   {
+    "$ref": "#/texts/69"
+   },
+   {
+    "$ref": "#/groups/4"
+   },
+   {
+    "$ref": "#/texts/81"
+   },
+   {
+    "$ref": "#/texts/82"
+   },
+   {
+    "$ref": "#/texts/83"
+   },
+   {
+    "$ref": "#/texts/84"
+   }
+  ],
+  "content_layer": "body",
+  "name": "_root_",
+  "label": "unspecified"
+ },
+ "groups": [
+  {
+   "self_ref": "#/groups/0",
+   "parent": {
+    "$ref": "#/body"
+   },
+   "children": [
+    {
+     "$ref": "#/texts/7"
+    },
+    {
+     "$ref": "#/texts/8"
+    },
+    {
+     "$ref": "#/texts/9"
+    },
+    {
+     "$ref": "#/texts/10"
+    },
+    {
+     "$ref": "#/texts/11"
+    }
+   ],
+   "content_layer": "body",
+   "name": "list",
+   "label": "list"
+  },
+  {
+   "self_ref": "#/groups/1",
+   "parent": {
+    "$ref": "#/body"
+   },
+   "children": [
+    {
+     "$ref": "#/texts/14"
+    },
+    {
+     "$ref": "#/texts/15"
+    },
+    {
+     "$ref": "#/texts/16"
+    },
+    {
+     "$ref": "#/texts/17"
+    }
+   ],
+   "content_layer": "body",
+   "name": "list",
+   "label": "list"
+  },
+  {
+   "self_ref": "#/groups/2",
+   "parent": {
+    "$ref": "#/body"
+   },
+   "children": [
+    {
+     "$ref": "#/texts/40"
+    },
+    {
+     "$ref": "#/texts/41"
+    }
+   ],
+   "content_layer": "body",
+   "name": "group",
+   "label": "key_value_area"
+  },
+  {
+   "self_ref": "#/groups/3",
+   "parent": {
+    "$ref": "#/body"
+   },
+   "children": [
+    {
+     "$ref": "#/texts/58"
+    },
+    {
+     "$ref": "#/texts/59"
+    },
+    {
+     "$ref": "#/texts/60"
+    },
+    {
+     "$ref": "#/texts/61"
+    },
+    {
+     "$ref": "#/texts/62"
+    },
+    {
+     "$ref": "#/texts/63"
+    },
+    {
+     "$ref": "#/texts/64"
+    },
+    {
+     "$ref": "#/texts/65"
+    },
+    {
+     "$ref": "#/texts/66"
+    },
+    {
+     "$ref": "#/texts/67"
+    }
+   ],
+   "content_layer": "body",
+   "name": "list",
+   "label": "list"
+  },
+  {
+   "self_ref": "#/groups/4",
+   "parent": {
+    "$ref": "#/body"
+   },
+   "children": [
+    {
+     "$ref": "#/texts/70"
+    },
+    {
+     "$ref": "#/texts/71"
+    },
+    {
+     "$ref": "#/texts/72"
+    },
+    {
+     "$ref": "#/texts/73"
+    },
+    {
+     "$ref": "#/texts/74"
+    },
+    {
+     "$ref": "#/texts/75"
+    },
+    {
+     "$ref": "#/texts/76"
+    },
+    {
+     "$ref": "#/texts/77"
+    },
+    {
+     "$ref": "#/texts/78"
+    },
+    {
+     "$ref": "#/texts/79"
+    },
+    {
+     "$ref": "#/texts/80"
+    }
+   ],
+   "content_layer": "body",
+   "name": "list",
+   "label": "list"
+  }
+ ],
+ "texts": [
+  {
+   "self_ref": "#/texts/0",
+   "parent": {
+    "$ref": "#/body"
+   },
+   "children": [],
+   "content_layer": "furniture",
+   "label": "page_header",
+   "prov": [
+    {
+     "page_no": 1,
+     "bbox": {
+      "l": 72.0,
+      "t": 752.69472,
+      "r": 146.64621600000004,
+      "b": 744.4858161403508,
+      "coord_origin": "BOTTOMLEFT"
+     },
+     "charspan": [
+      0,
+      17
+     ]
+    }
+   ],
+   "orig": "NIST SP 800-171r3",
+   "text": "NIST SP 800-171r3"
+  },
+  {
+   "self_ref": "#/texts/1",
+   "parent": {
+    "$ref": "#/body"
+   },
+   "children": [],
+   "content_layer": "furniture",
+   "label": "page_header",
+   "prov": [
+    {
+     "page_no": 1,
+     "bbox": {
+      "l": 351.11904000000004,
+      "t": 752.69472,
+      "r": 539.9616360000012,
+      "b": 744.4858161403508,
+      "coord_origin": "BOTTOMLEFT"
+     },
+     "charspan": [
+      0,
+      46
+     ]
+    }
+   ],
+   "orig": "Protecting Controlled Unclassified Information",
+   "text": "Protecting Controlled Unclassified Information"
+  },
+  {
+   "self_ref": "#/texts/2",
+   "parent": {
+    "$ref": "#/body"
+   },
+   "children": [],
+   "content_layer": "furniture",
+   "label": "page_header",
+   "prov": [
+    {
+     "page_no": 1,
+     "bbox": {
+      "l": 72.0,
+      "t": 740.5734,
+      "r": 112.33003199999999,
+      "b": 732.3644961403509,
+      "coord_origin": "BOTTOMLEFT"
+     },
+     "charspan": [
+      0,
+      8
+     ]
+    }
+   ],
+   "orig": "May 2024",
+   "text": "May 2024"
+  },
+  {
+   "self_ref": "#/texts/3",
+   "parent": {
+    "$ref": "#/body"
+   },
+   "children": [],
+   "content_layer": "body",
+   "label": "section_header",
+   "prov": [
+    {
+     "page_no": 1,
+     "bbox": {
+      "l": 72.0,
+      "t": 716.184,
+      "r": 178.42799999999997,
+      "b": 706.0525351299326,
+      "coord_origin": "BOTTOMLEFT"
+     },
+     "charspan": [
+      0,
+      19
+     ]
+    }
+   ],
+   "orig": "2. The Fundamentals",
+   "text": "2. The Fundamentals",
+   "level": 1
+  },
+  {
+   "self_ref": "#/texts/4",
+   "parent": {
+    "$ref": "#/body"
+   },
+   "children": [],
+   "content_layer": "body",
+   "label": "text",
+   "prov": [
+    {
+     "page_no": 1,
+     "bbox": {
+      "l": 71.99999999999999,
+      "t": 692.544,
+      "r": 531.9215999999998,
+      "b": 653.3737543859648,
+      "coord_origin": "BOTTOMLEFT"
+     },
+     "charspan": [
+      0,
+      251
+     ]
+    }
+   ],
+   "orig": "This section describes the assumptions and methodology used to develop the requirements to protect the confidentiality of CUI in nonfederal systems and organizations. It also includes the tailoring 10 criteria applied to the controls in SP 800-53 [8].",
+   "text": "This section describes the assumptions and methodology used to develop the requirements to protect the confidentiality of CUI in nonfederal systems and organizations. It also includes the tailoring 10 criteria applied to the controls in SP 800-53 [8]."
+  },
+  {
+   "self_ref": "#/texts/5",
+   "parent": {
+    "$ref": "#/body"
+   },
+   "children": [],
+   "content_layer": "body",
+   "label": "section_header",
+   "prov": [
+    {
+     "page_no": 1,
+     "bbox": {
+      "l": 72.0,
+      "t": 628.584,
+      "r": 269.0279999999999,
+      "b": 618.4525351299326,
+      "coord_origin": "BOTTOMLEFT"
+     },
+     "charspan": [
+      0,
+      37
+     ]
+    }
+   ],
+   "orig": "2.1. Security Requirement Assumptions",
+   "text": "2.1. Security Requirement Assumptions",
+   "level": 1
+  },
+  {
+   "self_ref": "#/texts/6",
+   "parent": {
+    "$ref": "#/body"
+   },
+   "children": [],
+   "content_layer": "body",
+   "label": "text",
+   "prov": [
+    {
+     "page_no": 1,
+     "bbox": {
+      "l": 71.99999999999994,
+      "t": 604.944,
+      "r": 489.81480000000005,
+      "b": 595.0537543859649,
+      "coord_origin": "BOTTOMLEFT"
+     },
+     "charspan": [
+      0,
+      85
+     ]
+    }
+   ],
+   "orig": "The security requirements in this publication are based on the following assumptions:",
+   "text": "The security requirements in this publication are based on the following assumptions:"
+  },
+  {
+   "self_ref": "#/texts/7",
+   "parent": {
+    "$ref": "#/groups/0"
+   },
+   "children": [],
+   "content_layer": "body",
+   "label": "list_item",
+   "prov": [
+    {
+     "page_no": 1,
+     "bbox": {
+      "l": 89.99999999999994,
+      "t": 584.52,
+      "r": 523.3751999999997,
+      "b": 559.1737543859649,
+      "coord_origin": "BOTTOMLEFT"
+     },
+     "charspan": [
+      0,
+      143
+     ]
+    }
+   ],
+   "orig": "· Federal information designated as CUI has the same value, whether such information resides in a federal or nonfederal system or organization.",
+   "text": "Federal information designated as CUI has the same value, whether such information resides in a federal or nonfederal system or organization.",
+   "enumerated": false,
+   "marker": "·"
+  },
+  {
+   "self_ref": "#/texts/8",
+   "parent": {
+    "$ref": "#/groups/0"
+   },
+   "children": [],
+   "content_layer": "body",
+   "label": "list_item",
+   "prov": [
+    {
+     "page_no": 1,
+     "bbox": {
+      "l": 89.99999999999994,
+      "t": 548.52,
+      "r": 539.9879999999997,
+      "b": 523.1737543859649,
+      "coord_origin": "BOTTOMLEFT"
+     },
+     "charspan": [
+      0,
+      133
+     ]
+    }
+   ],
+   "orig": "· Statutory and regulatory requirements for the protection of CUI are consistent in federal and nonfederal systems and organizations.",
+   "text": "Statutory and regulatory requirements for the protection of CUI are consistent in federal and nonfederal systems and organizations.",
+   "enumerated": false,
+   "marker": "·"
+  },
+  {
+   "self_ref": "#/texts/9",
+   "parent": {
+    "$ref": "#/groups/0"
+   },
+   "children": [],
+   "content_layer": "body",
+   "label": "list_item",
+   "prov": [
+    {
+     "page_no": 1,
+     "bbox": {
+      "l": 89.99999999999983,
+      "t": 512.64,
+      "r": 499.5419999999999,
+      "b": 487.2937543859649,
+      "coord_origin": "BOTTOMLEFT"
+     },
+     "charspan": [
+      0,
+      107
+     ]
+    }
+   ],
+   "orig": "· Safeguards implemented to protect CUI are consistent in federal and nonfederal systems and organizations.",
+   "text": "Safeguards implemented to protect CUI are consistent in federal and nonfederal systems and organizations.",
+   "enumerated": false,
+   "marker": "·"
+  },
+  {
+   "self_ref": "#/texts/10",
+   "parent": {
+    "$ref": "#/groups/0"
+   },
+   "children": [],
+   "content_layer": "body",
+   "label": "list_item",
+   "prov": [
+    {
+     "page_no": 1,
+     "bbox": {
+      "l": 89.99999999999983,
+      "t": 477.28128,
+      "r": 434.27657999999997,
+      "b": 465.9337543859649,
+      "coord_origin": "BOTTOMLEFT"
+     },
+     "charspan": [
+      0,
+      71
+     ]
+    }
+   ],
+   "orig": "· The confidentiality impact value for CUI is no less than moderate. 11",
+   "text": "The confidentiality impact value for CUI is no less than moderate. 11",
+   "enumerated": false,
+   "marker": "·"
+  },
+  {
+   "self_ref": "#/texts/11",
+   "parent": {
+    "$ref": "#/groups/0"
+   },
+   "children": [],
+   "content_layer": "body",
+   "label": "list_item",
+   "prov": [
+    {
+     "page_no": 1,
+     "bbox": {
+      "l": 89.99999999999994,
+      "t": 455.4,
+      "r": 538.8083999999996,
+      "b": 430.0537543859649,
+      "coord_origin": "BOTTOMLEFT"
+     },
+     "charspan": [
+      0,
+      159
+     ]
+    }
+   ],
+   "orig": "· Nonfederal organizations can directly implement a variety of potential security solutions or use external service providers to satisfy security requirements.",
+   "text": "Nonfederal organizations can directly implement a variety of potential security solutions or use external service providers to satisfy security requirements.",
+   "enumerated": false,
+   "marker": "·"
+  },
+  {
+   "self_ref": "#/texts/12",
+   "parent": {
+    "$ref": "#/body"
+   },
+   "children": [],
+   "content_layer": "body",
+   "label": "section_header",
+   "prov": [
+    {
+     "page_no": 1,
+     "bbox": {
+      "l": 72.0,
+      "t": 405.264,
+      "r": 342.04799999999994,
+      "b": 395.13253512993265,
+      "coord_origin": "BOTTOMLEFT"
+     },
+     "charspan": [
+      0,
+      49
+     ]
+    }
+   ],
+   "orig": "2.2. Security Requirement Development Methodology",
+   "text": "2.2. Security Requirement Development Methodology",
+   "level": 1
+  },
+  {
+   "self_ref": "#/texts/13",
+   "parent": {
+    "$ref": "#/body"
+   },
+   "children": [],
+   "content_layer": "body",
+   "label": "text",
+   "prov": [
+    {
+     "page_no": 1,
+     "bbox": {
+      "l": 71.99999999999994,
+      "t": 381.624,
+      "r": 535.0547999999998,
+      "b": 357.0937543859649,
+      "coord_origin": "BOTTOMLEFT"
+     },
+     "charspan": [
+      0,
+      166
+     ]
+    }
+   ],
+   "orig": "Starting with the SP 800-53 controls in the SP 800-53B [12] moderate baseline, the controls are tailored to eliminate selected controls or parts of controls that are:",
+   "text": "Starting with the SP 800-53 controls in the SP 800-53B [12] moderate baseline, the controls are tailored to eliminate selected controls or parts of controls that are:"
+  },
+  {
+   "self_ref": "#/texts/14",
+   "parent": {
+    "$ref": "#/groups/1"
+   },
+   "children": [],
+   "content_layer": "body",
+   "label": "list_item",
+   "prov": [
+    {
+     "page_no": 1,
+     "bbox": {
+      "l": 89.99999999999994,
+      "t": 346.44,
+      "r": 376.9199999999999,
+      "b": 335.7337543859649,
+      "coord_origin": "BOTTOMLEFT"
+     },
+     "charspan": [
+      0,
+      57
+     ]
+    }
+   ],
+   "orig": "· Primarily the responsibility of the Federal Government,",
+   "text": "Primarily the responsibility of the Federal Government,",
+   "enumerated": false,
+   "marker": "·"
+  },
+  {
+   "self_ref": "#/texts/15",
+   "parent": {
+    "$ref": "#/groups/1"
+   },
+   "children": [],
+   "content_layer": "body",
+   "label": "list_item",
+   "prov": [
+    {
+     "page_no": 1,
+     "bbox": {
+      "l": 89.99999999999989,
+      "t": 325.08,
+      "r": 396.8399999999999,
+      "b": 314.3737543859649,
+      "coord_origin": "BOTTOMLEFT"
+     },
+     "charspan": [
+      0,
+      64
+     ]
+    }
+   ],
+   "orig": "· Not directly related to protecting the confidentiality of CUI,",
+   "text": "Not directly related to protecting the confidentiality of CUI,",
+   "enumerated": false,
+   "marker": "·"
+  },
+  {
+   "self_ref": "#/texts/16",
+   "parent": {
+    "$ref": "#/groups/1"
+   },
+   "children": [],
+   "content_layer": "body",
+   "label": "list_item",
+   "prov": [
+    {
+     "page_no": 1,
+     "bbox": {
+      "l": 89.99999999999989,
+      "t": 304.48127999999997,
+      "r": 365.628,
+      "b": 293.1337543859649,
+      "coord_origin": "BOTTOMLEFT"
+     },
+     "charspan": [
+      0,
+      55
+     ]
+    }
+   ],
+   "orig": "· Adequately addressed by other related controls, 12 or",
+   "text": "Adequately addressed by other related controls, 12 or",
+   "enumerated": false,
+   "marker": "·"
+  },
+  {
+   "self_ref": "#/texts/17",
+   "parent": {
+    "$ref": "#/groups/1"
+   },
+   "children": [],
+   "content_layer": "body",
+   "label": "list_item",
+   "prov": [
+    {
+     "page_no": 1,
+     "bbox": {
+      "l": 90.0,
+      "t": 282.59999999999997,
+      "r": 181.70279999999997,
+      "b": 271.89375438596494,
+      "coord_origin": "BOTTOMLEFT"
+     },
+     "charspan": [
+      0,
+      17
+     ]
+    }
+   ],
+   "orig": "· Not applicable.",
+   "text": "Not applicable.",
+   "enumerated": false,
+   "marker": "·"
+  },
+  {
+   "self_ref": "#/texts/18",
+   "parent": {
+    "$ref": "#/body"
+   },
+   "children": [],
+   "content_layer": "body",
+   "label": "text",
+   "prov": [
+    {
+     "page_no": 1,
+     "bbox": {
+      "l": 71.99999999999994,
+      "t": 255.144,
+      "r": 540.0215999999996,
+      "b": 172.0537543859649,
+      "coord_origin": "BOTTOMLEFT"
+     },
+     "charspan": [
+      0,
+      576
+     ]
+    },
+    {
+     "page_no": 2,
+     "bbox": {
+      "l": 71.99999999999994,
+      "t": 716.184,
+      "r": 529.1363999999999,
+      "b": 677.013754385965,
+      "coord_origin": "BOTTOMLEFT"
+     },
+     "charspan": [
+      577,
+      825
+     ]
+    }
+   ],
+   "orig": "SP 800-171 security requirements represent a subset of the controls that are necessary to protect the confidentiality of CUI. The security requirements are organized into 17 families, as illustrated in Table 1. Each family contains the requirements related to the general security topic of the family. Certain families from SP 800-53 are not included due to the tailoring criteria. For example, the PII Processing and Transparency (PT) family is not included because personally identifiable information (PII) is a category of CUI, and therefore, no additional requirements are specified for confidentiality protection. The Program Management (PM) family is not included because it is not associated with any control baseline. Finally, the Contingency Planning (CP) family is not included because it addresses availability. 13",
+   "text": "SP 800-171 security requirements represent a subset of the controls that are necessary to protect the confidentiality of CUI. The security requirements are organized into 17 families, as illustrated in Table 1. Each family contains the requirements related to the general security topic of the family. Certain families from SP 800-53 are not included due to the tailoring criteria. For example, the PII Processing and Transparency (PT) family is not included because personally identifiable information (PII) is a category of CUI, and therefore, no additional requirements are specified for confidentiality protection. The Program Management (PM) family is not included because it is not associated with any control baseline. Finally, the Contingency Planning (CP) family is not included because it addresses availability. 13"
+  },
+  {
+   "self_ref": "#/texts/19",
+   "parent": {
+    "$ref": "#/body"
+   },
+   "children": [],
+   "content_layer": "body",
+   "label": "footnote",
+   "prov": [
+    {
+     "page_no": 1,
+     "bbox": {
+      "l": 72.0,
+      "t": 142.50527999999997,
+      "r": 476.8692,
+      "b": 135.25481543859655,
+      "coord_origin": "BOTTOMLEFT"
+     },
+     "charspan": [
+      0,
+      128
+     ]
+    }
+   ],
+   "orig": "10 Tailoring is the process by which control baselines are modified to achieve certain organizational goals and objectives [13].",
+   "text": "10 Tailoring is the process by which control baselines are modified to achieve certain organizational goals and objectives [13]."
+  },
+  {
+   "self_ref": "#/texts/20",
+   "parent": {
+    "$ref": "#/body"
+   },
+   "children": [],
+   "content_layer": "body",
+   "label": "footnote",
+   "prov": [
+    {
+     "page_no": 1,
+     "bbox": {
+      "l": 71.99892,
+      "t": 130.74527999999998,
+      "r": 537.4956239999998,
+      "b": 103.93349543859654,
+      "coord_origin": "BOTTOMLEFT"
+     },
+     "charspan": [
+      0,
+      378
+     ]
+    }
+   ],
+   "orig": "11 In accordance with 32 CFR 2002 [5], CUI is categorized at no less than the FIPS 199 [6] moderate confidentiality impact value. However, when federal law, regulation, or government-wide policy establishing the control of CUI specifies controls that differ from those of the moderate control baseline, then the applicable law, regulation, or government-wide policy is followed.",
+   "text": "11 In accordance with 32 CFR 2002 [5], CUI is categorized at no less than the FIPS 199 [6] moderate confidentiality impact value. However, when federal law, regulation, or government-wide policy establishing the control of CUI specifies controls that differ from those of the moderate control baseline, then the applicable law, regulation, or government-wide policy is followed."
+  },
+  {
+   "self_ref": "#/texts/21",
+   "parent": {
+    "$ref": "#/body"
+   },
+   "children": [],
+   "content_layer": "body",
+   "label": "footnote",
+   "prov": [
+    {
+     "page_no": 1,
+     "bbox": {
+      "l": 71.99892000000003,
+      "t": 99.42528000000004,
+      "r": 539.5795919999985,
+      "b": 72.61349543859649,
+      "coord_origin": "BOTTOMLEFT"
+     },
+     "charspan": [
+      0,
+      348
+     ]
+    }
+   ],
+   "orig": "12 \"Adequately addressed by other related controls\" means that the protection capability offered by the control is provided by another control in the same or different control family. Using this tailoring option helps to eliminate potential redundancy in requirements without affecting the protection of CUI in nonfederal systems and organizations.",
+   "text": "12 \"Adequately addressed by other related controls\" means that the protection capability offered by the control is provided by another control in the same or different control family. Using this tailoring option helps to eliminate potential redundancy in requirements without affecting the protection of CUI in nonfederal systems and organizations."
+  },
+  {
+   "self_ref": "#/texts/22",
+   "parent": {
+    "$ref": "#/body"
+   },
+   "children": [],
+   "content_layer": "furniture",
+   "label": "page_footer",
+   "prov": [
+    {
+     "page_no": 1,
+     "bbox": {
+      "l": 303.48036,
+      "t": 44.937119999999936,
+      "r": 308.53008,
+      "b": 36.72821614035081,
+      "coord_origin": "BOTTOMLEFT"
+     },
+     "charspan": [
+      0,
+      1
+     ]
+    }
+   ],
+   "orig": "3",
+   "text": "3"
+  },
+  {
+   "self_ref": "#/texts/23",
+   "parent": {
+    "$ref": "#/body"
+   },
+   "children": [],
+   "content_layer": "furniture",
+   "label": "page_header",
+   "prov": [
+    {
+     "page_no": 2,
+     "bbox": {
+      "l": 72.0,
+      "t": 752.69472,
+      "r": 146.64621600000004,
+      "b": 732.3644961403509,
+      "coord_origin": "BOTTOMLEFT"
+     },
+     "charspan": [
+      0,
+      26
+     ]
+    }
+   ],
+   "orig": "NIST SP 800-171r3 May 2024",
+   "text": "NIST SP 800-171r3 May 2024"
+  },
+  {
+   "self_ref": "#/texts/24",
+   "parent": {
+    "$ref": "#/body"
+   },
+   "children": [],
+   "content_layer": "furniture",
+   "label": "page_header",
+   "prov": [
+    {
+     "page_no": 2,
+     "bbox": {
+      "l": 351.11904000000004,
+      "t": 752.69472,
+      "r": 539.9616360000012,
+      "b": 744.4858161403508,
+      "coord_origin": "BOTTOMLEFT"
+     },
+     "charspan": [
+      0,
+      46
+     ]
+    }
+   ],
+   "orig": "Protecting Controlled Unclassified Information",
+   "text": "Protecting Controlled Unclassified Information"
+  },
+  {
+   "self_ref": "#/texts/25",
+   "parent": {
+    "$ref": "#/tables/0"
+   },
+   "children": [],
+   "content_layer": "body",
+   "label": "caption",
+   "prov": [
+    {
+     "page_no": 2,
+     "bbox": {
+      "l": 225.12,
+      "t": 660.77472,
+      "r": 386.65426799999995,
+      "b": 652.3656041578441,
+      "coord_origin": "BOTTOMLEFT"
+     },
+     "charspan": [
+      0,
+      38
+     ]
+    }
+   ],
+   "orig": "Table 1. Security Requirement Families",
+   "text": "Table 1. Security Requirement Families"
+  },
+  {
+   "self_ref": "#/texts/26",
+   "parent": {
+    "$ref": "#/body"
+   },
+   "children": [],
+   "content_layer": "body",
+   "label": "text",
+   "prov": [
+    {
+     "page_no": 2,
+     "bbox": {
+      "l": 71.99999999999997,
+      "t": 517.596,
+      "r": 538.8599999999997,
+      "b": 405.21375438596493,
+      "coord_origin": "BOTTOMLEFT"
+     },
+     "charspan": [
+      0,
+      697
+     ]
+    }
+   ],
+   "orig": "Organization-defined parameters (ODPs) are included in certain security requirements. ODPs provide flexibility through the use of assignment and selection operations to allow federal agencies and nonfederal organizations to specify values for the designated parameters in the requirements. 14 Assignment and selection operations provide the capability to customize the security requirements based on specific protection needs. The determination of ODP values can be guided and informed by laws, Executive Orders, directives, regulations, policies, standards, guidance, or mission and business needs. Once specified, the values for the organizationdefined parameters become part of the requirement.",
+   "text": "Organization-defined parameters (ODPs) are included in certain security requirements. ODPs provide flexibility through the use of assignment and selection operations to allow federal agencies and nonfederal organizations to specify values for the designated parameters in the requirements. 14 Assignment and selection operations provide the capability to customize the security requirements based on specific protection needs. The determination of ODP values can be guided and informed by laws, Executive Orders, directives, regulations, policies, standards, guidance, or mission and business needs. Once specified, the values for the organizationdefined parameters become part of the requirement."
+  },
+  {
+   "self_ref": "#/texts/27",
+   "parent": {
+    "$ref": "#/body"
+   },
+   "children": [],
+   "content_layer": "body",
+   "label": "section_header",
+   "prov": [
+    {
+     "page_no": 2,
+     "bbox": {
+      "l": 198.72,
+      "t": 373.464,
+      "r": 396.0359999999999,
+      "b": 363.33253512993264,
+      "coord_origin": "BOTTOMLEFT"
+     },
+     "charspan": [
+      0,
+      31
+     ]
+    }
+   ],
+   "orig": "ORGANIZATION-DEFINED PARAMETERS",
+   "text": "ORGANIZATION-DEFINED PARAMETERS",
+   "level": 1
+  },
+  {
+   "self_ref": "#/texts/28",
+   "parent": {
+    "$ref": "#/body"
+   },
+   "children": [],
+   "content_layer": "body",
+   "label": "text",
+   "prov": [
+    {
+     "page_no": 2,
+     "bbox": {
+      "l": 79.54895999999997,
+      "t": 353.17728,
+      "r": 515.3032800000001,
+      "b": 263.5745740350877,
+      "coord_origin": "BOTTOMLEFT"
+     },
+     "charspan": [
+      0,
+      671
+     ]
+    }
+   ],
+   "orig": "Organization-defined parameters are an important part of a security requirement specification. ODPs provide both the flexibility and specificity needed by organizations to clearly define their CUI security requirements, given the diverse nature of their missions, business functions, operational environments, and risk tolerance. In addition, ODPs support consistent security assessments in determining whether specified security requirements have been satisfied. If a federal agency or a consortium of agencies do not specify a particular value or range of values for an ODP, nonfederal organizations must assign the value or values to complete the security requirement.",
+   "text": "Organization-defined parameters are an important part of a security requirement specification. ODPs provide both the flexibility and specificity needed by organizations to clearly define their CUI security requirements, given the diverse nature of their missions, business functions, operational environments, and risk tolerance. In addition, ODPs support consistent security assessments in determining whether specified security requirements have been satisfied. If a federal agency or a consortium of agencies do not specify a particular value or range of values for an ODP, nonfederal organizations must assign the value or values to complete the security requirement."
+  },
+  {
+   "self_ref": "#/texts/29",
+   "parent": {
+    "$ref": "#/body"
+   },
+   "children": [],
+   "content_layer": "body",
+   "label": "text",
+   "prov": [
+    {
+     "page_no": 2,
+     "bbox": {
+      "l": 71.99999999999997,
+      "t": 222.50400000000002,
+      "r": 539.1360000000001,
+      "b": 139.29375438596492,
+      "coord_origin": "BOTTOMLEFT"
+     },
+     "charspan": [
+      0,
+      575
+     ]
+    },
+    {
+     "page_no": 3,
+     "bbox": {
+      "l": 72.0,
+      "t": 717.6412799999999,
+      "r": 533.0975999999997,
+      "b": 677.013754385965,
+      "coord_origin": "BOTTOMLEFT"
+     },
+     "charspan": [
+      576,
+      816
+     ]
+    }
+   ],
+   "orig": "A discussion section is included with each requirement. It is derived from the control discussion sections in SP 800-53 and provides additional information to facilitate the implementation and assessment of the requirements. The discussion section is informative, not normative. It is not intended to extend the scope of a requirement or influence the solutions that organizations may use to satisfy a requirement. The use of examples is notional, not exhaustive, and does not reflect the potential options available to organizations. A references section provides the source controls 15 from SP 800-53 and a list of NIST Special Publications with additional information on the topic described in the security requirement. The structure and content of a typical security requirement is provided in the example below.",
+   "text": "A discussion section is included with each requirement. It is derived from the control discussion sections in SP 800-53 and provides additional information to facilitate the implementation and assessment of the requirements. The discussion section is informative, not normative. It is not intended to extend the scope of a requirement or influence the solutions that organizations may use to satisfy a requirement. The use of examples is notional, not exhaustive, and does not reflect the potential options available to organizations. A references section provides the source controls 15 from SP 800-53 and a list of NIST Special Publications with additional information on the topic described in the security requirement. The structure and content of a typical security requirement is provided in the example below."
+  },
+  {
+   "self_ref": "#/texts/30",
+   "parent": {
+    "$ref": "#/body"
+   },
+   "children": [],
+   "content_layer": "body",
+   "label": "footnote",
+   "prov": [
+    {
+     "page_no": 2,
+     "bbox": {
+      "l": 72.0,
+      "t": 103.38527999999997,
+      "r": 441.12105599999876,
+      "b": 96.13481543859655,
+      "coord_origin": "BOTTOMLEFT"
+     },
+     "charspan": [
+      0,
+      114
+     ]
+    }
+   ],
+   "orig": "13 CP-09 and CP-09(08) are included by exception to ensure the confidentiality of backup information is projected.",
+   "text": "13 CP-09 and CP-09(08) are included by exception to ensure the confidentiality of backup information is projected."
+  },
+  {
+   "self_ref": "#/texts/31",
+   "parent": {
+    "$ref": "#/body"
+   },
+   "children": [],
+   "content_layer": "body",
+   "label": "footnote",
+   "prov": [
+    {
+     "page_no": 2,
+     "bbox": {
+      "l": 72.0,
+      "t": 91.62527999999998,
+      "r": 539.5635119999998,
+      "b": 74.65445543859653,
+      "coord_origin": "BOTTOMLEFT"
+     },
+     "charspan": [
+      0,
+      280
+     ]
+    }
+   ],
+   "orig": "14 NIST does not establish or assign values for ODPs. If ODP values for selected security requirements are not formally established or assigned by a federal agency or a consortium of federal agencies, nonfederal organizations must assign those values to complete the requirements.",
+   "text": "14 NIST does not establish or assign values for ODPs. If ODP values for selected security requirements are not formally established or assigned by a federal agency or a consortium of federal agencies, nonfederal organizations must assign those values to complete the requirements."
+  },
+  {
+   "self_ref": "#/texts/32",
+   "parent": {
+    "$ref": "#/body"
+   },
+   "children": [],
+   "content_layer": "furniture",
+   "label": "page_footer",
+   "prov": [
+    {
+     "page_no": 2,
+     "bbox": {
+      "l": 303.48036,
+      "t": 44.937119999999936,
+      "r": 308.53008,
+      "b": 36.72821614035081,
+      "coord_origin": "BOTTOMLEFT"
+     },
+     "charspan": [
+      0,
+      1
+     ]
+    }
+   ],
+   "orig": "4",
+   "text": "4"
+  },
+  {
+   "self_ref": "#/texts/33",
+   "parent": {
+    "$ref": "#/body"
+   },
+   "children": [],
+   "content_layer": "furniture",
+   "label": "page_header",
+   "prov": [
+    {
+     "page_no": 3,
+     "bbox": {
+      "l": 72.0,
+      "t": 752.69472,
+      "r": 146.64621600000004,
+      "b": 732.3644961403509,
+      "coord_origin": "BOTTOMLEFT"
+     },
+     "charspan": [
+      0,
+      26
+     ]
+    }
+   ],
+   "orig": "NIST SP 800-171r3 May 2024",
+   "text": "NIST SP 800-171r3 May 2024"
+  },
+  {
+   "self_ref": "#/texts/34",
+   "parent": {
+    "$ref": "#/body"
+   },
+   "children": [],
+   "content_layer": "furniture",
+   "label": "page_header",
+   "prov": [
+    {
+     "page_no": 3,
+     "bbox": {
+      "l": 351.11904000000004,
+      "t": 752.69472,
+      "r": 539.9616360000012,
+      "b": 744.4858161403508,
+      "coord_origin": "BOTTOMLEFT"
+     },
+     "charspan": [
+      0,
+      46
+     ]
+    }
+   ],
+   "orig": "Protecting Controlled Unclassified Information",
+   "text": "Protecting Controlled Unclassified Information"
+  },
+  {
+   "self_ref": "#/texts/35",
+   "parent": {
+    "$ref": "#/body"
+   },
+   "children": [],
+   "content_layer": "body",
+   "label": "section_header",
+   "prov": [
+    {
+     "page_no": 3,
+     "bbox": {
+      "l": 72.0,
+      "t": 660.6172799999999,
+      "r": 241.0025279999998,
+      "b": 651.296332319538,
+      "coord_origin": "BOTTOMLEFT"
+     },
+     "charspan": [
+      0,
+      33
+     ]
+    }
+   ],
+   "orig": "03.13.11 Cryptographic Protection",
+   "text": "03.13.11 Cryptographic Protection",
+   "level": 1
+  },
+  {
+   "self_ref": "#/texts/36",
+   "parent": {
+    "$ref": "#/body"
+   },
+   "children": [],
+   "content_layer": "body",
+   "label": "text",
+   "prov": [
+    {
+     "page_no": 3,
+     "bbox": {
+      "l": 125.99664,
+      "t": 641.17584,
+      "r": 531.3501120000002,
+      "b": 618.6411340350877,
+      "coord_origin": "BOTTOMLEFT"
+     },
+     "charspan": [
+      0,
+      152
+     ]
+    }
+   ],
+   "orig": "Implement the following types of cryptography when used to protect the confidentiality of CUI: [Assignment: organization-defined types of cryptography].",
+   "text": "Implement the following types of cryptography when used to protect the confidentiality of CUI: [Assignment: organization-defined types of cryptography]."
+  },
+  {
+   "self_ref": "#/texts/37",
+   "parent": {
+    "$ref": "#/body"
+   },
+   "children": [],
+   "content_layer": "body",
+   "label": "section_header",
+   "prov": [
+    {
+     "page_no": 3,
+     "bbox": {
+      "l": 125.99664000000001,
+      "t": 602.304,
+      "r": 182.11185599999993,
+      "b": 592.983052319538,
+      "coord_origin": "BOTTOMLEFT"
+     },
+     "charspan": [
+      0,
+      10
+     ]
+    }
+   ],
+   "orig": "DISCUSSION",
+   "text": "DISCUSSION",
+   "level": 1
+  },
+  {
+   "self_ref": "#/texts/38",
+   "parent": {
+    "$ref": "#/body"
+   },
+   "children": [],
+   "content_layer": "body",
+   "label": "text",
+   "prov": [
+    {
+     "page_no": 3,
+     "bbox": {
+      "l": 125.99664000000001,
+      "t": 582.86256,
+      "r": 522.5770080000003,
+      "b": 546.8825740350877,
+      "coord_origin": "BOTTOMLEFT"
+     },
+     "charspan": [
+      0,
+      213
+     ]
+    }
+   ],
+   "orig": "Cryptography is implemented in accordance with applicable laws, Executive Orders, directives, policies, regulations, standards, and guidelines. FIPS-validated cryptography is recommended for the protection of CUI.",
+   "text": "Cryptography is implemented in accordance with applicable laws, Executive Orders, directives, policies, regulations, standards, and guidelines. FIPS-validated cryptography is recommended for the protection of CUI."
+  },
+  {
+   "self_ref": "#/texts/39",
+   "parent": {
+    "$ref": "#/body"
+   },
+   "children": [],
+   "content_layer": "body",
+   "label": "section_header",
+   "prov": [
+    {
+     "page_no": 3,
+     "bbox": {
+      "l": 126.00143999999995,
+      "t": 530.66688,
+      "r": 183.178704,
+      "b": 521.3459323195381,
+      "coord_origin": "BOTTOMLEFT"
+     },
+     "charspan": [
+      0,
+      10
+     ]
+    }
+   ],
+   "orig": "REFERENCES",
+   "text": "REFERENCES",
+   "level": 1
+  },
+  {
+   "self_ref": "#/texts/40",
+   "parent": {
+    "$ref": "#/groups/2"
+   },
+   "children": [],
+   "content_layer": "body",
+   "label": "text",
+   "prov": [
+    {
+     "page_no": 3,
+     "bbox": {
+      "l": 126.00143999999995,
+      "t": 511.22544000000005,
+      "r": 223.27487999999997,
+      "b": 502.12641403508775,
+      "coord_origin": "BOTTOMLEFT"
+     },
+     "charspan": [
+      0,
+      21
+     ]
+    }
+   ],
+   "orig": "Source Control: SC-13",
+   "text": "Source Control: SC-13"
+  },
+  {
+   "self_ref": "#/texts/41",
+   "parent": {
+    "$ref": "#/groups/2"
+   },
+   "children": [],
+   "content_layer": "body",
+   "label": "text",
+   "prov": [
+    {
+     "page_no": 3,
+     "bbox": {
+      "l": 126.0,
+      "t": 491.77728,
+      "r": 304.70447999999993,
+      "b": 482.6782540350877,
+      "coord_origin": "BOTTOMLEFT"
+     },
+     "charspan": [
+      0,
+      40
+     ]
+    }
+   ],
+   "orig": "Supporting Publications: FIPS 140-3 [38]",
+   "text": "Supporting Publications: FIPS 140-3 [38]"
+  },
+  {
+   "self_ref": "#/texts/42",
+   "parent": {
+    "$ref": "#/body"
+   },
+   "children": [],
+   "content_layer": "body",
+   "label": "text",
+   "prov": [
+    {
+     "page_no": 3,
+     "bbox": {
+      "l": 72.0,
+      "t": 459.996,
+      "r": 539.8668,
+      "b": 406.1737543859649,
+      "coord_origin": "BOTTOMLEFT"
+     },
+     "charspan": [
+      0,
+      289
+     ]
+    }
+   ],
+   "orig": "The term organization is used in many security requirements, and its meaning depends on context. For example, in a security requirement with an ODP, an organization can refer to either the federal agency or the nonfederal organization establishing the parameter values for the requirement.",
+   "text": "The term organization is used in many security requirements, and its meaning depends on context. For example, in a security requirement with an ODP, an organization can refer to either the federal agency or the nonfederal organization establishing the parameter values for the requirement."
+  },
+  {
+   "self_ref": "#/texts/43",
+   "parent": {
+    "$ref": "#/body"
+   },
+   "children": [],
+   "content_layer": "body",
+   "label": "text",
+   "prov": [
+    {
+     "page_no": 3,
+     "bbox": {
+      "l": 72.0,
+      "t": 389.42400000000004,
+      "r": 538.7843999999996,
+      "b": 335.49375438596496,
+      "coord_origin": "BOTTOMLEFT"
+     },
+     "charspan": [
+      0,
+      343
+     ]
+    }
+   ],
+   "orig": "Appendix C describes the security control tailoring criteria used to develop the security requirements and the results of the tailoring process. The appendix provides a list of controls from SP 800-53 that support the requirements and the controls that have been eliminated from the moderate baseline in accordance with the tailoring criteria.",
+   "text": "Appendix C describes the security control tailoring criteria used to develop the security requirements and the results of the tailoring process. The appendix provides a list of controls from SP 800-53 that support the requirements and the controls that have been eliminated from the moderate baseline in accordance with the tailoring criteria."
+  },
+  {
+   "self_ref": "#/texts/44",
+   "parent": {
+    "$ref": "#/body"
+   },
+   "children": [],
+   "content_layer": "body",
+   "label": "section_header",
+   "prov": [
+    {
+     "page_no": 3,
+     "bbox": {
+      "l": 203.28,
+      "t": 297.744,
+      "r": 391.59599999999995,
+      "b": 287.61253512993267,
+      "coord_origin": "BOTTOMLEFT"
+     },
+     "charspan": [
+      0,
+      31
+     ]
+    }
+   ],
+   "orig": "ASSESSING SECURITY REQUIREMENTS",
+   "text": "ASSESSING SECURITY REQUIREMENTS",
+   "level": 1
+  },
+  {
+   "self_ref": "#/texts/45",
+   "parent": {
+    "$ref": "#/body"
+   },
+   "children": [],
+   "content_layer": "body",
+   "label": "text",
+   "prov": [
+    {
+     "page_no": 3,
+     "bbox": {
+      "l": 79.56,
+      "t": 277.57728,
+      "r": 515.318736,
+      "b": 241.59585403508777,
+      "coord_origin": "BOTTOMLEFT"
+     },
+     "charspan": [
+      0,
+      196
+     ]
+    }
+   ],
+   "orig": "SP 800-171A [84] provides a set of procedures to assess the security requirements described in this publication. The assessment procedures are based on the procedures described in SP 800-53A [57].",
+   "text": "SP 800-171A [84] provides a set of procedures to assess the security requirements described in this publication. The assessment procedures are based on the procedures described in SP 800-53A [57]."
+  },
+  {
+   "self_ref": "#/texts/46",
+   "parent": {
+    "$ref": "#/body"
+   },
+   "children": [],
+   "content_layer": "body",
+   "label": "footnote",
+   "prov": [
+    {
+     "page_no": 3,
+     "bbox": {
+      "l": 71.99892,
+      "t": 89.70528000000002,
+      "r": 530.2033439999992,
+      "b": 72.61385543859649,
+      "coord_origin": "BOTTOMLEFT"
+     },
+     "charspan": [
+      0,
+      232
+     ]
+    }
+   ],
+   "orig": "15 With few exceptions, the security controls in SP 800-53 are policy-, technology-, and sector-neutral, meaning that the controls focus on the fundamental measures necessary to protect information across the information life cycle.",
+   "text": "15 With few exceptions, the security controls in SP 800-53 are policy-, technology-, and sector-neutral, meaning that the controls focus on the fundamental measures necessary to protect information across the information life cycle."
+  },
+  {
+   "self_ref": "#/texts/47",
+   "parent": {
+    "$ref": "#/body"
+   },
+   "children": [],
+   "content_layer": "furniture",
+   "label": "page_footer",
+   "prov": [
+    {
+     "page_no": 3,
+     "bbox": {
+      "l": 303.48036,
+      "t": 44.937119999999936,
+      "r": 308.53008,
+      "b": 36.72821614035081,
+      "coord_origin": "BOTTOMLEFT"
+     },
+     "charspan": [
+      0,
+      1
+     ]
+    }
+   ],
+   "orig": "5",
+   "text": "5"
+  },
+  {
+   "self_ref": "#/texts/48",
+   "parent": {
+    "$ref": "#/body"
+   },
+   "children": [],
+   "content_layer": "furniture",
+   "label": "page_header",
+   "prov": [
+    {
+     "page_no": 4,
+     "bbox": {
+      "l": 72.0,
+      "t": 752.69472,
+      "r": 146.64621600000004,
+      "b": 744.4858161403508,
+      "coord_origin": "BOTTOMLEFT"
+     },
+     "charspan": [
+      0,
+      17
+     ]
+    }
+   ],
+   "orig": "NIST SP 800-171r3",
+   "text": "NIST SP 800-171r3"
+  },
+  {
+   "self_ref": "#/texts/49",
+   "parent": {
+    "$ref": "#/body"
+   },
+   "children": [],
+   "content_layer": "furniture",
+   "label": "page_header",
+   "prov": [
+    {
+     "page_no": 4,
+     "bbox": {
+      "l": 351.11904000000004,
+      "t": 752.69472,
+      "r": 539.9616360000012,
+      "b": 744.4858161403508,
+      "coord_origin": "BOTTOMLEFT"
+     },
+     "charspan": [
+      0,
+      46
+     ]
+    }
+   ],
+   "orig": "Protecting Controlled Unclassified Information",
+   "text": "Protecting Controlled Unclassified Information"
+  },
+  {
+   "self_ref": "#/texts/50",
+   "parent": {
+    "$ref": "#/body"
+   },
+   "children": [],
+   "content_layer": "furniture",
+   "label": "page_header",
+   "prov": [
+    {
+     "page_no": 4,
+     "bbox": {
+      "l": 72.0,
+      "t": 740.5734,
+      "r": 112.33003199999999,
+      "b": 732.3644961403509,
+      "coord_origin": "BOTTOMLEFT"
+     },
+     "charspan": [
+      0,
+      8
+     ]
+    }
+   ],
+   "orig": "May 2024",
+   "text": "May 2024"
+  },
+  {
+   "self_ref": "#/texts/51",
+   "parent": {
+    "$ref": "#/body"
+   },
+   "children": [],
+   "content_layer": "body",
+   "label": "section_header",
+   "prov": [
+    {
+     "page_no": 4,
+     "bbox": {
+      "l": 72.0,
+      "t": 716.184,
+      "r": 220.67039999999994,
+      "b": 706.0525351299326,
+      "coord_origin": "BOTTOMLEFT"
+     },
+     "charspan": [
+      0,
+      28
+     ]
+    }
+   ],
+   "orig": "3. The Security Requirements",
+   "text": "3. The Security Requirements",
+   "level": 1
+  },
+  {
+   "self_ref": "#/texts/52",
+   "parent": {
+    "$ref": "#/body"
+   },
+   "children": [],
+   "content_layer": "body",
+   "label": "text",
+   "prov": [
+    {
+     "page_no": 4,
+     "bbox": {
+      "l": 71.99999999999994,
+      "t": 692.544,
+      "r": 538.1399999999998,
+      "b": 594.813754385965,
+      "coord_origin": "BOTTOMLEFT"
+     },
+     "charspan": [
+      0,
+      602
+     ]
+    }
+   ],
+   "orig": "This section describes 17 families of security requirements for protecting the confidentiality of CUI in nonfederal systems and organizations. When used in the context of the requirements in Sec. 3, the term system is defined to be nonfederal systems or system components that process, store, or transmit CUI or that provide protection for such systems or components. Not all security requirements mention CUI explicitly. However, the requirements are included because they directly affect the protection of CUI during processing, while in storage, and when in transmission between different locations.",
+   "text": "This section describes 17 families of security requirements for protecting the confidentiality of CUI in nonfederal systems and organizations. When used in the context of the requirements in Sec. 3, the term system is defined to be nonfederal systems or system components that process, store, or transmit CUI or that provide protection for such systems or components. Not all security requirements mention CUI explicitly. However, the requirements are included because they directly affect the protection of CUI during processing, while in storage, and when in transmission between different locations."
+  },
+  {
+   "self_ref": "#/texts/53",
+   "parent": {
+    "$ref": "#/body"
+   },
+   "children": [],
+   "content_layer": "body",
+   "label": "text",
+   "prov": [
+    {
+     "page_no": 4,
+     "bbox": {
+      "l": 71.99999999999994,
+      "t": 577.9440000000001,
+      "r": 537.9959999999998,
+      "b": 494.8537543859649,
+      "coord_origin": "BOTTOMLEFT"
+     },
+     "charspan": [
+      0,
+      520
+     ]
+    }
+   ],
+   "orig": "Some systems, including specialized systems (e.g., industrial/process control systems, medical devices, computer numerical control machines), may have limitations on the application of certain security requirements. To accommodate such issues, the system security plan - as reflected in requirement 03.15.02 - is used to describe any enduring exceptions to the security requirements. Individual, isolated, or temporary deficiencies are managed though plans of action and milestones, as reflected in requirement 03.12.02.",
+   "text": "Some systems, including specialized systems (e.g., industrial/process control systems, medical devices, computer numerical control machines), may have limitations on the application of certain security requirements. To accommodate such issues, the system security plan - as reflected in requirement 03.15.02 - is used to describe any enduring exceptions to the security requirements. Individual, isolated, or temporary deficiencies are managed though plans of action and milestones, as reflected in requirement 03.12.02."
+  },
+  {
+   "self_ref": "#/texts/54",
+   "parent": {
+    "$ref": "#/body"
+   },
+   "children": [],
+   "content_layer": "body",
+   "label": "section_header",
+   "prov": [
+    {
+     "page_no": 4,
+     "bbox": {
+      "l": 155.88000000000005,
+      "t": 463.104,
+      "r": 438.7596,
+      "b": 452.9725351299326,
+      "coord_origin": "BOTTOMLEFT"
+     },
+     "charspan": [
+      0,
+      48
+     ]
+    }
+   ],
+   "orig": "SCOPE AND APPLICABILITY OF SECURITY REQUIREMENTS",
+   "text": "SCOPE AND APPLICABILITY OF SECURITY REQUIREMENTS",
+   "level": 1
+  },
+  {
+   "self_ref": "#/texts/55",
+   "parent": {
+    "$ref": "#/body"
+   },
+   "children": [],
+   "content_layer": "body",
+   "label": "text",
+   "prov": [
+    {
+     "page_no": 4,
+     "bbox": {
+      "l": 79.56,
+      "t": 442.81728,
+      "r": 515.2778880000009,
+      "b": 420.2825740350877,
+      "coord_origin": "BOTTOMLEFT"
+     },
+     "charspan": [
+      0,
+      182
+     ]
+    }
+   ],
+   "orig": "The security requirements in this section are only applicable to components of nonfederal systems that process, store, or transmit CUI or that provide protection for such components.",
+   "text": "The security requirements in this section are only applicable to components of nonfederal systems that process, store, or transmit CUI or that provide protection for such components."
+  },
+  {
+   "self_ref": "#/texts/56",
+   "parent": {
+    "$ref": "#/body"
+   },
+   "children": [],
+   "content_layer": "body",
+   "label": "section_header",
+   "prov": [
+    {
+     "page_no": 4,
+     "bbox": {
+      "l": 72.0,
+      "t": 368.784,
+      "r": 166.39199999999997,
+      "b": 358.65253512993263,
+      "coord_origin": "BOTTOMLEFT"
+     },
+     "charspan": [
+      0,
+      19
+     ]
+    }
+   ],
+   "orig": "3.1. Access Control",
+   "text": "3.1. Access Control",
+   "hyperlink": "https://csrc.nist.gov/projects/cprt/catalog#/cprt/framework/version/SP_800_53_5_1_1/home?element=AC",
+   "level": 1
+  },
+  {
+   "self_ref": "#/texts/57",
+   "parent": {
+    "$ref": "#/body"
+   },
+   "children": [],
+   "content_layer": "body",
+   "label": "section_header",
+   "prov": [
+    {
+     "page_no": 4,
+     "bbox": {
+      "l": 72.0,
+      "t": 334.104,
+      "r": 236.3639999999999,
+      "b": 323.9725351299326,
+      "coord_origin": "BOTTOMLEFT"
+     },
+     "charspan": [
+      0,
+      27
+     ]
+    }
+   ],
+   "orig": "03.01.01 Account Management",
+   "text": "03.01.01 Account Management",
+   "level": 1
+  },
+  {
+   "self_ref": "#/texts/58",
+   "parent": {
+    "$ref": "#/groups/3"
+   },
+   "children": [],
+   "content_layer": "body",
+   "label": "list_item",
+   "prov": [
+    {
+     "page_no": 4,
+     "bbox": {
+      "l": 125.99999999999997,
+      "t": 310.464,
+      "r": 439.5816000000001,
+      "b": 300.5737543859649,
+      "coord_origin": "BOTTOMLEFT"
+     },
+     "charspan": [
+      0,
+      62
+     ]
+    }
+   ],
+   "orig": "a. Define the types of system accounts allowed and prohibited.",
+   "text": "Define the types of system accounts allowed and prohibited.",
+   "enumerated": true,
+   "marker": "a."
+  },
+  {
+   "self_ref": "#/texts/59",
+   "parent": {
+    "$ref": "#/groups/3"
+   },
+   "children": [],
+   "content_layer": "body",
+   "label": "list_item",
+   "prov": [
+    {
+     "page_no": 4,
+     "bbox": {
+      "l": 125.99999999999994,
+      "t": 289.824,
+      "r": 537.4224000000003,
+      "b": 265.2937543859649,
+      "coord_origin": "BOTTOMLEFT"
+     },
+     "charspan": [
+      0,
+      130
+     ]
+    }
+   ],
+   "orig": "b. Create, enable, modify, disable, and remove system accounts in accordance with policy, procedures, prerequisites, and criteria.",
+   "text": "Create, enable, modify, disable, and remove system accounts in accordance with policy, procedures, prerequisites, and criteria.",
+   "enumerated": true,
+   "marker": "b."
+  },
+  {
+   "self_ref": "#/texts/60",
+   "parent": {
+    "$ref": "#/groups/3"
+   },
+   "children": [],
+   "content_layer": "body",
+   "label": "list_item",
+   "prov": [
+    {
+     "page_no": 4,
+     "bbox": {
+      "l": 125.99999999999994,
+      "t": 254.5440000000001,
+      "r": 182.01599999999996,
+      "b": 244.65375438596493,
+      "coord_origin": "BOTTOMLEFT"
+     },
+     "charspan": [
+      0,
+      11
+     ]
+    }
+   ],
+   "orig": "c. Specify:",
+   "text": "Specify:",
+   "enumerated": true,
+   "marker": "c."
+  },
+  {
+   "self_ref": "#/texts/61",
+   "parent": {
+    "$ref": "#/groups/3"
+   },
+   "children": [],
+   "content_layer": "body",
+   "label": "list_item",
+   "prov": [
+    {
+     "page_no": 4,
+     "bbox": {
+      "l": 143.99999999999994,
+      "t": 233.904,
+      "r": 316.31999999999994,
+      "b": 224.01375438596494,
+      "coord_origin": "BOTTOMLEFT"
+     },
+     "charspan": [
+      0,
+      34
+     ]
+    }
+   ],
+   "orig": "1. Authorized users of the system,",
+   "text": "Authorized users of the system,",
+   "enumerated": true,
+   "marker": "1."
+  },
+  {
+   "self_ref": "#/texts/62",
+   "parent": {
+    "$ref": "#/groups/3"
+   },
+   "children": [],
+   "content_layer": "body",
+   "label": "list_item",
+   "prov": [
+    {
+     "page_no": 4,
+     "bbox": {
+      "l": 143.99999999999994,
+      "t": 213.26400000000012,
+      "r": 324.29999999999995,
+      "b": 203.37375438596496,
+      "coord_origin": "BOTTOMLEFT"
+     },
+     "charspan": [
+      0,
+      33
+     ]
+    }
+   ],
+   "orig": "2. Group and role membership, and",
+   "text": "Group and role membership, and",
+   "enumerated": true,
+   "marker": "2."
+  },
+  {
+   "self_ref": "#/texts/63",
+   "parent": {
+    "$ref": "#/groups/3"
+   },
+   "children": [],
+   "content_layer": "body",
+   "label": "list_item",
+   "prov": [
+    {
+     "page_no": 4,
+     "bbox": {
+      "l": 143.99999999999994,
+      "t": 192.62400000000002,
+      "r": 431.78399999999993,
+      "b": 182.73375438596497,
+      "coord_origin": "BOTTOMLEFT"
+     },
+     "charspan": [
+      0,
+      61
+     ]
+    }
+   ],
+   "orig": "3. Access authorizations (i.e., privileges) for each account.",
+   "text": "Access authorizations (i.e., privileges) for each account.",
+   "enumerated": true,
+   "marker": "3."
+  },
+  {
+   "self_ref": "#/texts/64",
+   "parent": {
+    "$ref": "#/groups/3"
+   },
+   "children": [],
+   "content_layer": "body",
+   "label": "list_item",
+   "prov": [
+    {
+     "page_no": 4,
+     "bbox": {
+      "l": 125.99999999999994,
+      "t": 171.98400000000015,
+      "r": 345.09360000000004,
+      "b": 162.09375438596498,
+      "coord_origin": "BOTTOMLEFT"
+     },
+     "charspan": [
+      0,
+      43
+     ]
+    }
+   ],
+   "orig": "d. Authorize access to the system based on:",
+   "text": "Authorize access to the system based on:",
+   "enumerated": true,
+   "marker": "d."
+  },
+  {
+   "self_ref": "#/texts/65",
+   "parent": {
+    "$ref": "#/groups/3"
+   },
+   "children": [],
+   "content_layer": "body",
+   "label": "list_item",
+   "prov": [
+    {
+     "page_no": 4,
+     "bbox": {
+      "l": 143.99999999999994,
+      "t": 151.34400000000005,
+      "r": 318.05999999999995,
+      "b": 141.453754385965,
+      "coord_origin": "BOTTOMLEFT"
+     },
+     "charspan": [
+      0,
+      35
+     ]
+    }
+   ],
+   "orig": "1. A valid access authorization and",
+   "text": "A valid access authorization and",
+   "enumerated": true,
+   "marker": "1."
+  },
+  {
+   "self_ref": "#/texts/66",
+   "parent": {
+    "$ref": "#/groups/3"
+   },
+   "children": [],
+   "content_layer": "body",
+   "label": "list_item",
+   "prov": [
+    {
+     "page_no": 4,
+     "bbox": {
+      "l": 143.99999999999994,
+      "t": 130.70400000000006,
+      "r": 277.58279999999996,
+      "b": 120.81375438596501,
+      "coord_origin": "BOTTOMLEFT"
+     },
+     "charspan": [
+      0,
+      25
+     ]
+    }
+   ],
+   "orig": "2. Intended system usage.",
+   "text": "Intended system usage.",
+   "enumerated": true,
+   "marker": "2."
+  },
+  {
+   "self_ref": "#/texts/67",
+   "parent": {
+    "$ref": "#/groups/3"
+   },
+   "children": [],
+   "content_layer": "body",
+   "label": "list_item",
+   "prov": [
+    {
+     "page_no": 4,
+     "bbox": {
+      "l": 125.99999999999994,
+      "t": 110.06400000000008,
+      "r": 322.1052,
+      "b": 100.17375438596503,
+      "coord_origin": "BOTTOMLEFT"
+     },
+     "charspan": [
+      0,
+      38
+     ]
+    }
+   ],
+   "orig": "e. Monitor the use of system accounts.",
+   "text": "Monitor the use of system accounts.",
+   "enumerated": true,
+   "marker": "e."
+  },
+  {
+   "self_ref": "#/texts/68",
+   "parent": {
+    "$ref": "#/body"
+   },
+   "children": [],
+   "content_layer": "furniture",
+   "label": "page_footer",
+   "prov": [
+    {
+     "page_no": 4,
+     "bbox": {
+      "l": 303.48036,
+      "t": 44.937119999999936,
+      "r": 308.53008,
+      "b": 36.72821614035081,
+      "coord_origin": "BOTTOMLEFT"
+     },
+     "charspan": [
+      0,
+      1
+     ]
+    }
+   ],
+   "orig": "6",
+   "text": "6"
+  },
+  {
+   "self_ref": "#/texts/69",
+   "parent": {
+    "$ref": "#/body"
+   },
+   "children": [],
+   "content_layer": "furniture",
+   "label": "page_header",
+   "prov": [
+    {
+     "page_no": 5,
+     "bbox": {
+      "l": 72.0,
+      "t": 752.69472,
+      "r": 539.9616360000012,
+      "b": 732.3644961403509,
+      "coord_origin": "BOTTOMLEFT"
+     },
+     "charspan": [
+      0,
+      73
+     ]
+    }
+   ],
+   "orig": "NIST SP 800-171r3 Protecting Controlled Unclassified Information May 2024",
+   "text": "NIST SP 800-171r3 Protecting Controlled Unclassified Information May 2024"
+  },
+  {
+   "self_ref": "#/texts/70",
+   "parent": {
+    "$ref": "#/groups/4"
+   },
+   "children": [],
+   "content_layer": "body",
+   "label": "list_item",
+   "prov": [
+    {
+     "page_no": 5,
+     "bbox": {
+      "l": 126.0,
+      "t": 716.184,
+      "r": 296.136,
+      "b": 706.2937543859649,
+      "coord_origin": "BOTTOMLEFT"
+     },
+     "charspan": [
+      0,
+      32
+     ]
+    }
+   ],
+   "orig": "f. Disable system accounts when:",
+   "text": "Disable system accounts when:",
+   "enumerated": true,
+   "marker": "f."
+  },
+  {
+   "self_ref": "#/texts/71",
+   "parent": {
+    "$ref": "#/groups/4"
+   },
+   "children": [],
+   "content_layer": "body",
+   "label": "list_item",
+   "prov": [
+    {
+     "page_no": 5,
+     "bbox": {
+      "l": 144.0,
+      "t": 695.544,
+      "r": 295.08,
+      "b": 685.6537543859649,
+      "coord_origin": "BOTTOMLEFT"
+     },
+     "charspan": [
+      0,
+      29
+     ]
+    }
+   ],
+   "orig": "1. The accounts have expired,",
+   "text": "The accounts have expired,",
+   "enumerated": true,
+   "marker": "1."
+  },
+  {
+   "self_ref": "#/texts/72",
+   "parent": {
+    "$ref": "#/groups/4"
+   },
+   "children": [],
+   "content_layer": "body",
+   "label": "list_item",
+   "prov": [
+    {
+     "page_no": 5,
+     "bbox": {
+      "l": 144.0,
+      "t": 674.916,
+      "r": 532.776,
+      "b": 650.373754385965,
+      "coord_origin": "BOTTOMLEFT"
+     },
+     "charspan": [
+      0,
+      86
+     ]
+    }
+   ],
+   "orig": "2. The accounts have been inactive for [Assignment: organization-defined time period],",
+   "text": "The accounts have been inactive for [Assignment: organization-defined time period],",
+   "enumerated": true,
+   "marker": "2."
+  },
+  {
+   "self_ref": "#/texts/73",
+   "parent": {
+    "$ref": "#/groups/4"
+   },
+   "children": [],
+   "content_layer": "body",
+   "label": "list_item",
+   "prov": [
+    {
+     "page_no": 5,
+     "bbox": {
+      "l": 144.00000000000006,
+      "t": 639.624,
+      "r": 471.6000000000001,
+      "b": 629.733754385965,
+      "coord_origin": "BOTTOMLEFT"
+     },
+     "charspan": [
+      0,
+      67
+     ]
+    }
+   ],
+   "orig": "3. The accounts are no longer associated with a user or individual,",
+   "text": "The accounts are no longer associated with a user or individual,",
+   "enumerated": true,
+   "marker": "3."
+  },
+  {
+   "self_ref": "#/texts/74",
+   "parent": {
+    "$ref": "#/groups/4"
+   },
+   "children": [],
+   "content_layer": "body",
+   "label": "list_item",
+   "prov": [
+    {
+     "page_no": 5,
+     "bbox": {
+      "l": 144.00000000000006,
+      "t": 618.984,
+      "r": 434.26800000000003,
+      "b": 609.093754385965,
+      "coord_origin": "BOTTOMLEFT"
+     },
+     "charspan": [
+      0,
+      61
+     ]
+    }
+   ],
+   "orig": "4. The accounts are in violation of organizational policy, or",
+   "text": "The accounts are in violation of organizational policy, or",
+   "enumerated": true,
+   "marker": "4."
+  },
+  {
+   "self_ref": "#/texts/75",
+   "parent": {
+    "$ref": "#/groups/4"
+   },
+   "children": [],
+   "content_layer": "body",
+   "label": "list_item",
+   "prov": [
+    {
+     "page_no": 5,
+     "bbox": {
+      "l": 144.0,
+      "t": 598.344,
+      "r": 447.7427999999999,
+      "b": 588.453754385965,
+      "coord_origin": "BOTTOMLEFT"
+     },
+     "charspan": [
+      0,
+      64
+     ]
+    }
+   ],
+   "orig": "5. Significant risks associated with individuals are discovered.",
+   "text": "Significant risks associated with individuals are discovered.",
+   "enumerated": true,
+   "marker": "5."
+  },
+  {
+   "self_ref": "#/texts/76",
+   "parent": {
+    "$ref": "#/groups/4"
+   },
+   "children": [],
+   "content_layer": "body",
+   "label": "list_item",
+   "prov": [
+    {
+     "page_no": 5,
+     "bbox": {
+      "l": 126.0,
+      "t": 577.7040000000001,
+      "r": 471.816,
+      "b": 567.813754385965,
+      "coord_origin": "BOTTOMLEFT"
+     },
+     "charspan": [
+      0,
+      68
+     ]
+    }
+   ],
+   "orig": "g. Notify account managers and designated personnel or roles within:",
+   "text": "Notify account managers and designated personnel or roles within:",
+   "enumerated": true,
+   "marker": "g."
+  },
+  {
+   "self_ref": "#/texts/77",
+   "parent": {
+    "$ref": "#/groups/4"
+   },
+   "children": [],
+   "content_layer": "body",
+   "label": "list_item",
+   "prov": [
+    {
+     "page_no": 5,
+     "bbox": {
+      "l": 144.0,
+      "t": 556.9560000000001,
+      "r": 536.2655999999997,
+      "b": 532.413754385965,
+      "coord_origin": "BOTTOMLEFT"
+     },
+     "charspan": [
+      0,
+      87
+     ]
+    }
+   ],
+   "orig": "1. [Assignment: organization-defined time period] when accounts are no longer required.",
+   "text": "[Assignment: organization-defined time period] when accounts are no longer required.",
+   "enumerated": true,
+   "marker": "1."
+  },
+  {
+   "self_ref": "#/texts/78",
+   "parent": {
+    "$ref": "#/groups/4"
+   },
+   "children": [],
+   "content_layer": "body",
+   "label": "list_item",
+   "prov": [
+    {
+     "page_no": 5,
+     "bbox": {
+      "l": 143.99999999999994,
+      "t": 521.6760000000002,
+      "r": 526.8599999999998,
+      "b": 497.13375438596506,
+      "coord_origin": "BOTTOMLEFT"
+     },
+     "charspan": [
+      0,
+      91
+     ]
+    }
+   ],
+   "orig": "2. [Assignment: organization-defined time period] when users are terminated or transferred.",
+   "text": "[Assignment: organization-defined time period] when users are terminated or transferred.",
+   "enumerated": true,
+   "marker": "2."
+  },
+  {
+   "self_ref": "#/texts/79",
+   "parent": {
+    "$ref": "#/groups/4"
+   },
+   "children": [],
+   "content_layer": "body",
+   "label": "list_item",
+   "prov": [
+    {
+     "page_no": 5,
+     "bbox": {
+      "l": 143.9999999999999,
+      "t": 486.3960000000002,
+      "r": 522.6947999999998,
+      "b": 461.8537543859651,
+      "coord_origin": "BOTTOMLEFT"
+     },
+     "charspan": [
+      0,
+      114
+     ]
+    }
+   ],
+   "orig": "3. [Assignment: organization-defined time period] when system usage or the need-to-know changes for an individual.",
+   "text": "[Assignment: organization-defined time period] when system usage or the need-to-know changes for an individual.",
+   "enumerated": true,
+   "marker": "3."
+  },
+  {
+   "self_ref": "#/texts/80",
+   "parent": {
+    "$ref": "#/groups/4"
+   },
+   "children": [],
+   "content_layer": "body",
+   "label": "list_item",
+   "prov": [
+    {
+     "page_no": 5,
+     "bbox": {
+      "l": 125.9999999999998,
+      "t": 451.1160000000002,
+      "r": 536.0879999999997,
+      "b": 411.93375438596513,
+      "coord_origin": "BOTTOMLEFT"
+     },
+     "charspan": [
+      0,
+      177
+     ]
+    }
+   ],
+   "orig": "h. Require that users log out of the system after [Assignment: organization-defined time period] of expected inactivity or when [Assignment: organization-defined circumstances].",
+   "text": "Require that users log out of the system after [Assignment: organization-defined time period] of expected inactivity or when [Assignment: organization-defined circumstances].",
+   "enumerated": true,
+   "marker": "h."
+  },
+  {
+   "self_ref": "#/texts/81",
+   "parent": {
+    "$ref": "#/body"
+   },
+   "children": [],
+   "content_layer": "body",
+   "label": "section_header",
+   "prov": [
+    {
+     "page_no": 5,
+     "bbox": {
+      "l": 125.99999999999977,
+      "t": 395.18400000000025,
+      "r": 187.18919999999974,
+      "b": 385.0525351299329,
+      "coord_origin": "BOTTOMLEFT"
+     },
+     "charspan": [
+      0,
+      10
+     ]
+    }
+   ],
+   "orig": "DISCUSSION",
+   "text": "DISCUSSION",
+   "level": 1
+  },
+  {
+   "self_ref": "#/texts/82",
+   "parent": {
+    "$ref": "#/body"
+   },
+   "children": [],
+   "content_layer": "body",
+   "label": "text",
+   "prov": [
+    {
+     "page_no": 5,
+     "bbox": {
+      "l": 125.99999999999972,
+      "t": 374.54400000000027,
+      "r": 539.2547999999996,
+      "b": 91.65375438596493,
+      "coord_origin": "BOTTOMLEFT"
+     },
+     "charspan": [
+      0,
+      1344
+     ]
+    }
+   ],
+   "orig": "This requirement focuses on account management for systems and applications. The definition and enforcement of access authorizations other than those determined by account type (e.g., privileged access, non-privileged access) are addressed in 03.01.02. System account types include individual, group, temporary, system, guest, anonymous, emergency, developer, and service. Users who require administrative privileges on system accounts receive additional scrutiny by personnel responsible for approving such accounts and privileged access. Types of accounts that organizations may prohibit due to increased risk include group, emergency, guest, anonymous, and temporary. Organizations may choose to define access privileges or other attributes by account, type of account, or a combination of both. Other attributes required for authorizing access include restrictions on the time of day, day of the week, and point of origin. When defining other system account attributes, organizations consider system requirements (e.g., system upgrades, scheduled maintenance) and mission and business requirements (e.g., time zone differences, remote access to facilitate travel requirements). Users who pose a significant security risk include individuals for whom reliable evidence indicates either the intention to use authorized access to the system to",
+   "text": "This requirement focuses on account management for systems and applications. The definition and enforcement of access authorizations other than those determined by account type (e.g., privileged access, non-privileged access) are addressed in 03.01.02. System account types include individual, group, temporary, system, guest, anonymous, emergency, developer, and service. Users who require administrative privileges on system accounts receive additional scrutiny by personnel responsible for approving such accounts and privileged access. Types of accounts that organizations may prohibit due to increased risk include group, emergency, guest, anonymous, and temporary. Organizations may choose to define access privileges or other attributes by account, type of account, or a combination of both. Other attributes required for authorizing access include restrictions on the time of day, day of the week, and point of origin. When defining other system account attributes, organizations consider system requirements (e.g., system upgrades, scheduled maintenance) and mission and business requirements (e.g., time zone differences, remote access to facilitate travel requirements). Users who pose a significant security risk include individuals for whom reliable evidence indicates either the intention to use authorized access to the system to"
+  },
+  {
+   "self_ref": "#/texts/83",
+   "parent": {
+    "$ref": "#/body"
+   },
+   "children": [],
+   "content_layer": "body",
+   "label": "text",
+   "prov": [
+    {
+     "page_no": 5,
+     "bbox": {
+      "l": 125.99999999999983,
+      "t": 86.7840000000001,
+      "r": 522.8939999999997,
+      "b": 76.89375438596494,
+      "coord_origin": "BOTTOMLEFT"
+     },
+     "charspan": [
+      0,
+      79
+     ]
+    }
+   ],
+   "orig": "cause harm or that adversaries will cause harm through them. Close coordination",
+   "text": "cause harm or that adversaries will cause harm through them. Close coordination"
+  },
+  {
+   "self_ref": "#/texts/84",
+   "parent": {
+    "$ref": "#/body"
+   },
+   "children": [],
+   "content_layer": "furniture",
+   "label": "page_footer",
+   "prov": [
+    {
+     "page_no": 5,
+     "bbox": {
+      "l": 303.48036,
+      "t": 44.937119999999936,
+      "r": 308.53008,
+      "b": 36.72821614035081,
+      "coord_origin": "BOTTOMLEFT"
+     },
+     "charspan": [
+      0,
+      1
+     ]
+    }
+   ],
+   "orig": "7",
+   "text": "7"
+  }
+ ],
+ "pictures": [],
+ "tables": [
+  {
+   "self_ref": "#/tables/0",
+   "parent": {
+    "$ref": "#/body"
+   },
+   "children": [
+    {
+     "$ref": "#/texts/25"
+    }
+   ],
+   "content_layer": "body",
+   "label": "table",
+   "prov": [
+    {
+     "page_no": 2,
+     "bbox": {
+      "l": 70.93407440185547,
+      "t": 643.2029266357422,
+      "r": 539.937255859375,
+      "b": 542.2326965332031,
+      "coord_origin": "BOTTOMLEFT"
+     },
+     "charspan": [
+      0,
+      0
+     ]
+    }
+   ],
+   "captions": [
+    {
+     "$ref": "#/texts/25"
+    }
+   ],
+   "references": [],
+   "footnotes": [],
+   "data": {
+    "table_cells": [
+     {
+      "bbox": {
+       "l": 77.4,
+       "t": 154.86527999999998,
+       "r": 136.91896800000004,
+       "b": 163.0741838596491,
+       "coord_origin": "TOPLEFT"
+      },
+      "row_span": 1,
+      "col_span": 1,
+      "start_row_offset_idx": 0,
+      "end_row_offset_idx": 1,
+      "start_col_offset_idx": 0,
+      "end_col_offset_idx": 1,
+      "text": "Access Control",
+      "column_header": false,
+      "row_header": false,
+      "row_section": false,
+      "fillable": false
+     },
+     {
+      "bbox": {
+       "l": 234.0,
+       "t": 154.86527999999998,
+       "r": 287.6764320000001,
+       "b": 163.0741838596491,
+       "coord_origin": "TOPLEFT"
+      },
+      "row_span": 1,
+      "col_span": 1,
+      "start_row_offset_idx": 0,
+      "end_row_offset_idx": 1,
+      "start_col_offset_idx": 1,
+      "end_col_offset_idx": 2,
+      "text": "Maintenance",
+      "column_header": false,
+      "row_header": false,
+      "row_section": false,
+      "fillable": false
+     },
+     {
+      "bbox": {
+       "l": 369.84,
+       "t": 154.86527999999998,
+       "r": 518.2878240000002,
+       "b": 163.0741838596491,
+       "coord_origin": "TOPLEFT"
+      },
+      "row_span": 1,
+      "col_span": 1,
+      "start_row_offset_idx": 0,
+      "end_row_offset_idx": 1,
+      "start_col_offset_idx": 2,
+      "end_col_offset_idx": 3,
+      "text": "Security Assessment and Monitoring",
+      "column_header": false,
+      "row_header": false,
+      "row_section": false,
+      "fillable": false
+     },
+     {
+      "bbox": {
+       "l": 77.4,
+       "t": 171.54528000000005,
+       "r": 174.36458400000018,
+       "b": 179.75418385964917,
+       "coord_origin": "TOPLEFT"
+      },
+      "row_span": 1,
+      "col_span": 1,
+      "start_row_offset_idx": 1,
+      "end_row_offset_idx": 2,
+      "start_col_offset_idx": 0,
+      "end_col_offset_idx": 1,
+      "text": "Awareness and Training",
+      "column_header": false,
+      "row_header": false,
+      "row_section": false,
+      "fillable": false
+     },
+     {
+      "bbox": {
+       "l": 234.0,
+       "t": 171.54528000000005,
+       "r": 304.6343280000002,
+       "b": 179.75418385964917,
+       "coord_origin": "TOPLEFT"
+      },
+      "row_span": 1,
+      "col_span": 1,
+      "start_row_offset_idx": 1,
+      "end_row_offset_idx": 2,
+      "start_col_offset_idx": 1,
+      "end_col_offset_idx": 2,
+      "text": "Media Protection",
+      "column_header": false,
+      "row_header": false,
+      "row_section": false,
+      "fillable": false
+     },
+     {
+      "bbox": {
+       "l": 369.84,
+       "t": 171.54528000000005,
+       "r": 532.2666839999999,
+       "b": 179.75418385964917,
+       "coord_origin": "TOPLEFT"
+      },
+      "row_span": 1,
+      "col_span": 1,
+      "start_row_offset_idx": 1,
+      "end_row_offset_idx": 2,
+      "start_col_offset_idx": 2,
+      "end_col_offset_idx": 3,
+      "text": "System and Communications Protection",
+      "column_header": false,
+      "row_header": false,
+      "row_section": false,
+      "fillable": false
+     },
+     {
+      "bbox": {
+       "l": 77.4,
+       "t": 188.34528,
+       "r": 177.4242960000002,
+       "b": 196.55418385964913,
+       "coord_origin": "TOPLEFT"
+      },
+      "row_span": 1,
+      "col_span": 1,
+      "start_row_offset_idx": 2,
+      "end_row_offset_idx": 3,
+      "start_col_offset_idx": 0,
+      "end_col_offset_idx": 1,
+      "text": "Audit and Accountability",
+      "column_header": false,
+      "row_header": false,
+      "row_section": false,
+      "fillable": false
+     },
+     {
+      "bbox": {
+       "l": 234.0,
+       "t": 188.34528,
+       "r": 309.4330559999997,
+       "b": 196.55418385964913,
+       "coord_origin": "TOPLEFT"
+      },
+      "row_span": 1,
+      "col_span": 1,
+      "start_row_offset_idx": 2,
+      "end_row_offset_idx": 3,
+      "start_col_offset_idx": 1,
+      "end_col_offset_idx": 2,
+      "text": "Personnel Security",
+      "column_header": false,
+      "row_header": false,
+      "row_section": false,
+      "fillable": false
+     },
+     {
+      "bbox": {
+       "l": 369.84,
+       "t": 188.34528,
+       "r": 504.18944400000015,
+       "b": 196.55418385964913,
+       "coord_origin": "TOPLEFT"
+      },
+      "row_span": 1,
+      "col_span": 1,
+      "start_row_offset_idx": 2,
+      "end_row_offset_idx": 3,
+      "start_col_offset_idx": 2,
+      "end_col_offset_idx": 3,
+      "text": "System and Information Integrity",
+      "column_header": false,
+      "row_header": false,
+      "row_section": false,
+      "fillable": false
+     },
+     {
+      "bbox": {
+       "l": 77.4,
+       "t": 205.02528000000007,
+       "r": 189.816528,
+       "b": 213.2341838596492,
+       "coord_origin": "TOPLEFT"
+      },
+      "row_span": 1,
+      "col_span": 1,
+      "start_row_offset_idx": 3,
+      "end_row_offset_idx": 4,
+      "start_col_offset_idx": 0,
+      "end_col_offset_idx": 1,
+      "text": "Configuration Management",
+      "column_header": false,
+      "row_header": false,
+      "row_section": false,
+      "fillable": false
+     },
+     {
+      "bbox": {
+       "l": 234.0,
+       "t": 205.02528000000007,
+       "r": 311.34238800000014,
+       "b": 213.2341838596492,
+       "coord_origin": "TOPLEFT"
+      },
+      "row_span": 1,
+      "col_span": 1,
+      "start_row_offset_idx": 3,
+      "end_row_offset_idx": 4,
+      "start_col_offset_idx": 1,
+      "end_col_offset_idx": 2,
+      "text": "Physical Protection",
+      "column_header": false,
+      "row_header": false,
+      "row_section": false,
+      "fillable": false
+     },
+     {
+      "bbox": {
+       "l": 369.84,
+       "t": 205.02528000000007,
+       "r": 404.88724800000006,
+       "b": 213.2341838596492,
+       "coord_origin": "TOPLEFT"
+      },
+      "row_span": 1,
+      "col_span": 1,
+      "start_row_offset_idx": 3,
+      "end_row_offset_idx": 4,
+      "start_col_offset_idx": 2,
+      "end_col_offset_idx": 3,
+      "text": "Planning",
+      "column_header": false,
+      "row_header": false,
+      "row_section": false,
+      "fillable": false
+     },
+     {
+      "bbox": {
+       "l": 77.4,
+       "t": 221.70528000000002,
+       "r": 212.0990400000002,
+       "b": 229.91418385964914,
+       "coord_origin": "TOPLEFT"
+      },
+      "row_span": 1,
+      "col_span": 1,
+      "start_row_offset_idx": 4,
+      "end_row_offset_idx": 5,
+      "start_col_offset_idx": 0,
+      "end_col_offset_idx": 1,
+      "text": "Identification and Authentication",
+      "column_header": false,
+      "row_header": false,
+      "row_section": false,
+      "fillable": false
+     },
+     {
+      "bbox": {
+       "l": 234.0,
+       "t": 221.70528000000002,
+       "r": 300.4770240000001,
+       "b": 229.91418385964914,
+       "coord_origin": "TOPLEFT"
+      },
+      "row_span": 1,
+      "col_span": 1,
+      "start_row_offset_idx": 4,
+      "end_row_offset_idx": 5,
+      "start_col_offset_idx": 1,
+      "end_col_offset_idx": 2,
+      "text": "Risk Assessment",
+      "column_header": false,
+      "row_header": false,
+      "row_section": false,
+      "fillable": false
+     },
+     {
+      "bbox": {
+       "l": 369.84,
+       "t": 221.70528000000002,
+       "r": 499.4006760000006,
+       "b": 229.91418385964914,
+       "coord_origin": "TOPLEFT"
+      },
+      "row_span": 1,
+      "col_span": 1,
+      "start_row_offset_idx": 4,
+      "end_row_offset_idx": 5,
+      "start_col_offset_idx": 2,
+      "end_col_offset_idx": 3,
+      "text": "System and Services Acquisition",
+      "column_header": false,
+      "row_header": false,
+      "row_section": false,
+      "fillable": false
+     },
+     {
+      "bbox": {
+       "l": 77.4,
+       "t": 238.38527999999997,
+       "r": 151.83506400000013,
+       "b": 246.5941838596491,
+       "coord_origin": "TOPLEFT"
+      },
+      "row_span": 1,
+      "col_span": 1,
+      "start_row_offset_idx": 5,
+      "end_row_offset_idx": 6,
+      "start_col_offset_idx": 0,
+      "end_col_offset_idx": 1,
+      "text": "Incident Response",
+      "column_header": false,
+      "row_header": false,
+      "row_section": false,
+      "fillable": false
+     },
+     {
+      "bbox": {
+       "l": 369.84,
+       "t": 238.38527999999997,
+       "r": 497.61086400000005,
+       "b": 246.5941838596491,
+       "coord_origin": "TOPLEFT"
+      },
+      "row_span": 1,
+      "col_span": 1,
+      "start_row_offset_idx": 5,
+      "end_row_offset_idx": 6,
+      "start_col_offset_idx": 2,
+      "end_col_offset_idx": 3,
+      "text": "Supply Chain Risk Management",
+      "column_header": false,
+      "row_header": false,
+      "row_section": false,
+      "fillable": false
+     }
+    ],
+    "num_rows": 6,
+    "num_cols": 3,
+    "orientation": "rot_0",
+    "grid": [
+     [
+      {
+       "bbox": {
+        "l": 77.4,
+        "t": 154.86527999999998,
+        "r": 136.91896800000004,
+        "b": 163.0741838596491,
+        "coord_origin": "TOPLEFT"
+       },
+       "row_span": 1,
+       "col_span": 1,
+       "start_row_offset_idx": 0,
+       "end_row_offset_idx": 1,
+       "start_col_offset_idx": 0,
+       "end_col_offset_idx": 1,
+       "text": "Access Control",
+       "column_header": false,
+       "row_header": false,
+       "row_section": false,
+       "fillable": false
+      },
+      {
+       "bbox": {
+        "l": 234.0,
+        "t": 154.86527999999998,
+        "r": 287.6764320000001,
+        "b": 163.0741838596491,
+        "coord_origin": "TOPLEFT"
+       },
+       "row_span": 1,
+       "col_span": 1,
+       "start_row_offset_idx": 0,
+       "end_row_offset_idx": 1,
+       "start_col_offset_idx": 1,
+       "end_col_offset_idx": 2,
+       "text": "Maintenance",
+       "column_header": false,
+       "row_header": false,
+       "row_section": false,
+       "fillable": false
+      },
+      {
+       "bbox": {
+        "l": 369.84,
+        "t": 154.86527999999998,
+        "r": 518.2878240000002,
+        "b": 163.0741838596491,
+        "coord_origin": "TOPLEFT"
+       },
+       "row_span": 1,
+       "col_span": 1,
+       "start_row_offset_idx": 0,
+       "end_row_offset_idx": 1,
+       "start_col_offset_idx": 2,
+       "end_col_offset_idx": 3,
+       "text": "Security Assessment and Monitoring",
+       "column_header": false,
+       "row_header": false,
+       "row_section": false,
+       "fillable": false
+      }
+     ],
+     [
+      {
+       "bbox": {
+        "l": 77.4,
+        "t": 171.54528000000005,
+        "r": 174.36458400000018,
+        "b": 179.75418385964917,
+        "coord_origin": "TOPLEFT"
+       },
+       "row_span": 1,
+       "col_span": 1,
+       "start_row_offset_idx": 1,
+       "end_row_offset_idx": 2,
+       "start_col_offset_idx": 0,
+       "end_col_offset_idx": 1,
+       "text": "Awareness and Training",
+       "column_header": false,
+       "row_header": false,
+       "row_section": false,
+       "fillable": false
+      },
+      {
+       "bbox": {
+        "l": 234.0,
+        "t": 171.54528000000005,
+        "r": 304.6343280000002,
+        "b": 179.75418385964917,
+        "coord_origin": "TOPLEFT"
+       },
+       "row_span": 1,
+       "col_span": 1,
+       "start_row_offset_idx": 1,
+       "end_row_offset_idx": 2,
+       "start_col_offset_idx": 1,
+       "end_col_offset_idx": 2,
+       "text": "Media Protection",
+       "column_header": false,
+       "row_header": false,
+       "row_section": false,
+       "fillable": false
+      },
+      {
+       "bbox": {
+        "l": 369.84,
+        "t": 171.54528000000005,
+        "r": 532.2666839999999,
+        "b": 179.75418385964917,
+        "coord_origin": "TOPLEFT"
+       },
+       "row_span": 1,
+       "col_span": 1,
+       "start_row_offset_idx": 1,
+       "end_row_offset_idx": 2,
+       "start_col_offset_idx": 2,
+       "end_col_offset_idx": 3,
+       "text": "System and Communications Protection",
+       "column_header": false,
+       "row_header": false,
+       "row_section": false,
+       "fillable": false
+      }
+     ],
+     [
+      {
+       "bbox": {
+        "l": 77.4,
+        "t": 188.34528,
+        "r": 177.4242960000002,
+        "b": 196.55418385964913,
+        "coord_origin": "TOPLEFT"
+       },
+       "row_span": 1,
+       "col_span": 1,
+       "start_row_offset_idx": 2,
+       "end_row_offset_idx": 3,
+       "start_col_offset_idx": 0,
+       "end_col_offset_idx": 1,
+       "text": "Audit and Accountability",
+       "column_header": false,
+       "row_header": false,
+       "row_section": false,
+       "fillable": false
+      },
+      {
+       "bbox": {
+        "l": 234.0,
+        "t": 188.34528,
+        "r": 309.4330559999997,
+        "b": 196.55418385964913,
+        "coord_origin": "TOPLEFT"
+       },
+       "row_span": 1,
+       "col_span": 1,
+       "start_row_offset_idx": 2,
+       "end_row_offset_idx": 3,
+       "start_col_offset_idx": 1,
+       "end_col_offset_idx": 2,
+       "text": "Personnel Security",
+       "column_header": false,
+       "row_header": false,
+       "row_section": false,
+       "fillable": false
+      },
+      {
+       "bbox": {
+        "l": 369.84,
+        "t": 188.34528,
+        "r": 504.18944400000015,
+        "b": 196.55418385964913,
+        "coord_origin": "TOPLEFT"
+       },
+       "row_span": 1,
+       "col_span": 1,
+       "start_row_offset_idx": 2,
+       "end_row_offset_idx": 3,
+       "start_col_offset_idx": 2,
+       "end_col_offset_idx": 3,
+       "text": "System and Information Integrity",
+       "column_header": false,
+       "row_header": false,
+       "row_section": false,
+       "fillable": false
+      }
+     ],
+     [
+      {
+       "bbox": {
+        "l": 77.4,
+        "t": 205.02528000000007,
+        "r": 189.816528,
+        "b": 213.2341838596492,
+        "coord_origin": "TOPLEFT"
+       },
+       "row_span": 1,
+       "col_span": 1,
+       "start_row_offset_idx": 3,
+       "end_row_offset_idx": 4,
+       "start_col_offset_idx": 0,
+       "end_col_offset_idx": 1,
+       "text": "Configuration Management",
+       "column_header": false,
+       "row_header": false,
+       "row_section": false,
+       "fillable": false
+      },
+      {
+       "bbox": {
+        "l": 234.0,
+        "t": 205.02528000000007,
+        "r": 311.34238800000014,
+        "b": 213.2341838596492,
+        "coord_origin": "TOPLEFT"
+       },
+       "row_span": 1,
+       "col_span": 1,
+       "start_row_offset_idx": 3,
+       "end_row_offset_idx": 4,
+       "start_col_offset_idx": 1,
+       "end_col_offset_idx": 2,
+       "text": "Physical Protection",
+       "column_header": false,
+       "row_header": false,
+       "row_section": false,
+       "fillable": false
+      },
+      {
+       "bbox": {
+        "l": 369.84,
+        "t": 205.02528000000007,
+        "r": 404.88724800000006,
+        "b": 213.2341838596492,
+        "coord_origin": "TOPLEFT"
+       },
+       "row_span": 1,
+       "col_span": 1,
+       "start_row_offset_idx": 3,
+       "end_row_offset_idx": 4,
+       "start_col_offset_idx": 2,
+       "end_col_offset_idx": 3,
+       "text": "Planning",
+       "column_header": false,
+       "row_header": false,
+       "row_section": false,
+       "fillable": false
+      }
+     ],
+     [
+      {
+       "bbox": {
+        "l": 77.4,
+        "t": 221.70528000000002,
+        "r": 212.0990400000002,
+        "b": 229.91418385964914,
+        "coord_origin": "TOPLEFT"
+       },
+       "row_span": 1,
+       "col_span": 1,
+       "start_row_offset_idx": 4,
+       "end_row_offset_idx": 5,
+       "start_col_offset_idx": 0,
+       "end_col_offset_idx": 1,
+       "text": "Identification and Authentication",
+       "column_header": false,
+       "row_header": false,
+       "row_section": false,
+       "fillable": false
+      },
+      {
+       "bbox": {
+        "l": 234.0,
+        "t": 221.70528000000002,
+        "r": 300.4770240000001,
+        "b": 229.91418385964914,
+        "coord_origin": "TOPLEFT"
+       },
+       "row_span": 1,
+       "col_span": 1,
+       "start_row_offset_idx": 4,
+       "end_row_offset_idx": 5,
+       "start_col_offset_idx": 1,
+       "end_col_offset_idx": 2,
+       "text": "Risk Assessment",
+       "column_header": false,
+       "row_header": false,
+       "row_section": false,
+       "fillable": false
+      },
+      {
+       "bbox": {
+        "l": 369.84,
+        "t": 221.70528000000002,
+        "r": 499.4006760000006,
+        "b": 229.91418385964914,
+        "coord_origin": "TOPLEFT"
+       },
+       "row_span": 1,
+       "col_span": 1,
+       "start_row_offset_idx": 4,
+       "end_row_offset_idx": 5,
+       "start_col_offset_idx": 2,
+       "end_col_offset_idx": 3,
+       "text": "System and Services Acquisition",
+       "column_header": false,
+       "row_header": false,
+       "row_section": false,
+       "fillable": false
+      }
+     ],
+     [
+      {
+       "bbox": {
+        "l": 77.4,
+        "t": 238.38527999999997,
+        "r": 151.83506400000013,
+        "b": 246.5941838596491,
+        "coord_origin": "TOPLEFT"
+       },
+       "row_span": 1,
+       "col_span": 1,
+       "start_row_offset_idx": 5,
+       "end_row_offset_idx": 6,
+       "start_col_offset_idx": 0,
+       "end_col_offset_idx": 1,
+       "text": "Incident Response",
+       "column_header": false,
+       "row_header": false,
+       "row_section": false,
+       "fillable": false
+      },
+      {
+       "row_span": 1,
+       "col_span": 1,
+       "start_row_offset_idx": 5,
+       "end_row_offset_idx": 6,
+       "start_col_offset_idx": 1,
+       "end_col_offset_idx": 2,
+       "text": "",
+       "column_header": false,
+       "row_header": false,
+       "row_section": false,
+       "fillable": false
+      },
+      {
+       "bbox": {
+        "l": 369.84,
+        "t": 238.38527999999997,
+        "r": 497.61086400000005,
+        "b": 246.5941838596491,
+        "coord_origin": "TOPLEFT"
+       },
+       "row_span": 1,
+       "col_span": 1,
+       "start_row_offset_idx": 5,
+       "end_row_offset_idx": 6,
+       "start_col_offset_idx": 2,
+       "end_col_offset_idx": 3,
+       "text": "Supply Chain Risk Management",
+       "column_header": false,
+       "row_header": false,
+       "row_section": false,
+       "fillable": false
+      }
+     ]
+    ]
+   },
+   "annotations": []
+  }
+ ],
+ "key_value_items": [],
+ "form_items": [],
+ "pages": {
+  "1": {
+   "size": {
+    "width": 612.0,
+    "height": 792.0
+   },
+   "page_no": 1
+  },
+  "2": {
+   "size": {
+    "width": 612.0,
+    "height": 792.0
+   },
+   "page_no": 2
+  },
+  "3": {
+   "size": {
+    "width": 612.0,
+    "height": 792.0
+   },
+   "page_no": 3
+  },
+  "4": {
+   "size": {
+    "width": 612.0,
+    "height": 792.0
+   },
+   "page_no": 4
+  },
+  "5": {
+   "size": {
+    "width": 612.0,
+    "height": 792.0
+   },
+   "page_no": 5
+  }
+ }
+}

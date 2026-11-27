@@ -26,6 +26,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from crosscodex_ingestion.heading_levels import infer_heading_levels
+from crosscodex_ingestion.layout_repair import find_furniture, plan_rejoins, render_chain, table_cells
 
 # Markdown heading pattern
 _HEADING_PATTERN = re.compile(r"^(#{1,6})\s+(.+)$")
@@ -173,6 +174,12 @@ class DocumentExtractor:
             heading_levels = infer_heading_levels([item.text for item in headings])
         level_of = {id(item): level for item, level in zip(headings, heading_levels, strict=True)}
 
+        # Unlabelled running headers and footers (PDF only; other formats have no pages).
+        furniture = find_furniture(doc) if format_hint == "pdf" else {}
+        # Tables continued on the next page: each chain is emitted at its first part, later parts emit nothing.
+        chains = plan_rejoins(doc, furniture, format_hint)
+        continued = {part.self_ref for chain in chains.values() for part in chain.parts[1:]}
+
         # Build elements from typed items
         current_heading_id = None  # The current heading element ID (for text content parent)
         heading_stack: list[tuple] = []  # (level, element_id)
@@ -182,6 +189,19 @@ class DocumentExtractor:
             if label == DocItemLabel.TITLE and self.title is None:
                 self.title = getattr(item, "text", "").strip() or None
             if label is None or label in SKIP_LABELS:
+                continue
+
+            if furniture and item.self_ref in furniture:
+                self.dropped.append(
+                    {
+                        "type": "furniture",
+                        "page": self._page_of(item),
+                        "reason": (
+                            f"text repeated in the page margin on {furniture[item.self_ref]} pages; "
+                            "removed as an unlabelled running header or footer"
+                        ),
+                    }
+                )
                 continue
 
             if label in HEADING_LABELS:
@@ -242,8 +262,39 @@ class DocumentExtractor:
                     )
 
             elif label == DocItemLabel.TABLE:
+                if continued and item.self_ref in continued:
+                    continue
+                chain = chains.get(item.self_ref) if chains else None
+                if chain is not None:
+                    self.elements.append(
+                        {
+                            "element_id": self._next_element_id(),
+                            "type": "table",
+                            "content": render_chain(chain, doc),
+                            "page": self._page_of(item),
+                            "level": None,
+                            "parent_id": current_heading_id,
+                            "style": {},
+                            "cells": chain.cells,
+                            "header_rows": chain.header_rows,
+                            "row_pages": chain.row_pages,
+                        }
+                    )
+                    self.dropped.extend(
+                        {
+                            "type": "row",
+                            "page": page,
+                            "reason": (
+                                f"repeated header row of a table continued from page {tail_page}; "
+                                "removed when the parts were rejoined"
+                            ),
+                        }
+                        for page, tail_page in chain.removed_header_pages
+                    )
+                    continue
                 try:
                     table_md = item.export_to_markdown(doc=doc).strip()
+                    cells = table_cells(item, doc)
                 except Exception as exc:
                     # Only the exception type: its message may quote document text.
                     reason = f"table could not be exported to Markdown ({type(exc).__name__})"
@@ -255,15 +306,19 @@ class DocumentExtractor:
                     )
                     continue
                 element_id = self._next_element_id()
+                page = self._page_of(item)
                 self.elements.append(
                     {
                         "element_id": element_id,
                         "type": "table",
                         "content": table_md,
-                        "page": self._page_of(item),
+                        "page": page,
                         "level": None,
                         "parent_id": current_heading_id,
                         "style": {},
+                        "cells": cells.cells,
+                        "header_rows": cells.header_rows,
+                        "row_pages": [page] * len(cells.cells),
                     }
                 )
 

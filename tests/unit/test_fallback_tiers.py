@@ -115,3 +115,42 @@ def test_pattern_item_takes_the_page_of_its_line() -> None:
 def test_pattern_does_not_treat_vertical_tab_as_regex_space() -> None:
     elements = [element("p", "paragraph", "\n".join(f"Article\v{n} x" for n in range(5)))]
     assert tier_pattern(adapt_layout(elements)) is None
+
+
+TABLE_3_ROWS = "| a | b |\n|---|---|\n| R-1 | x |\n| R-2 | y |\n| R-3 | z |\n"
+
+
+def _table_element(content: str, row_pages: list[int | None] | None, page: int | None = 1) -> dict[str, Any]:
+    e = element("t", "table", content, page=page)
+    if row_pages is not None:
+        e["row_pages"] = row_pages
+    return e
+
+
+def test_tier_table_single_table_row_pages() -> None:
+    # row_pages[0] is the header grid row; body row i takes row_pages[i + 1].
+    items = tier_table(adapt_layout([_table_element(TABLE_3_ROWS, [1, 1, 2, 3])]))
+    assert items is not None
+    assert [(i.id, i.page) for i in items] == [("R-1", 1), ("R-2", 2), ("R-3", 3)]
+
+
+def test_tier_table_joined_table_pages_per_row() -> None:
+    # Grid of a table rejoined across pages 5-7: header and 1 row on page 5, 2 rows on page 6 (repeated
+    # header removed, so it has no grid row), 1 row on page 7. An off-by-header-count bug shifts pages.
+    content = "| a | b |\n|---|---|\n| R-1 | x |\n| R-2 | y |\n| R-3 | z |\n| R-4 | w |\n"
+    items = tier_table(adapt_layout([_table_element(content, [5, 5, 6, 6, 7], page=5)]))
+    assert items is not None
+    assert [(i.id, i.page) for i in items] == [("R-1", 5), ("R-2", 6), ("R-3", 6), ("R-4", 7)]
+
+
+def test_tier_table_without_row_pages_uses_table_page() -> None:
+    items = tier_table(adapt_layout([_table_element(TABLE_3_ROWS, None, page=4)]))
+    assert items is not None
+    assert [i.page for i in items] == [4, 4, 4]
+
+
+@pytest.mark.parametrize("row_pages", [[1, 2, 3], [1, 1, 2, 3, 4], []])
+def test_tier_table_mismatched_row_pages_uses_table_page(row_pages: list[int | None]) -> None:
+    items = tier_table(adapt_layout([_table_element(TABLE_3_ROWS, row_pages, page=4)]))
+    assert items is not None
+    assert [i.page for i in items] == [4, 4, 4]

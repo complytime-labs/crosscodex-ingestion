@@ -12,7 +12,7 @@ clauses, `(a)` and `(b)`. Clause `(a)` splits again, so it is a `section`; `(b)`
 
 ```json
 {
-  "schema_version": "1.4",
+  "schema_version": "1.5",
   "elements": [
     {"element_id": "e-001", "type": "heading", "content": "Nested", "page": null, "level": 1, "parent_id": null, "style": {}, "id": "sec-1.a", "role": "section", "title": "Nested", "text": "lead1 lead2 lead3 lead4 lead5 lead6 lead7 lead8 lead9 lead10 lead11 lead12 lead13 lead14 lead15 lead16 lead17 lead18 lead19 lead20 lead21 lead22 lead23 lead24 lead25 lead26 lead27 lead28 lead29 lead30\n1. mid1 mid2 mid3 mid4 mid5 mid6 mid7 mid8 mid9 mid10 mid11 mid12 mid13 mid14 mid15 mid16 mid17 mid18 mid19 mid20 mid21 mid22 mid23 mid24 mid25 mid26 mid27 mid28 mid29 mid30\n  i. p1 p2 p3 p4 p5 p6 p7 p8 p9\n  ii. q1 q2 q3 q4 q5 q6 q7 q8 q9\n2. r1 r2 r3 r4 r5 r6 r7 r8 r9", "properties": {"label": "a"}},
     {"element_id": "e-002", "type": "paragraph", "content": "lead1 lead2 lead3 lead4 lead5 lead6 lead7 lead8 lead9 lead10 lead11 lead12 lead13 lead14 lead15 lead16 lead17 lead18 lead19 lead20 lead21 lead22 lead23 lead24 lead25 lead26 lead27 lead28 lead29 lead30\n1. mid1 mid2 mid3 mid4 mid5 mid6 mid7 mid8 mid9 mid10 mid11 mid12 mid13 mid14 mid15 mid16 mid17 mid18 mid19 mid20 mid21 mid22 mid23 mid24 mid25 mid26 mid27 mid28 mid29 mid30\n  i. p1 p2 p3 p4 p5 p6 p7 p8 p9\n  ii. q1 q2 q3 q4 q5 q6 q7 q8 q9\n2. r1 r2 r3 r4 r5 r6 r7 r8 r9", "page": null, "level": null, "parent_id": "e-001", "style": {}, "id": null},
@@ -23,7 +23,7 @@ clauses, `(a)` and `(b)`. Clause `(a)` splits again, so it is a `section`; `(b)`
     {"element_id": "e-007", "type": "paragraph", "content": "r1 r2 r3 r4 r5 r6 r7 r8 r9", "page": null, "level": null, "parent_id": "e-001", "style": {}, "id": "sec-1.a.2", "role": "control", "title": "Nested", "text": "r1 r2 r3 r4 r5 r6 r7 r8 r9", "properties": {"label": "2"}},
     {"element_id": "e-008", "type": "paragraph", "content": "flat1 flat2 flat3 flat4 flat5 flat6 flat7 flat8 flat9 flat10 flat11 flat12 flat13 flat14 flat15 flat16 flat17 flat18 flat19 flat20 flat21 flat22 flat23 flat24 flat25 flat26 flat27 flat28 flat29 flat30 flat31 flat32 flat33 flat34 flat35 flat36 flat37 flat38 flat39 flat40 flat41 flat42 flat43 flat44 flat45", "page": null, "level": null, "parent_id": null, "style": {}, "id": "sec-1.b", "role": "control", "title": "Nested", "text": "flat1 flat2 flat3 flat4 flat5 flat6 flat7 flat8 flat9 flat10 flat11 flat12 flat13 flat14 flat15 flat16 flat17 flat18 flat19 flat20 flat21 flat22 flat23 flat24 flat25 flat26 flat27 flat28 flat29 flat30 flat31 flat32 flat33 flat34 flat35 flat36 flat37 flat38 flat39 flat40 flat41 flat42 flat43 flat44 flat45", "properties": {"label": "b"}}
   ],
-  "metadata": {"element_count": 8, "detected_format": "pdf", "page_count": null, "title": null, "processing_time_ms": 1.0, "dropped": [], "structure_method": "heading", "structure": {"heading_count": 1, "table_count": 0, "max_heading_depth": 1, "unparented_count": 0, "fragment_count": 0, "warnings": []}}
+  "metadata": {"element_count": 8, "detected_format": "pdf", "page_count": null, "title": null, "processing_time_ms": 1.0, "dropped": [], "structure_method": "heading", "structure": {"heading_count": 1, "table_count": 0, "max_heading_depth": 1, "unparented_count": 0, "fragment_count": 0, "table_rejoin_count": 0, "warnings": []}}
 }
 ```
 
@@ -59,7 +59,7 @@ For an HTML page that matched a profile, `metadata` also carries the profile tha
 | `properties` (1.1)            | Extra source fields the mapping names, as `name: string`.                                                                                                 |
 | `metadata.source` (1.1)       | Present for structured sources: `kind` (`structured`), `format`, `mapping` (`id`, `sha256`, `mapping_version`), `node_count`, `unmapped_fields`; since 1.3 also `catalog_version`, the mapping's `version` or `null`. |
 | `metadata.structure_method` (1.4) | How the structure was found, always present: `mapping` (structured sources), or `heading`, `table`, `pattern` (the fallback structurer's tier for a document). |
-| `metadata.structure` (1.2)    | Structure signals: `heading_count`, `table_count`, `max_heading_depth`, `unparented_count`, `fragment_count`, and `warnings` (open-ended codes such as `no_headings`). |
+| `metadata.structure` (1.2)    | Structure signals: `heading_count`, `table_count`, `max_heading_depth`, `unparented_count`, `fragment_count`, `table_rejoin_count` (1.5: page breaks across which a PDF table's parts were rejoined), and `warnings` (open-ended codes such as `no_headings`, and since 1.5 `table_rejoined`). |
 | `metadata.html_profile` (1.2) | Present when an HTML profile shaped the conversion: `id` and the `sha256` of the profile file (see "HTML profiles").                                      |
 
 ## PDF heading levels
@@ -212,12 +212,36 @@ What changes for a reader of document output:
   They are not a catalog's own IDs; document mappings that would give those are planned and none exist yet.
 - `page` is set where the layout had pages.
 - `metadata.structure` still describes the layout Docling produced, not the controls.
+- Since 1.5 a PDF's layout is repaired before the structure is found (see "PDF layout repair").
 - Nothing is configurable: the same document gives the same structure on every deployment.
 
 A document with no controls fails with `ERROR_CODE_INVALID_ARGUMENT` and nothing is stored. Prose-only text,
 or a document whose controls' identifiers repeat, is such a case. The message names the format and the
 registered mappings for it. The message suggests a document mapping, but none exist yet (planned: issue #38,
 phase 3), so such a document cannot be converted by this version.
+
+### PDF layout repair
+
+Since 1.5, a PDF is cleaned of two layout artefacts before the structure is found. Both apply to PDFs only,
+and each removal is listed in `metadata.dropped`, so nothing disappears silently.
+
+- **Tables continued across a page break are one table.** When a table's next page starts with a table of
+  the same column count (the same header repeated, or no header) and nothing but blank text or removed
+  running text lies between them, the parts are joined and the repeated header rows are removed. Each removed
+  row is a `dropped` entry of type `row`, with its page and the reason `repeated header row of a table
+  continued from page <n>; removed when the parts were rejoined`. A control from the table tier keeps the page
+  of its own row. `metadata.structure.table_rejoin_count` counts the page breaks joined, and when it is above 0
+  `metadata.structure.warnings` contains `table_rejoined`.
+- **Unlabelled running headers and footers are removed.** A short text (at most 100 characters) that
+  appears on at least 3 pages, always within the top or bottom 10% of the page, is dropped, as an entry
+  of type `furniture` with the reason `text repeated in the page margin on <n> pages; removed as an
+  unlabelled running header or footer`. Text Docling already labels as a page header or footer was never emitted.
+
+The header must repeat exactly (same text after collapsing whitespace, same case). When Docling reads a
+repeated header differently on a later page, the table stays two tables: a missed join is safe, a false one
+is not. A table with a caption, footnote or other content between its parts is joined only when that content
+is the table's own, or blank. A table that can't be exported, or whose later part is nothing but the repeated
+header, is never joined. The thresholds are fixed, not configurable.
 
 ## What version 1.0 guarantees
 
@@ -263,3 +287,4 @@ major (`-v1`).
 | 1.2 | Optional `metadata.structure` (structure signals) and `metadata.html_profile` (the HTML profile applied, with its hash). |
 | 1.3 | Optional element fields `role`, `text` (and `title` on headings) on elements with a string `id`, and optional `metadata.source.catalog_version`, emitted for structured sources. |
 | 1.4 | Required `metadata.structure_method`; `role` `section`. Documents now carry `id`, `role`, `title` and `text` like structured sources. |
+| 1.5 | Required `metadata.structure.table_rejoin_count`; `metadata.dropped` types `row`, `furniture` and `paragraph`; warning `table_rejoined`. A PDF's split tables are rejoined and its unlabelled running headers and footers removed. |
