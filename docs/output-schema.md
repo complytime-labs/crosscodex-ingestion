@@ -64,7 +64,9 @@ a trailing newline. The first violation is also returned as `Error.details` (`sc
 
 **Nothing is dropped silently.** The extractor lists what it doesn't emit in `metadata.dropped`:
 blank headings, tables whose Markdown export raised or came out empty, and paragraphs the plain-text
-fallback skips for having fewer than 5 words. Text before the first heading or section is emitted as
+fallback skips for having fewer than 5 words. Since 1.5 it also lists PDF table header rows removed on a
+rejoin (`row`) and unlabelled running headers and footers (`furniture`); see "1.5: table cells and layout
+repair". Text before the first heading or section is emitted as
 top-level paragraphs (`parent_id: null`), not dropped. `run_conversion` logs each
 entry at WARNING with the document id; the subprocess can't log usefully, because its stderr is read
 only when it fails. A drop's `reason` names only the exception type, since exception messages may
@@ -215,3 +217,74 @@ gave structured sources.
 
   The message's advice to use a document mapping is forward-looking: document mappings are planned (issue #38,
   phase 3) and none exist yet.
+
+## 1.5: table cells and layout repair
+
+`metadata.structure.table_rejoin_count` is required from 1.5, and the `metadata.dropped[].type` enum gains
+`row`, `furniture` and `paragraph`. 1.0 to 1.4 outputs still validate: the schema's version gates
+reject the new field and the three new `type` values below 1.5, so the requirement and the values apply
+only when `schema_version` is `1.5`. A copy of the schema older than 1.5 rejects a 1.5 output, so
+validate with a copy at least as new as the output.
+
+`paragraph` was already emitted by the plain-text fallback ("fewer than 5 words") but was
+missing from the enum; 1.5 adds it. `row` and `furniture` are new behaviour, and apply to PDFs only (the
+only format with pages).
+
+Three changes happen in the extractor, before `quality.measure_structure` measures the layout and before the
+fallback structurer reads it:
+
+- **Cell model.** Each layout `table` element carries `cells` (the grid as strings; a spanned cell's text
+  repeats at every position it covers), `header_rows` (how many leading rows are column headers) and
+  `row_pages` (the page of each grid row). They never reach the output: output elements are built from
+  the structure tree by `structured.emit_elements`, which never copies layout fields, and the closed element
+  schema (`additionalProperties: false`) would reject one if it leaked. Only `row_pages` is read today, by
+  `measure_structure` (for `table_rejoin_count`) and by the table tier, so a control's `page` is its row's
+  page, not the page the table started on. `cells` and `header_rows` are for phase 3's document mappings
+  (issue #38); nothing reads them yet.
+- **Rejoin.** A PDF table continued on the next page is emitted as one table element (see "Rejoin rule").
+  Each repeated header row removed from a later part is a `dropped` entry of type `row`:
+  `repeated header row of a table continued from page {a}; removed when the parts were rejoined`, where
+  `page` is the part's page and `{a}` is the previous part's page.
+- **Furniture.** A text repeated in the page margin is removed (see "Furniture rule"), and each removed
+  item is a `dropped` entry of type `furniture`:
+  `text repeated in the page margin on {n} pages; removed as an unlabelled running header or footer`.
+  `{n}` is the number of distinct pages the text occurs on.
+
+Both reasons contain only integers, never document text.
+
+`metadata.structure.table_rejoin_count` is the number of page breaks across which parts were rejoined. For
+each table element it is the number of distinct pages in its `row_pages`, minus one. When it is above 0 the
+`warnings` array gains `table_rejoined`, once, after `no_headings`. Like the other counts it is measured on
+the layout the structurer read.
+
+### Rejoin rule
+
+Only when the format is PDF. Table B continues table A (the last part of the chain so far) when all of
+these hold:
+
+- A and B each have exactly one page, and B is the next table after A in document order and on A's next page.
+- Every item between them is removed furniture, or a text, paragraph or list item whose text is blank. A
+  heading, a picture, a non-blank paragraph or any other table between them ends the chain.
+- A part's own descendants (its caption and footnotes, which Docling makes its children) and the items
+  its rich cells reference belong to the part: they never block a join.
+- B has the same column count as the first part.
+- B's leading rows equal the first part's header rows, or B has no header rows. The comparison is exact:
+  cell by cell, after collapsing whitespace the way Go's `strings.Fields` does, case-sensitive and with no
+  digit folding. B keeps at least one row once the matching header rows are removed, so a part that is only a
+  repeated header never joins.
+- Neither part is one the extractor would drop: a table whose Markdown export fails or is blank, or that
+  has no rows, never joins and ends the chain.
+
+Some real splits therefore stay split: Docling can read a repeated header differently on a later page (an
+empty or truncated cell, a different width), and the rule fails closed rather than guess. An unjoined table's
+`content` is byte-identical to the 1.4 output.
+
+### Furniture rule
+
+Only when the format is PDF. A text or paragraph item in the body is removed when its text, with whitespace
+collapsed as above, is at most 100 characters, occurs on at least 3 distinct pages, and every one of its
+occurrences lies wholly in the top or bottom 10% of its page. An occurrence with no position or no page size
+counts as outside the margin, so an unknown position never removes text. Items Docling already labels as page
+headers and footers are skipped by the extractor as before and are not listed. The three numbers are frozen
+in `layout_repair.py` (`FURNITURE_MIN_PAGES`, `FURNITURE_MARGIN`, `FURNITURE_MAX_CHARS`), not configuration,
+so the service version reproduces a result.

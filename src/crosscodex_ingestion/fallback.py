@@ -127,6 +127,9 @@ class Table:
     headers: list[str]
     rows: list[list[str]]
     page: int | None
+    # Page of each grid row, header first, so Markdown body row i is row_pages[i + 1]. None when the
+    # element carries none; tier_table also ignores it when its length is not len(rows) + 1.
+    row_pages: list[int | None] | None = None
 
 
 @dataclass(frozen=True)
@@ -184,7 +187,7 @@ def adapt_layout(elements: list[dict[str, Any]]) -> LayoutDoc:
             section_text.append([])
             continue
         if e["type"] == "table":
-            tables.append(_parse_markdown_table(i, content, page))
+            tables.append(_parse_markdown_table(i, content, page, e.get("row_pages")))
         if parent_id is not None:
             section_text[section_of[parent_id]].append(content)
 
@@ -195,7 +198,7 @@ def adapt_layout(elements: list[dict[str, Any]]) -> LayoutDoc:
     return LayoutDoc(sections=with_text, tables=tables, raw_text="\n\n".join(raw), line_pages=line_pages)
 
 
-def _parse_markdown_table(i: int, content: str, page: int | None) -> Table:
+def _parse_markdown_table(i: int, content: str, page: int | None, row_pages: list[int | None] | None) -> Table:
     """Parse the first GFM table block of a table element (Go: parseMarkdownTable).
 
     The block is a header row, a delimiter row and body rows, each a line starting with "|", up to the
@@ -229,7 +232,7 @@ def _parse_markdown_table(i: int, content: str, page: int | None) -> Table:
                 f"{len(headers)}; the adapter does not guess which cells are missing. Re-run the conversion"
             )
         rows.append(row)
-    return Table(headers=headers, rows=rows, page=page)
+    return Table(headers=headers, rows=rows, page=page, row_pages=row_pages)
 
 
 def _is_markdown_row(line: str) -> bool:
@@ -304,11 +307,16 @@ def tier_heading(doc: LayoutDoc) -> list[Item] | None:
 
 
 def tier_table(doc: LayoutDoc) -> list[Item] | None:
-    """One item per non-empty table row; the first cell is the ID when 1-49 bytes (Go: TierTable)."""
+    """One item per non-empty table row; the first cell is the ID when 1-49 bytes (Go: TierTable).
+
+    An item's page is its row's page from row_pages when that aligns with the rows, else the table page.
+    """
     items: list[Item] = []
     row_number = 0
     for table in doc.tables:
-        for row in table.rows:
+        # A row_pages that does not cover the header plus every body row cannot be aligned: use the table page.
+        aligned = table.row_pages is not None and len(table.row_pages) == len(table.rows) + 1
+        for row_index, row in enumerate(table.rows):
             if not row:
                 continue
             row_number += 1
@@ -316,7 +324,8 @@ def tier_table(doc: LayoutDoc) -> list[Item] | None:
             # Go's len() counts bytes, not characters.
             use_first = first != "" and len(first.encode("utf-8")) < _MAX_TABLE_ID_BYTES
             item_id = first if use_first else f"tbl-{row_number}"
-            items.append(Item(item_id, "", " | ".join(row), "requirement", "", {}, table.page))
+            page = table.row_pages[row_index + 1] if aligned and table.row_pages else table.page
+            items.append(Item(item_id, "", " | ".join(row), "requirement", "", {}, page))
     return items or None
 
 

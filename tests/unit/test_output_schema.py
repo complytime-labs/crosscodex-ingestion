@@ -19,9 +19,12 @@ def _violation(output: dict) -> OutputSchemaError:
 
 
 def _at_version(output: dict, version: str) -> dict:
-    """*output* declared as *version*; below 1.4 without metadata.structure_method, which 1.4 added."""
+    """*output* declared as *version*, without the metadata fields added after it:
+    structure_method (1.4) and structure.table_rejoin_count (1.5)."""
     output["schema_version"] = version
-    if version != "1.4":
+    if version != "1.5":
+        output["metadata"].get("structure", {}).pop("table_rejoin_count", None)
+    if version not in ("1.4", "1.5"):
         output["metadata"].pop("structure_method")
     return output
 
@@ -260,8 +263,8 @@ class TestReferenceViolations:
 class TestStructuredSourceFields:
     """Schema 1.1 adds source ids, titles, properties and metadata.source, all optional."""
 
-    def test_this_service_emits_1_4(self):
-        assert SCHEMA_VERSION == "1.4"
+    def test_this_service_emits_1_5(self):
+        assert SCHEMA_VERSION == "1.5"
 
     def test_structured_output_passes(self):
         validate_output(structured_output())
@@ -469,6 +472,7 @@ class TestStructureMethod:
     def test_method_below_1_4_is_rejected(self):
         output = conforming_output()
         output["schema_version"] = "1.3"
+        del output["metadata"]["structure"]["table_rejoin_count"]
 
         assert _violation(output).violations[0].location == "metadata.structure_method"
 
@@ -483,6 +487,67 @@ class TestStructureMethod:
         output["metadata"]["structure_method"] = "heading"
 
         assert _violation(output).violations[0].location == "metadata.structure_method"
+
+
+class TestSchema15:
+    """Schema 1.5 adds dropped types row, furniture and paragraph, and structure.table_rejoin_count."""
+
+    @pytest.mark.parametrize("dropped_type", ["row", "furniture", "paragraph"])
+    def test_v15_accepts_new_dropped_types(self, dropped_type):
+        output = conforming_output()
+        output["metadata"]["dropped"] = [{"type": dropped_type, "page": 2, "reason": "removed"}]
+
+        validate_output(output)
+
+    @pytest.mark.parametrize("dropped_type", ["row", "furniture", "paragraph"])
+    def test_v14_rejects_new_dropped_types(self, dropped_type):
+        output = _at_version(conforming_output(), "1.4")
+        output["metadata"]["dropped"] = [{"type": dropped_type, "page": 2, "reason": "removed"}]
+
+        assert _violation(output).violations[0].location == "metadata.dropped[0].type"
+
+    def test_v14_still_accepts_heading_and_table_dropped_types(self):
+        output = _at_version(conforming_output(), "1.4")
+        output["metadata"]["dropped"] = [
+            {"type": "heading", "page": 1, "reason": "empty"},
+            {"type": "table", "page": 2, "reason": "empty"},
+        ]
+
+        validate_output(output)
+
+    def test_v14_rejects_table_rejoin_count(self):
+        output = _at_version(conforming_output(), "1.4")
+        output["metadata"]["structure"]["table_rejoin_count"] = 0
+
+        assert _violation(output).violations[0].location == "metadata.structure.table_rejoin_count"
+
+    def test_v15_requires_table_rejoin_count(self):
+        output = conforming_output()
+        del output["metadata"]["structure"]["table_rejoin_count"]
+
+        error = _violation(output)
+
+        assert error.violations[0].location == "metadata.structure"
+        assert "table_rejoin_count" in error.violations[0].reason
+
+    @pytest.mark.parametrize("count", [-1, 1.5, "0"])
+    def test_v15_rejects_a_bad_table_rejoin_count(self, count):
+        output = conforming_output()
+        output["metadata"]["structure"]["table_rejoin_count"] = count
+
+        assert _violation(output).violations[0].location == "metadata.structure.table_rejoin_count"
+
+    def test_v15_requires_structure_method(self):
+        output = conforming_output()
+        del output["metadata"]["structure_method"]
+
+        error = _violation(output)
+
+        assert error.violations[0].location == "metadata"
+        assert "structure_method" in error.violations[0].reason
+
+    def test_v13_needs_no_structure_method(self):
+        validate_output(_at_version(conforming_output(), "1.3"))
 
 
 def _tree_output(roots: list[TreeNode]) -> dict:

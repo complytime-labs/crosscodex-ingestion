@@ -100,6 +100,19 @@ instead of `content` to have the service fetch a URL. `tenant_id` must be a vali
 
 ## Upgrading
 
+### Schema 1.5: PDF layout repair
+
+- **Strict validators need the 1.5 schema copy.** `metadata.structure.table_rejoin_count` is a new required
+  field, and `metadata.dropped[].type` gains `row`, `furniture` and `paragraph`. Older schema copies reject
+  a 1.5 output. 1.0 to 1.4 outputs still validate against the 1.5 copy.
+- **Guessed-structure text changes for some PDFs.** A table continued on the next page is now one table,
+  with the repeated header rows removed, and a short text repeated in the page margin on 3 or more pages
+  is removed. Control text and IDs derived from such a PDF can differ from 1.4. Each removal is listed in
+  `metadata.dropped`, and a join adds the `table_rejoined` warning. Other formats are unchanged.
+- **crosscodex needs no change.**
+
+See [Output format](docs/usage/output-format.md#pdf-layout-repair).
+
 ### Schema 1.4: documents are returned as structure
 
 - **Layout is gone.** A converted PDF, DOCX, HTML or text document no longer returns raw headings and

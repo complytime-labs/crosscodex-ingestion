@@ -10,8 +10,12 @@ Counts:
 - unparented_count: non-heading elements whose `parent_id` is None.
 - fragment_count: paragraph/list_item elements whose stripped content is at
   most FRAGMENT_MAX_CHARS characters (e.g. stray "(a)" or "12" list markers).
-- warnings: fixed-order list of warning codes; the only code produced here is
-  "no_headings" (NO_HEADINGS_MIN_ELEMENTS or more elements, zero headings).
+- table_rejoin_count: page breaks across which table parts were rejoined: per
+  table element, the distinct pages in its `row_pages` (page of each grid row;
+  None entries ignored) minus one, floored at 0, summed.
+- warnings: fixed-order list of warning codes: "no_headings"
+  (NO_HEADINGS_MIN_ELEMENTS or more elements, zero headings), then
+  "table_rejoined" (table_rejoin_count above 0).
 """
 
 from typing import Any
@@ -27,6 +31,7 @@ def measure_structure(elements: list[dict[str, Any]]) -> dict[str, Any]:
     max_heading_depth = 0
     unparented_count = 0
     fragment_count = 0
+    table_rejoin_count = 0
 
     for element in elements:
         kind = element["type"]
@@ -36,6 +41,8 @@ def measure_structure(elements: list[dict[str, Any]]) -> dict[str, Any]:
             continue
         if kind == "table":
             table_count += 1
+            pages = {page for page in element.get("row_pages") or [] if page is not None}
+            table_rejoin_count += max(len(pages) - 1, 0)
         elif len(element["content"].strip()) <= FRAGMENT_MAX_CHARS:
             fragment_count += 1
         if element["parent_id"] is None:
@@ -44,6 +51,8 @@ def measure_structure(elements: list[dict[str, Any]]) -> dict[str, Any]:
     warnings: list[str] = []
     if len(elements) >= NO_HEADINGS_MIN_ELEMENTS and heading_count == 0:
         warnings.append("no_headings")
+    if table_rejoin_count > 0:
+        warnings.append("table_rejoined")
 
     return {
         "heading_count": heading_count,
@@ -51,5 +60,6 @@ def measure_structure(elements: list[dict[str, Any]]) -> dict[str, Any]:
         "max_heading_depth": max_heading_depth,
         "unparented_count": unparented_count,
         "fragment_count": fragment_count,
+        "table_rejoin_count": table_rejoin_count,
         "warnings": warnings,
     }

@@ -44,6 +44,9 @@ ignore = [
 "scripts/verify_attestation.py" = [
     "T201",   # command-line script reports results on stdout/stderr
 ]
+"tests/fixtures/layout/capture/gate.py" = [
+    "T201",   # command-line script reports results on stdout
+]
 "tests/fixtures/generate_fixtures.py" = [
     "T201",   # command-line script reports progress on stdout
 ]
